@@ -1,0 +1,922 @@
+use array_trait::AsSlice;
+
+#[cfg(feature = "array_chunks")]
+use crate::ArrayChunks;
+use crate::{util::{BulkLength, CollectLength}, Cloned, Copied, FromBulk, Inspect, IntoBulk, LimitToBulk, Map, Rev};
+
+pub trait Bulk: IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator> + LimitToBulk
+{
+    /// Returns the exact length of the bulk.
+    ///
+    /// This method has a default implementation, so you usually should not
+    /// implement it directly. However, if you can provide a more efficient
+    /// implementation, you can do so. See the [trait-level] docs for an
+    /// example.
+    ///
+    /// This function has the same safety guarantees as the
+    /// [`Iterator::size_hint`] function.
+    /// 
+    /// Analogous to [`ExactSizeIterator::len`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// // a finite range knows exactly how many times it will iterate
+    /// let mut range = 0..5;
+    ///
+    /// let len = Bulk::len(range);
+    /// 
+    /// assert_eq!(len, 5);
+    /// ```
+    fn len(&self) -> usize;
+
+    /// Returns `true` if the iterator is empty.
+    ///
+    /// This method has a default implementation using
+    /// [`Bulk::len()`], so you don't need to implement it yourself.
+    /// 
+    /// Analogous to [`ExactSizeIterator::is_empty`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let one_element = bulks::once(0);
+    /// assert!(!one_element.is_empty());
+    /// ```
+    #[inline]
+    fn is_empty(&self) -> bool
+    {
+        self.len() == 0
+    }
+    
+    /// Creates a bulk starting at the same point, but stepping by
+    /// the given amount at each iteration.
+    /// 
+    /// Analogous to [`Iterator::step_by`].
+    ///
+    /// # Panics
+    ///
+    /// The method will panic if the given step is `0`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let a = [0, 1, 2, 3, 4, 5];
+    /// 
+    /// let mut bulk = a.into_bulk().step_by::<2>();
+    /// 
+    /// let b = bulk.collect();
+    ///
+    /// assert_eq!(b, [0, 2, 4]);
+    /// ```
+    #[inline]
+    #[cfg(disabled)]
+    fn step_by<const N: usize>(self) -> StepBy<Self, N>
+    where
+        Self: Sized,
+    {
+        StepBy::new(self, step)
+    }
+
+    /// Takes two bulks and creates a new bulk over both in sequence.
+    ///
+    /// In other words, it links two bulks together, in a chain. 🔗
+    /// 
+    /// Analogous to [`Iterator::chain`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let s1 = b"abc".into_bulk();
+    /// let s2 = b"def".into_bulk();
+    ///
+    /// let mut bulk = s1.chain(s2);
+    /// 
+    /// let s = bulk.collect();
+    /// 
+    /// assert_eq!(s, b"abcdef");
+    /// ```
+    ///
+    /// Since the argument to [`chain()`](Bulk::chain) uses [`IntoBulk`], we can pass
+    /// anything that can be converted into a [`Bulk`], not just a
+    /// [`Bulk`] itself. For example, arrays (`[T]`) implement
+    /// [`IntoBulk`], and so can be passed to [`chain()`](Bulk::chain) directly:
+    ///
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let a1 = [1, 2, 3];
+    /// let a2 = [4, 5, 6];
+    ///
+    /// let mut bulk = a1.into_bulk().chain(a2);
+    /// 
+    /// let a = bulk.collect();
+    /// 
+    /// assert_eq!(a, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    #[inline]
+    #[cfg(disabled)]
+    fn chain<U>(self, other: U) -> Chain<Self, U::IntoIter>
+    where
+        Self: Sized,
+        U: IntoBulk<Item = Self::Item>,
+    {
+        Chain::new(self, other.into_bulk())
+    }
+
+    /// Creates a new bulk which places a copy of `separator` between adjacent
+    /// items of the original bulk.
+    /// 
+    /// Analogous to [`Iterator::intersperse`].
+    ///
+    /// In case `separator` does not implement [`Clone`](core::clone::Clone) or needs to be
+    /// computed every time, use [`intersperse_with`](Bulk::intersperse_with).
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let mut a = [0, 1, 2].into_bulk().intersperse(100).collect();
+    /// 
+    /// assert_eq!(a, [0, 100, 1, 100, 2]);
+    /// ```
+    ///
+    /// `intersperse` can be very useful to join a bulk's items using a common element:
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let words = ["Hello", "World", "!"];
+    /// let hello: String = words.into_bulk().intersperse(" ").collect();
+    /// assert_eq!(hello, "Hello World !");
+    /// ```
+    #[inline]
+    #[cfg(disabled)]
+    fn intersperse(self, separator: Self::Item) -> Intersperse<Self>
+    where
+        Self: Sized,
+        Self::Item: Clone,
+    {
+        Intersperse::new(self, separator)
+    }
+
+    /// Creates a new bulk which places an item generated by `separator`
+    /// between adjacent items of the original bulk.
+    ///
+    /// The closure will be called exactly once each time an item is placed
+    /// between two adjacent items from the underlying bulk; specifically,
+    /// the closure is not called if the underlying bulk has less than
+    /// two items.
+    /// 
+    /// Analogous to [`Iterator::intersperse_with`].
+    ///
+    /// If the bulk's item implements [`Clone`](core::clone::Clone), it may be easier to use
+    /// [`intersperse`](Bulk::intersperse).
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct NotClone(usize);
+    ///
+    /// let v = [NotClone(0), NotClone(1), NotClone(2)];
+    /// let u = v.into_bulk().intersperse_with(|| NotClone(99)).collect();
+    ///
+    /// assert_eq!(u, [NotClone(0), NotClone(99), NotClone(1), NotClone(99), NotClone(2)]);
+    /// ```
+    ///
+    /// [`intersperse_with`](Bulk::intersperse_with) can be used in situations where the separator needs
+    /// to be computed:
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let src = ["Hello", "to", "all", "people", "!!"].bulk().copied();
+    ///
+    /// // The closure mutably borrows its context to generate an item.
+    /// let mut happy_emojis = [" ❤️ ", " 😀 "].into_iter();
+    /// let separator = || happy_emojis.next().unwrap_or(" 🦀 ");
+    ///
+    /// let result = src.intersperse_with(separator).collect::<String>();
+    /// assert_eq!(result, "Hello ❤️ to 😀 all 🦀 people 🦀 !!");
+    /// ```
+    #[inline]
+    #[cfg(disabled)]
+    fn intersperse_with<G>(self, separator: G) -> IntersperseWith<Self, G>
+    where
+        Self: Sized,
+        G: FnMut() -> Self::Item,
+    {
+        IntersperseWith::new(self, separator)
+    }
+
+    /// Takes a closure and creates a bulk which calls that closure on each
+    /// element.
+    ///
+    /// [`map()`](Bulk::map) transforms one bulk into another, by means of its argument:
+    /// something that implements [`FnMut`]. It produces a new bulk which
+    /// calls this closure on each element of the original bulk.
+    /// 
+    /// Analogous to [`Iterator::map`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let a = [1, 2, 3];
+    ///
+    /// let mut b = a.bulk().map(|x| 2 * x).collect();
+    ///
+    /// assert_eq!(b, [2, 4, 6]);
+    /// ```
+    ///
+    /// If you're doing some sort of side effect, prefer [`for`] to [`map()`](Bulk::map):
+    ///
+    /// ```
+    /// # #![allow(unused_must_use)]
+    /// use bulks::*;
+    /// 
+    /// // don't do this:
+    /// Bulk::map(0..5, |x| println!("{x}"));
+    ///
+    /// // it won't even execute, as it is lazy. Rust will warn you about this.
+    ///
+    /// // Instead, use a for-loop:
+    /// for x in 0..5 {
+    ///     println!("{x}");
+    /// }
+    /// ```
+    /// 
+    /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
+    #[inline]
+    fn map<B, F>(self, f: F) -> Map<Self, F>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> B,
+    {
+        Map::new(self, f)
+    }
+
+    /// Creates a bulk which gives the current index together with its values.
+    ///
+    /// The bulk returned yields pairs `(i, val)`, where `i` is the
+    /// current index of iteration and `val` is its corresponding value.
+    /// 
+    /// Analogous to [`Iterator::enumerate`].
+    ///
+    /// [`enumerate()`](Bulk::enumerate) keeps its count as a [`usize`]. If you want to count by a
+    /// different sized integer, the [`zip`](Bulk::zip) function provides similar
+    /// functionality.
+    ///
+    /// # Overflow Behavior
+    ///
+    /// The method does no guarding against overflows, so enumerating more than
+    /// [`usize::MAX`] elements either produces the wrong result or panics. If
+    /// overflow checks are enabled, a panic is guaranteed.
+    ///
+    /// # Panics
+    ///
+    /// The returned bulk might panic if the to-be-returned index would
+    /// overflow a [`usize`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = ['a', 'b', 'c'];
+    ///
+    /// let b = a.into_bulk().enumerate().collect();
+    ///
+    /// assert_eq!(b, [(0, 'a'), (1, 'b'), (2, 'c')]);
+    /// ```
+    #[inline]
+    #[cfg(disabled)]
+    fn enumerate(self) -> Enumerate<Self>
+    where
+        Self: Sized,
+    {
+        Enumerate::new(self)
+    }
+
+    /// Creates a bulk that skips the first `n` elements.
+    /// 
+    /// Analogous to [`Iterator::skip`].
+    ///
+    /// [`skip(n)`](Bulk::skip) skips elements until `n` elements are skipped or the end of the
+    /// bulk is reached (whichever happens first). The returned bulk will yield the remaining elements.
+    /// If the original bulk is too short, then the returned bulk is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// let b = a.into_bulk().skip::<2>().collect();
+    ///
+    /// assert_eq!(b, [3]);
+    /// ```
+    #[inline]
+    #[cfg(disabled)]
+    fn skip<const N: usize>(self) -> Skip<Self, N>
+    where
+        Self: Sized,
+    {
+        Skip::new(self)
+    }
+
+    /// Creates a bulk that works like map, but flattens nested structure.
+    ///
+    /// The [`map`](Bulk::map) adapter is very useful, but only when the closure
+    /// argument produces values. If it produces something iterable instead, there's
+    /// an extra layer of indirection. [`flat_map()`](Bulk::flat_map) will remove this extra layer
+    /// on its own.
+    /// 
+    /// Analogous to [`Iterator::flat_map`].
+    ///
+    /// You can think of `flat_map(f)` as the semantic equivalent
+    /// of [`map`](Bulk::map)ping, and then [`flatten`](Bulk::flatten)ing as in `map(f).flatten()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bulk::*;
+    /// 
+    /// let words = ["alpha", "beta", "gamma"];
+    ///
+    /// let merged: String = words.bulk()
+    ///                           .flat_map(|s| s.chars())
+    ///                           .collect();
+    /// assert_eq!(merged, "alphabetagamma");
+    /// ```
+    #[inline]
+    #[cfg(disabled)]
+    fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
+    where
+        Self: Sized,
+        U: IntoIterator,
+        F: FnMut(Self::Item) -> U,
+    {
+        FlatMap::new(self, f)
+    }
+
+    /// Creates a bulk that flattens nested structure.
+    ///
+    /// This is useful when you have a bulk of bulk or a bulk of
+    /// things that can be turned into bulks and you want to remove one
+    /// level of indirection.
+    /// 
+    /// Analogous to [`Iterator::flatten`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulk::*;
+    /// 
+    /// let data = [[1, 2, 3], [4, 5, 6]];
+    /// let flattened: [_; _] = data.into_bulk().flatten().collect();
+    /// assert_eq!(flattened, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    ///
+    /// Mapping and then flattening:
+    ///
+    /// ```
+    /// use bulk::*;
+    /// 
+    /// let words = ["alpha", "beta", "gamma"];
+    ///
+    /// let merged: String = words.bulk()
+    ///                           .map(|s| s.chars())
+    ///                           .flatten()
+    ///                           .collect();
+    /// assert_eq!(merged, "alphabetagamma");
+    /// ```
+    ///
+    /// You can also rewrite this in terms of [`flat_map()`](Bulk::flat_map), which is preferable
+    /// in this case since it conveys intent more clearly:
+    ///
+    /// ```
+    /// use bulk::*;
+    /// 
+    /// let words = ["alpha", "beta", "gamma"];
+    ///
+    /// let merged: String = words.iter()
+    ///                           .flat_map(|s| s.chars())
+    ///                           .collect();
+    /// assert_eq!(merged, "alphabetagamma");
+    /// ```
+    ///
+    /// Flattening only removes one level of nesting at a time:
+    ///
+    /// ```
+    /// use bulk::*;
+    /// 
+    /// let d3 = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
+    ///
+    /// let d2: [_; _] = d3.into_bulk().flatten().collect();
+    /// assert_eq!(d2, [[1, 2], [3, 4], [5, 6], [7, 8]]);
+    ///
+    /// let d1: [_; _] = d3.into_bulk().flatten().flatten().collect();
+    /// assert_eq!(d1, [1, 2, 3, 4, 5, 6, 7, 8]);
+    /// ```
+    ///
+    /// Here we see that [`flatten()`](Bulk::flatten) does not perform a "deep" flatten.
+    /// Instead, only one level of nesting is removed. That is, if you
+    /// [`flatten()`](Bulk::flatten) a three-dimensional array, the result will be
+    /// two-dimensional and not one-dimensional. To get a one-dimensional
+    /// structure, you have to [`flatten()`](Bulk::flatten) again.
+    #[inline]
+    #[cfg(disabled)]
+    fn flatten(self) -> Flatten<Self>
+    where
+        Self: Sized,
+        Self::Item: IntoBulk,
+    {
+        Flatten::new(self)
+    }
+
+    /// Calls the given function `f` for each contiguous window of size `N` over
+    /// `self` and returns a bulk of the outputs of `f`. The windows during mapping will overlap.
+    /// 
+    /// Analogous to [`Iterator::map_windows`].
+    ///
+    /// In the following example, the closure is called three times with the
+    /// arguments `&['a', 'b']`, `&['b', 'c']` and `&['c', 'd']` respectively.
+    ///
+    /// ```
+    /// use bulk::*;
+    ///
+    /// let strings = "abcd".chars()
+    ///     .map_windows(|[x, y]| format!("{}+{}", x, y))
+    ///     .collect::<Vec<String>>();
+    ///
+    /// assert_eq!(strings, vec!["a+b", "b+c", "c+d"]);
+    /// ```
+    ///
+    /// Note that the const parameter `N` is usually inferred by the
+    /// destructured argument in the closure.
+    ///
+    /// The returned bulk yields 𝑘 − `N` + 1 items (where 𝑘 is the number of
+    /// items yielded by `self`). If 𝑘 is less than `N`, this method yields an
+    /// empty bulk.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is zero.
+    ///
+    /// ```should_panic
+    /// use bulk::*;
+    ///
+    /// let bulk = [0].into_bulk().map_windows(|&[]| ());
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// Building the sums of neighboring numbers.
+    ///
+    /// ```
+    /// use bulk::*;
+    ///
+    /// let w = [1, 3, 8, 1].bulk().map_windows(|&[a, b]| a + b).collect();
+    /// 
+    /// assert_eq!(w, [1 + 3, 3 + 8, 8 + 1]);
+    /// ```
+    ///
+    /// Since the elements in the following example implement [`Copy`], we can
+    /// just copy the array and get a bulk of the windows.
+    ///
+    /// ```
+    /// use bulk::*;
+    ///
+    /// let w = "ferris".bulk().map_windows(|w: &[_; 3]| *w).collect();
+    /// 
+    /// assert_eq!(w, [['f', 'e', 'r'], ['e', 'r', 'r'], ['r', 'r', 'i'], ['r', 'i', 's']]);
+    /// ```
+    ///
+    /// You can also use this function to check the sortedness of a bulk.
+    /// For the simple case, rather use [`Bulk::is_sorted`].
+    ///
+    /// ```
+    /// use bulk::*;
+    ///
+    /// let w = [0.5, 1.0, 3.5, 3.0, 8.5, 8.5, f32::NAN].bulk()
+    ///     .map_windows(|[a, b]| a <= b)
+    ///     .collect();
+    /// 
+    /// assert_eq!(w, [true, true, false, true, true, false]);
+    /// ```
+    #[inline]
+    #[cfg(disabled)]
+    fn map_windows<F, R, const N: usize>(self, f: F) -> MapWindows<Self, F, N>
+    where
+        Self: Sized,
+        F: FnMut(&[Self::Item; N]) -> R,
+    {
+        MapWindows::new(self, f)
+    }
+
+    /// Does something with each element of a bulk, passing the value on.
+    ///
+    /// When using bulks, you'll often chain several of them together.
+    /// While working on such code, you might want to check out what's
+    /// happening at various parts in the pipeline. To do that, insert
+    /// a call to [`inspect()`](Bulk::inspect).
+    /// 
+    /// Analogous to [`Iterator::inspect`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulk::*;
+    /// 
+    /// let a = [1, 4, 2, 3];
+    ///
+    /// // this iterator sequence is complex.
+    /// let sum = a.bulk()
+    ///     .cloned()
+    ///     .filter(|x| x % 2 == 0)
+    ///     .fold(0, |sum, i| sum + i);
+    ///
+    /// println!("{sum}");
+    ///
+    /// // let's add some inspect() calls to investigate what's happening
+    /// let sum = a.bulk()
+    ///     .cloned()
+    ///     .inspect(|x| println!("about to filter: {x}"))
+    ///     .filter(|x| x % 2 == 0)
+    ///     .inspect(|x| println!("made it through filter: {x}"))
+    ///     .fold(0, |sum, i| sum + i);
+    ///
+    /// println!("{sum}");
+    /// ```
+    ///
+    /// This will print:
+    ///
+    /// ```text
+    /// 6
+    /// about to filter: 1
+    /// about to filter: 4
+    /// made it through filter: 4
+    /// about to filter: 2
+    /// made it through filter: 2
+    /// about to filter: 3
+    /// 6
+    /// ```
+    ///
+    /// Logging errors before discarding them:
+    ///
+    /// ```
+    /// let lines = ["1", "2", "a"];
+    ///
+    /// let sum: i32 = lines
+    ///     .iter()
+    ///     .map(|line| line.parse::<i32>())
+    ///     .inspect(|num| {
+    ///         if let Err(ref e) = *num {
+    ///             println!("Parsing error: {e}");
+    ///         }
+    ///     })
+    ///     .filter_map(Result::ok)
+    ///     .sum();
+    ///
+    /// println!("Sum: {sum}");
+    /// ```
+    ///
+    /// This will print:
+    ///
+    /// ```text
+    /// Parsing error: invalid digit found in string
+    /// Sum: 3
+    /// ```
+    #[inline]
+    fn inspect<F>(self, f: F) -> Inspect<Self, F>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item),
+    {
+        Inspect::new(self, f)
+    }
+
+    /// Transforms a bulk into a collection.
+    ///
+    /// [`collect()`](Bulk::collect) can take anything bulkable, and turn it into a relevant
+    /// collection.
+    /// 
+    /// Analogous to [`Iterator::collect`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// let doubled: [i32; 3] = a.bulk()
+    ///     .map(|x| x * 2)
+    ///     .collect();
+    ///
+    /// assert_eq!(doubled, [2, 4, 6]);
+    /// ```
+    ///
+    /// Note that we needed the `: [i32; 3]` on the left-hand side. This is because
+    /// we could collect into, for example, a [`VecDeque<T>`](std::collections::VecDeque) instead:
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// let doubled: VecDeque<i32> = a.bulk()
+    ///     .map(|x| x * 2)
+    ///     .collect();
+    ///
+    /// assert_eq!(doubled[0], 2);
+    /// assert_eq!(doubled[1], 4);
+    /// assert_eq!(doubled[2], 6);
+    /// ```
+    ///
+    /// Using the 'turbofish' instead of annotating `doubled`:
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// let doubled = a.bulk().map(|x| x * 2).collect::<[i32; 3]>();
+    ///
+    /// assert_eq!(doubled, [2, 4, 6]);
+    /// ```
+    ///
+    /// Because `collect()` only cares about what you're collecting into, you can
+    /// still use a partial type hint, `_`, with the turbofish:
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// let doubled = a.bulk().map(|x| x * 2).collect::<[_; _]>();
+    ///
+    /// assert_eq!(doubled, [2, 4, 6]);
+    /// ```
+    ///
+    /// Using `collect()` to make a [`String`](std::string::String):
+    ///
+    /// ```
+    /// let chars = ['g', 'd', 'k', 'k', 'n'];
+    ///
+    /// let hello: String = chars.bulk()
+    ///     .map(|x| x as u8)
+    ///     .map(|x| (x + 1) as char)
+    ///     .collect();
+    ///
+    /// assert_eq!(hello, "hello");
+    /// ```
+    ///
+    /// If you have a list of [`Result<T, E>`][`Result`]s, you can use `collect()` to
+    /// see if any of them failed:
+    ///
+    /// ```
+    /// let results = [Ok(1), Err("nope"), Ok(3), Err("bad")];
+    ///
+    /// let result: Result<[_; _], &str> = results.into_bulk().collect();
+    ///
+    /// // gives us the first error
+    /// assert_eq!(result, Err("nope"));
+    ///
+    /// let results = [Ok(1), Ok(3)];
+    ///
+    /// let result: Result<[_; _], &str> = results.into_bulk().collect();
+    ///
+    /// // gives us the list of answers
+    /// assert_eq!(result, Ok([1, 3]));
+    /// ```
+    #[inline]
+    #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
+    #[allow(invalid_type_param_default)]
+    fn collect<B, L = <B as CollectLength<<Self as IntoIterator>::Item>>::Length>(self) -> B
+    where
+        Self: Sized,
+        B: FromBulk<Self::Item, Self, <Self as BulkLength>::Length, L>,
+        L: AsSlice<Elem = Self::Item> + ?Sized
+    {
+        FromBulk::from_bulk(self)
+    }
+
+    /// Fallibly transforms a bulk into a collection, short circuiting if
+    /// a failure is encountered.
+    ///
+    /// `try_collect()` is a variation of [`collect()`][`Bulk::collect`] that allows fallible
+    /// conversions during collection. Its main use case is simplifying conversions from
+    /// bulks yielding [`Option<T>`][`Option`] into `Option<Collection<T>>`, or similarly for other [`Try`](core::ops::Try)
+    /// types (e.g. [`Result`]).
+    ///
+    /// Importantly, `try_collect()` doesn't require that the outer [`Try`](core::ops::Try) type also implements [`FromBulk`](crate::FromBulk);
+    /// only the inner type produced on `Try::Output` must implement it. Concretely,
+    /// this means that collecting into `ControlFlow<_, [i32; _]>` is valid because `[i32; _]` implements
+    /// [`FromBulk`](crate::FromBulk), even though [`ControlFlow`](core::ops::ControlFlow) doesn't.
+    ///
+    /// Similar to [`Iterator::try_collect`], but unlike it, this will consume the bulk.
+    /// 
+    /// # Examples
+    /// Successfully collecting a bulk of `Option<i32>` into `Option<[i32; _]>`:
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let u = [Some(1), Some(2), Some(3)];
+    /// let v = u.into_bulk().try_collect::<[i32; _]>();
+    /// assert_eq!(v, Some([1, 2, 3]));
+    /// ```
+    ///
+    /// Failing to collect in the same way:
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let u = [Some(1), Some(2), None, Some(3)];
+    /// let v = u.into_bulk().try_collect::<[i32; _]>();
+    /// assert_eq!(v, None);
+    /// ```
+    ///
+    /// A similar example, but with `Result`:
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let u: [Result<i32, ()>; _] = [Ok(1), Ok(2), Ok(3)];
+    /// let v = u.into_bulk().try_collect::<[i32; _]>();
+    /// assert_eq!(v, Ok([1, 2, 3]));
+    ///
+    /// let u = [Ok(1), Ok(2), Err(()), Ok(3)];
+    /// let v = u.into_bulk().try_collect::<[i32; _]>();
+    /// assert_eq!(v, Err(()));
+    /// ```
+    #[inline]
+    #[cfg(feature = "try_collect")]
+    fn try_collect<B, L>(self) -> ChangeOutputType<Self::Item, B>
+    where
+        Self: Sized,
+        Self::Item: Try<Residual: Residual<B>>,
+        B: FromBulk<<Self::Item as Try>::Output>,
+    {
+        try_process(ByRefSized(self), |i| i.collect())
+    }
+
+    /// Reverses a bulks's direction.
+    ///
+    /// Usually, bulks span from left to right. After using `rev()`,
+    /// a bulk will instead span from right to left.
+    /// 
+    /// Analogous to [`Iterator::rev`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// let b: [_; _] = a.into_bulk().rev().collect();
+    ///
+    /// assert_eq!(b, [3, 2, 1]);
+    /// ```
+    #[inline]
+    #[doc(alias = "reverse")]
+    fn rev(self) -> Rev<Self>
+    where
+        Self: Sized,
+        Self::IntoIter: DoubleEndedIterator
+    {
+        Rev::new(self)
+    }
+
+    /// Creates a bulk which copies all of its elements.
+    ///
+    /// This is useful when you have a bulk of `&T`, but you need a
+    /// bulk of `T`.
+    /// 
+    /// Analogous to [`Iterator::copied`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// let v_copied: [_; _] = a.bulk().copied().collect();
+    ///
+    /// // copied is the same as .map(|&x| x)
+    /// let v_map: [_; _] = a.bulk().map(|&x| x).collect();
+    ///
+    /// assert_eq!(v_copied, [1, 2, 3]);
+    /// assert_eq!(v_map, [1, 2, 3]);
+    /// ```
+    fn copied<'a, T>(self) -> Copied<Self>
+    where
+        T: Copy + 'a,
+        Self: Sized + Bulk<Item = &'a T>,
+    {
+        Copied::new(self)
+    }
+
+    /// Creates a bulk which [`clone`](Clone::clone)s all of its elements.
+    ///
+    /// This is useful when you have a bulk of `&T`, but you need a
+    /// bulk of `T`.
+    ///
+    /// There is no guarantee whatsoever about the `clone` method actually
+    /// being called *or* optimized away. So code should not depend on
+    /// either.
+    /// 
+    /// Analogous to [`Iterator::cloned`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// let v_cloned: [_; _] = a.bulk().cloned().collect();
+    ///
+    /// // cloned is the same as .map(|&x| x), for integers
+    /// let v_map: [_; _] = a.bulk().map(|&x| x).collect();
+    ///
+    /// assert_eq!(v_cloned, [1, 2, 3]);
+    /// assert_eq!(v_map, [1, 2, 3]);
+    /// ```
+    fn cloned<'a, T>(self) -> Cloned<Self>
+    where
+        T: Clone + 'a,
+        Self: Sized + Bulk<Item = &'a T>,
+    {
+        Cloned::new(self)
+    }
+
+    /// Returns a bulk of `N` elements of the bulk at a time.
+    ///
+    /// The chunks do not overlap. If `N` does not divide the length of the
+    /// bulk, then the last up to `N-1` elements will be omitted or the remainder
+    /// can then be retrieved from [`.into_remainder()`][crate::ArrayChunks::into_remainder]
+    /// or [`.collect_with_remainder()`][crate::ArrayChunks::collect_with_remainder]
+    /// 
+    /// Analogous to [`Iterator::array_chunks`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is zero.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let bulk = "lorem".bulk().array_chunks();
+    /// let (c, r) = bulk.collect_with_remainder();
+    /// 
+    /// assert_eq!(c, [['l', 'o'], ['r', 'e']]);
+    /// assert_eq!(r, ['m']);
+    /// ```
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let data = [1, 1, 2, -2, 6, 0, 3, 1];
+    /// //          ^-----^  ^------^
+    /// for [x, y, z] in data.bulk().array_chunks()
+    /// {
+    ///     assert_eq!(x + y + z, 4);
+    /// }
+    /// ```
+    #[track_caller]
+    #[cfg(feature = "array_chunks")]
+    fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
+    where
+        Self: Sized,
+    {
+        ArrayChunks::new(self)
+    }
+}

@@ -1,0 +1,16 @@
+[package]
+name = "bulks"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = [
+    #"array_chunks",
+]
+array_chunks = []
+try_collect = []
+alloc = []
+
+[dependencies]
+moddef = "0.3.0"
+array_trait = "1.1.1"
