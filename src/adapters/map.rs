@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{Bulk, LimitToBulk, StaticBulk};
+use crate::{Bulk, StaticBulk};
 
 /// A bulk that maps the values of `bulk` with `f`.
 ///
@@ -78,12 +78,6 @@ where
             f
         }
     }
-
-    pub(crate) fn into_inner(self) -> I
-    {
-        let Self { bulk, f: _ } = self;
-        bulk
-    }
 }
 
 impl<I, F> fmt::Debug for Map<I, F>
@@ -111,13 +105,6 @@ where
         let Self { bulk, f } = self;
         bulk.into_iter().map(f)
     }
-}
-impl<I, F> LimitToBulk for Map<I, F>
-where
-    I: Bulk,
-    F: FnMut<(I::Item,)>
-{
-    
 }
 impl<I, F> Bulk for Map<I, F>
 where

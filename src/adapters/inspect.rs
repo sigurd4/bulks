@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{Bulk, LimitToBulk, StaticBulk};
+use crate::{Bulk, StaticBulk};
 
 /// A bulk that calls a function with a reference to each element before
 /// yielding it.
@@ -57,13 +57,6 @@ where
         let Self { bulk, f } = self;
         bulk.into_iter().inspect(f)
     }
-}
-impl<I, F> LimitToBulk for Inspect<I, F>
-where
-    I: Bulk,
-    F: FnMut(&I::Item)
-{
-    
 }
 impl<I, F> Bulk for Inspect<I, F>
 where

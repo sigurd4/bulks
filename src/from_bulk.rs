@@ -1,6 +1,6 @@
 use array_trait::AsSlice;
 
-use crate::{util::{BulkLength, CollectLength}, IntoBulk, StaticBulk};
+use crate::{util::{BulkLength, CollectLength}, Bulk, IntoBulk, StaticBulk};
 
 /// Conversion from a [`Bulk`].
 ///
@@ -106,7 +106,7 @@ use crate::{util::{BulkLength, CollectLength}, IntoBulk, StaticBulk};
 ///
 /// assert_eq!(c.0, vec![0, 1, 2, 3, 4]);
 /// ```
-/*#[rustc_on_unimplemented(
+#[rustc_on_unimplemented(
     on(
         Self = "&[{A}]",
         message = "a slice of type `{Self}` cannot be built since we need to store the elements somewhere",
@@ -140,7 +140,7 @@ use crate::{util::{BulkLength, CollectLength}, IntoBulk, StaticBulk};
     message = "a value of type `{Self}` cannot be built from a bulk \
                of elements of type `{A}`",
     label = "value of type `{Self}` cannot be built from `bulks::Bulk<Item = {A}>`"
-)]*/
+)]
 pub trait FromBulk<A, B, L = <B as BulkLength>::Length, LL = <B as CollectLength<<Self as IntoIterator>::Item>>::Length>: Sized
 where
     B: BulkLength<Item = A, Length = L>,
@@ -167,11 +167,10 @@ where
         I: IntoBulk<Item = A, IntoBulk = B>;
 }
 
-impl<A, B, T, L> FromBulk<A, B, L, [A]> for T
+impl<A, B, T> FromBulk<A, B, <B as BulkLength>::Length, [A]> for T
 where
     T: FromIterator<A>,
-    B: BulkLength<Item = A, Length = L>,
-    L: AsSlice<Elem = A> + ?Sized
+    B: Bulk<Item = A>
 {
     fn from_bulk<I>(bulk: I) -> Self
     where

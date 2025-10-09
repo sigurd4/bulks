@@ -1,4 +1,4 @@
-use crate::{Bulk, LimitToBulk, Rev, StaticBulk};
+use crate::{Bulk, Rev, StaticBulk};
 
 /// A bulk that copies the elements of an underlying bulk.
 ///
@@ -56,13 +56,6 @@ where
     {
         self.into_inner().into_iter().copied()
     }
-}
-impl<'a, I, T> LimitToBulk for Copied<I>
-where
-    I: Bulk<Item = &'a T>,
-    T: Copy + 'a
-{
-    
 }
 impl<'a, I, T> Bulk for Copied<I>
 where

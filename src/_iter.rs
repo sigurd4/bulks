@@ -35,7 +35,7 @@ where
     {
         iter::Bulk::<T> {
             inner: self.into_iter()
-        }.same().unwrap()
+        }.same().ok().unwrap()
     }
 }
 
@@ -66,7 +66,7 @@ mod test
     fn vec()
     {
         let a = vec![1i32, 2, 3, 4, 5];
-        let bulk = a.into_bulk().map(|x| x as f64).take;
+        let bulk = a.into_bulk().map(|x| x as f64);
         let b = bulk.collect::<Vec<f64>>();
         println!("{b:?}")
     }

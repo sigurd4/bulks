@@ -7,10 +7,16 @@
 #![feature(specialization)]
 #![feature(iter_next_chunk)]
 #![feature(exact_size_is_empty)]
-#![cfg_attr(feature = "array_chunks", feature(iter_array_chunks))]
+#![feature(step_trait)]
+#![feature(new_range_api)]
+#![feature(iter_array_chunks)]
+#![feature(iter_intersperse)]
+#![feature(iter_map_windows)]
+#![feature(tuple_trait)]
+#![feature(try_trait_v2)]
+#![feature(iter_advance_by)]
 #![cfg_attr(feature = "array_chunks", feature(generic_const_exprs))]
 #![cfg_attr(feature = "array_chunks", feature(const_index))]
-#![cfg_attr(feature = "try_collect", feature(try_trait_v2))]
 
 //! Composable external iteration.
 //!
@@ -370,12 +376,11 @@
 moddef::moddef!(
     flat(pub) mod {
         adapters,
-        array,
-        iter,
+        _array,
+        _iter,
         bulk,
         from_bulk,
         into_bulk,
-        limit_to_bulk,
         static_bulk
     },
     mod util
@@ -383,10 +388,17 @@ moddef::moddef!(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::*;
 
     #[test]
-    fn it_works() {
-        
+    fn it_works()
+    {
+        let a = [1, 2, 3];
+        let b = [4, 5, 6];
+
+        let vec = a.into_bulk().zip(b).collect::<Vec<_>>();
+        let arr = a.into_bulk().zip(b).collect::<[_; _]>();
+
+        assert_eq!(vec, arr)
     }
 }

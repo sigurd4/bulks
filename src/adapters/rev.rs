@@ -1,4 +1,4 @@
-use crate::{Bulk, LimitToBulk, StaticBulk};
+use crate::{Bulk, StaticBulk};
 
 
 /// A double-ended bulk with the direction inverted.
@@ -64,12 +64,6 @@ where
     {
         self.into_inner().into_iter().rev()
     }
-}
-impl<I> LimitToBulk for Rev<I>
-where
-    I: Bulk<IntoIter: DoubleEndedIterator>
-{
-    
 }
 impl<I> Bulk for Rev<I>
 where

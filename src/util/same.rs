@@ -1,32 +1,32 @@
 mod private
 {
-    pub trait Same<T>
+    pub trait Same<T>: Sized
     {
-        fn same(self) -> Option<T>;
+        fn same(self) -> Result<T, Self>;
     }
     impl<T, U> Same<T> for U
     {
-        default fn same(self) -> Option<T>
+        default fn same(self) -> Result<T, Self>
         {
-            None
+            Err(self)
         }
     }
     impl<T> Same<T> for T
     {
-        fn same(self) -> Option<T>
+        fn same(self) -> Result<T, Self>
         {
-            Some(self)
+            Ok(self)
         }
     }
 }
 
-pub trait Same
+pub trait Same: Sized
 {
-    fn same<T>(self) -> Option<T>;
+    fn same<T>(self) -> Result<T, Self>;
 }
 impl<U> Same for U
 {
-    fn same<T>(self) -> Option<T>
+    fn same<T>(self) -> Result<T, Self>
     {
         private::Same::<T>::same(self)
     }

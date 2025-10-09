@@ -1,4 +1,4 @@
-use crate::{Bulk, LimitToBulk, Rev, StaticBulk};
+use crate::{Bulk, Rev, StaticBulk};
 
 /// A bulk that clones the elements of an underlying bulk.
 ///
@@ -56,13 +56,6 @@ where
     {
         self.into_inner().into_iter().cloned()
     }
-}
-impl<'a, I, T> LimitToBulk for Cloned<I>
-where
-    I: Bulk<Item = &'a T>,
-    T: Clone + 'a
-{
-    
 }
 impl<'a, I, T> Bulk for Cloned<I>
 where

@@ -1,4 +1,4 @@
-use crate::{Bulk, Copied, IntoBulk, LimitToBulk, StaticBulk, StaticCopiedSpec, StaticMapSpec, StaticRevSpec};
+use crate::{Bulk, Copied, IntoBulk, StaticBulk, StaticCopiedSpec, StaticMapSpec, StaticRevSpec};
 
 pub mod array
 {
@@ -39,10 +39,6 @@ macro_rules! impl_bulk {
                 let Self {array} = self;
                 array.into_iter()
             }
-        }
-        impl<$($a,)? $t, const $n: usize> LimitToBulk for array::$bulk<$($a,)? $t, $n>
-        {
-            
         }
         impl<$($a,)? $t, const $n: usize> IntoBulk for $array
         {
