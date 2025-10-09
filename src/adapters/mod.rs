@@ -4,12 +4,15 @@ moddef::moddef!(
         cloned,
         copied,
         empty,
+        infinite,
         inspect,
         map,
         once_with,
         once,
         repeat_n,
         rev,
+        step_by,
+        take,
         zip
     }
 );

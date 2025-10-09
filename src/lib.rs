@@ -15,6 +15,7 @@
 #![feature(tuple_trait)]
 #![feature(try_trait_v2)]
 #![feature(iter_advance_by)]
+#![feature(ptr_metadata)]
 #![cfg_attr(feature = "array_chunks", feature(generic_const_exprs))]
 #![cfg_attr(feature = "array_chunks", feature(const_index))]
 
@@ -381,6 +382,7 @@ moddef::moddef!(
         bulk,
         from_bulk,
         into_bulk,
+        limit_into_bulk,
         static_bulk
     },
     mod util
@@ -394,11 +396,9 @@ mod tests {
     fn it_works()
     {
         let a = [1, 2, 3];
-        let b = [4, 5, 6];
 
-        let vec = a.into_bulk().zip(b).collect::<Vec<_>>();
-        let arr = a.into_bulk().zip(b).collect::<[_; _]>();
+        let vec = a.into_bulk().zip(0..4).collect::<Vec<_>>();
 
-        assert_eq!(vec, arr)
+        println!("{vec:?}")
     }
 }

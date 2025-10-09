@@ -1,6 +1,6 @@
 use array_trait::AsSlice;
 
-pub trait CollectLength<A>
+pub trait CollectLength<A>: Sized
 {
     type Length: AsSlice<Elem = A> + ?Sized;
 }

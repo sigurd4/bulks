@@ -1,33 +1,22 @@
+use core::ptr::Pointee;
+
 use array_trait::AsSlice;
 
-mod private
+pub trait Length: AsSlice
 {
-    use array_trait::AsSlice;
-
-    pub trait Length: IntoIterator + Sized
+    fn len_metadata(n: <Self as Pointee>::Metadata) -> usize;
+}
+impl<T> Length for [T]
+{
+    fn len_metadata(n: <Self as Pointee>::Metadata) -> usize
     {
-        type Length: AsSlice<Elem = Self::Item> + ?Sized;
-    }
-
-    impl<T> Length for T
-    where
-        T: IntoIterator
-    {
-        default type Length = [T::Item];
-    }
-    impl<T, const N: usize> Length for [T; N]
-    {
-        type Length = [T; N];
+        n
     }
 }
-
-pub trait Length: IntoIterator + Sized
+impl<T, const N: usize> Length for [T; N]
 {
-    type Length: AsSlice<Elem = Self::Item> + ?Sized;
-}
-impl<T> Length for T
-where
-    T: IntoIterator
-{
-    type Length = <T as private::Length>::Length;
+    fn len_metadata((): <Self as Pointee>::Metadata) -> usize
+    {
+        N
+    }
 }

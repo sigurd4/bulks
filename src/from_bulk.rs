@@ -141,11 +141,10 @@ use crate::{util::{BulkLength, CollectLength}, Bulk, IntoBulk, StaticBulk};
                of elements of type `{A}`",
     label = "value of type `{Self}` cannot be built from `bulks::Bulk<Item = {A}>`"
 )]
-pub trait FromBulk<A, B, L = <B as BulkLength>::Length, LL = <B as CollectLength<<Self as IntoIterator>::Item>>::Length>: Sized
+pub trait FromBulk<A, B, L = <Self as CollectLength<A>>::Length>: Sized
 where
-    B: BulkLength<Item = A, Length = L>,
-    L: AsSlice<Elem = A> + ?Sized,
-    LL: AsSlice<Elem = A> + ?Sized
+    B: BulkLength<Item = A>,
+    L: AsSlice<Elem = A> + ?Sized
 {
     /// Creates a value from a bulk.
     ///
@@ -167,7 +166,7 @@ where
         I: IntoBulk<Item = A, IntoBulk = B>;
 }
 
-impl<A, B, T> FromBulk<A, B, <B as BulkLength>::Length, [A]> for T
+impl<A, B, T> FromBulk<A, B, [A]> for T
 where
     T: FromIterator<A>,
     B: Bulk<Item = A>
@@ -179,7 +178,7 @@ where
         bulk.into_iter().collect()
     }
 }
-impl<A, B, const N: usize> FromBulk<A, B, Self, Self> for [A; N]
+impl<A, B, const N: usize> FromBulk<A, B, Self> for [A; N]
 where
     B: StaticBulk<Item = A, Array = Self>
 {

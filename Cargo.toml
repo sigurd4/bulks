@@ -13,4 +13,4 @@ alloc = []
 
 [dependencies]
 moddef = "0.3.0"
-array_trait = "1.1.1"
+array_trait = {version = "1.1.2", default-features = false}

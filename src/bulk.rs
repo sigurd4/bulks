@@ -871,7 +871,7 @@ pub trait Bulk: IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
     fn collect<B, L = <B as CollectLength<<Self as IntoIterator>::Item>>::Length>(self) -> B
     where
         Self: Sized,
-        B: FromBulk<Self::Item, Self, <Self as BulkLength>::Length, L>,
+        B: FromBulk<Self::Item, Self, L>,
         L: AsSlice<Elem = Self::Item> + ?Sized
     {
         FromBulk::from_bulk(self)
