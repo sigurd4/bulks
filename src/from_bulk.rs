@@ -1,6 +1,6 @@
 use array_trait::AsSlice;
 
-use crate::{util::{BulkLength, CollectLength}, Bulk, IntoBulk, StaticBulk};
+use crate::{util::{BulkLength, CollectLength}, IntoBulk, StaticBulk};
 
 /// Conversion from a [`Bulk`].
 ///

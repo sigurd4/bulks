@@ -1,5 +1,6 @@
 #![cfg_attr(not(test), no_std)]
 #![allow(internal_features)]
+#![allow(incomplete_features)]
 #![feature(rustc_attrs)]
 #![feature(extend_one)]
 #![feature(unboxed_closures)]

@@ -60,13 +60,14 @@ where
 #[cfg(test)]
 mod test
 {
-    use crate::{Bulk, IntoBulk, Map};
+    use crate::{Bulk, IntoBulk};
 
     #[test]
     fn vec()
     {
         let a = vec![1i32, 2, 3, 4, 5];
-        let bulk = a.into_bulk().map(|x| x as f64);
+        let bulk = a.into_bulk().map(|x| x as f64).take;
         let b = bulk.collect::<Vec<f64>>();
+        println!("{b:?}")
     }
 }
