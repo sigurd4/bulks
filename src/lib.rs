@@ -1,10 +1,8 @@
 #![cfg_attr(not(test), no_std)]
 #![allow(internal_features)]
-#![allow(incomplete_features)]
 #![feature(rustc_attrs)]
 #![feature(extend_one)]
 #![feature(unboxed_closures)]
-#![feature(specialization)]
 #![feature(iter_next_chunk)]
 #![feature(exact_size_is_empty)]
 #![feature(step_trait)]
@@ -16,6 +14,10 @@
 #![feature(try_trait_v2)]
 #![feature(iter_advance_by)]
 #![feature(ptr_metadata)]
+#![feature(const_trait_impl)]
+#![feature(const_cmp)]
+#![feature(specialization)]
+#![feature(generic_const_exprs)]
 #![cfg_attr(feature = "array_chunks", feature(generic_const_exprs))]
 #![cfg_attr(feature = "array_chunks", feature(const_index))]
 
@@ -382,7 +384,6 @@ moddef::moddef!(
         bulk,
         from_bulk,
         into_bulk,
-        limit_into_bulk,
         static_bulk
     },
     mod util

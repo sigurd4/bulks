@@ -4,6 +4,7 @@ moddef::moddef!(
         same,
         bulk_length,
         collect_length,
+        infinite_iterator,
         length
     }
 );

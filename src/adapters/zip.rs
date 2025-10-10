@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{Bulk, IntoBulk, StaticBulk};
+use crate::{Bulk, ContainedIntoIter, IntoBulk, IntoContained, IntoContainedBy, StaticBulk};
 
 /// Converts the arguments to bulks and zips them.
 ///
@@ -27,12 +27,20 @@ use crate::{Bulk, IntoBulk, StaticBulk};
 /// let s = bulk.collect();
 /// assert_eq!(s, [((1, 4), 7), ((2, 5), 8), ((3, 6), 9)]);
 /// ```
-pub fn zip<A, B>(a: A, b: B) -> Zip<A::IntoBulk, B::IntoBulk>
+pub fn zip<A, B>(a: A, b: B) -> Zip<
+    A::IntoBulk,
+    <B::IntoContained as IntoBulk>::IntoBulk
+>
 where
     A: IntoBulk,
-    B: IntoBulk
+    B: IntoContained
 {
-    Zip::new(a.into_bulk(), b.into_bulk())
+    unsafe {
+        Zip::new(
+            a.into_contained().into_bulk(),
+            b.into_contained().into_bulk()
+        )
+    }
 }
 
 /// A bulk that operates on two other bulks simultaneously.
@@ -67,12 +75,23 @@ where
     B: Bulk
 {
     type Item = (A::Item, B::Item);
-    type IntoIter = core::iter::Zip<A::IntoIter, B::IntoIter>;
+    type IntoIter = <<core::iter::Zip<
+        <A::IntoIter as ContainedIntoIter>::ContainedIntoIter,
+        <B::IntoIter as ContainedIntoIter>::ContainedIntoIter
+    > as IntoContained>::IntoContained as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter
     {
         let Self { a, b } = self;
-        core::iter::zip(a, b)
+        unsafe {
+            core::iter::zip(
+                a.into_iter()
+                    .contained_into_iter(),
+                b.into_iter()
+                    .contained_into_iter()
+            ).into_contained()
+            .into_iter()
+        }
     }
 }
 impl<A, B> Bulk for Zip<A, B>
@@ -94,9 +113,10 @@ where
 impl<A, B, const N: usize, const M: usize> StaticBulk for Zip<A, B>
 where
     A: StaticBulk<Array = [<A as IntoIterator>::Item; N]>,
-    B: StaticBulk<Array = [<B as IntoIterator>::Item; M]>
+    B: StaticBulk<Array = [<B as IntoIterator>::Item; M]>,
+    [(); N.min(M)]:
 {
-    type Array = [Self::Item; N];
+    type Array = [Self::Item; N.min(M)];
 
     fn collect_array(self) -> Self::Array
     {
@@ -114,7 +134,7 @@ where
     {
         f.debug_struct("Zip").field("a", &self.a).field("b", &self.b).finish()
     }
-}   
+}
 
 #[cfg(test)]
 mod test
@@ -126,7 +146,8 @@ mod test
     {
         let a = [1, 3, 5];
         let b = [2, 4, 6];
-        let c = a.into_bulk().zip(b).collect::<[_; _]>();
+        let bulk = a.into_bulk().zip(1..);
+        let c = bulk.collect::<Vec<_>>();
         println!("{c:?}")
     }
 }

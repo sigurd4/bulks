@@ -1,53 +1,102 @@
 use core::ptr::Pointee;
 
-use crate::{util::Length, Bulk};
+use crate::{util::Length, Bulk, ContainedIntoIter, IntoBulk, IntoContained, StaticBulk};
 
-/// A bulk that only delivers the first `n` iterations of `iter`.
+/// Creates a bulk that only delivers the first `n` iterations of `iterable`.
+#[allow(invalid_type_param_default)]
+pub fn take<I, N = [<I as IntoIterator>::Item]>(iterable: I, n: <N as Pointee>::Metadata) -> Take<
+    <<I as IntoContained>::IntoContained as IntoBulk>::IntoBulk,
+    N
+>
+where
+    I: IntoIterator,
+    N: Length<Elem = I::Item> + ?Sized
+{
+    unsafe {
+        Take::new(iterable.into_contained().into_bulk(), n)
+    }
+}
+
+/// A bulk that only delivers the first `n` iterations of `bulk`.
 ///
 /// This `struct` is created by the [`take`](Bulk::take) method on [`Bulk`]. See its
 /// documentation for more.
 #[derive(Clone, Debug)]
 #[must_use = "bulks are lazy and do nothing unless consumed"]
-pub struct Take<I, N>
+pub struct Take<T, N = [<T as IntoIterator>::Item]>
 where
-    I: Bulk,
-    N: Length + ?Sized
+    T: Bulk,
+    N: Length<Elem = T::Item> + ?Sized
 {
-    iterable: I,
+    bulk: T,
     n: <N as Pointee>::Metadata
 }
 
-impl<I, N> Take<I, N>
+impl<T, N> Take<T, N>
 where
-    I: Bulk,
-    N: Length + ?Sized
+    T: Bulk,
+    N: Length<Elem = T::Item> + ?Sized
 {
-    pub fn new(iterable: I, n: <N as Pointee>::Metadata) -> Take<I, N>
+    pub(crate) fn new(bulk: T, n: <N as Pointee>::Metadata) -> Take<T, N>
     {
-        Self { iterable, n }
+        Self { bulk, n }
     }
 }
-impl<I, N> IntoIterator for Take<I, N>
+impl<T, N> IntoIterator for Take<T, N>
 where
-    I: Bulk,
-    N: Length + ?Sized
+    T: Bulk,
+    N: Length<Elem = T::Item> + ?Sized
 {
-    type Item = I::Item;
-    type IntoIter = core::iter::Take<I::IntoIter>;
+    type Item = T::Item;
+    type IntoIter = <<core::iter::Take<
+        <T::IntoIter as ContainedIntoIter>::ContainedIntoIter
+    > as IntoContained>::IntoContained as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter
     {
-        let Self { iterable, n } = self;
-        iterable.into_iter().take(N::len_metadata(n))
+        let Self { bulk, n } = self;
+        unsafe {
+            bulk.into_iter()
+                .contained_into_iter()
+                .take(N::len_metadata(n))
+                .into_contained()
+                .into_iter()
+        }
     }
 }
-impl<I, N> Bulk for Take<I, N>
+impl<T, N> Bulk for Take<T, N>
 where
-    I: Bulk,
-    N: Length + ?Sized
+    T: Bulk,
+    N: Length<Elem = T::Item> + ?Sized
 {
     fn len(&self) -> usize
     {
-        N::len_metadata(self.n).min(self.iterable.len())
+        N::len_metadata(self.n).min(self.bulk.len())
+    }
+}
+impl<T, A, const N: usize, const M: usize> StaticBulk for Take<T, [A; N]>
+where
+    T: StaticBulk<Item = A, Array = [A; M]>,
+    [A; N.min(M)]:
+{
+    type Array = [A; N.min(M)];
+
+    fn collect_array(self) -> Self::Array
+    {
+        self.into_iter().next_chunk().ok().unwrap()
+    }
+}
+
+#[cfg(test)]
+mod test
+{
+    use crate::Bulk;
+
+    #[test]
+    fn it_works()
+    {
+        let a = crate::take::<_, [_]>(0..6, 10).collect::<Vec<_>>();
+
+        println!("{a:?}")
     }
 }

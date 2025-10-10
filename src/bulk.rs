@@ -1,8 +1,10 @@
+use core::ptr::Pointee;
+
 use array_trait::AsSlice;
 
 #[cfg(feature = "array_chunks")]
 use crate::ArrayChunks;
-use crate::{util::{BulkLength, CollectLength}, Zip, Cloned, Copied, FromBulk, Inspect, IntoBulk, Map, Rev};
+use crate::{util::{BulkLength, CollectLength, Length}, Cloned, Copied, FromBulk, Inspect, IntoBulk, IntoContained, IntoContainedBy, Map, Rev, StaticBulk, Take, Zip};
 
 pub trait Bulk: IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
 {
@@ -232,10 +234,10 @@ pub trait Bulk: IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
     /// # assert_eq!(c, [(2, 3), (3, 4)]);
     /// ```
     #[inline]
-    fn zip<U>(self, other: U) -> Zip<Self, U::IntoBulk>
+    fn zip<U>(self, other: U) -> Zip<Self, <<U as IntoContained>::IntoContained as IntoBulk>::IntoBulk>
     where
         Self: Sized,
-        U: IntoBulk
+        U: IntoContainedBy<Self>
     {
         crate::zip(self, other)
     }
@@ -491,12 +493,13 @@ pub trait Bulk: IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
     /// ```
     #[doc(alias = "limit")]
     #[inline]
-    #[cfg(disabled)]
-    fn take<const N: usize>(self) -> Take<Self, N>
+    #[allow(invalid_type_param_default)]
+    fn take<N = [<Self as IntoIterator>::Item]>(self, n: <N as Pointee>::Metadata) -> Take<Self, N>
     where
         Self: Sized,
+        N: Length<Elem = Self::Item> + ?Sized
     {
-        Take::new(self)
+        Take::new(self, n)
     }
 
     /// Creates a bulk that works like map, but flattens nested structure.

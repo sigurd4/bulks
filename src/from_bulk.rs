@@ -108,38 +108,44 @@ use crate::{util::{BulkLength, CollectLength}, Bulk, IntoBulk, StaticBulk};
 /// ```
 #[rustc_on_unimplemented(
     on(
-        Self = "&[{A}]",
-        message = "a slice of type `{Self}` cannot be built since we need to store the elements somewhere",
+        any(Self = "&[{A}]", Self = "&[_]"),
+        message = "a slice of type `{Self}` cannot be collected since we need to store the elements somewhere",
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        all(A = "{integer}", any(Self = "&[{integral}]",)),
-        message = "a slice of type `{Self}` cannot be built since we need to store the elements somewhere",
+        all(A = "{integer}", any(Self = "&[{integral}]", Self = "&[{A}]", Self = "&[_]")),
+        message = "a slice of type `{Self}` cannot be collected since we need to store the elements somewhere",
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        Self = "[{A}]",
-        message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
+        any(Self = "[{A}]", Self = "[_]"),
+        message = "a slice of type `{Self}` cannot be collected since `{Self}` has no definite size",
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        all(A = "{integer}", any(Self = "[{integral}]",)),
-        message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
+        all(A = "{integer}", any(Self = "[{integral}]", Self = "[{A}]", Self = "[_]")),
+        message = "a slice of type `{Self}` cannot be collected since `{Self}` has no definite size",
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        Self = "[{A}; _]",
-        message = "an array of type `{Self}` cannot be built directly from a dynamically sized bulk",
+        all(L = "[{A}]", any(Self = "[{A}; _]", Self = "[{A}; {n}]", Self = "[_; _]", Self = "[_; {n}]")),
+        message = "an array of type `{Self}` cannot be collected directly from a dynamically sized bulk",
         label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
     ),
     on(
-        all(A = "{integer}", any(Self = "[{integral}; _]",)),
-        message = "an array of type `{Self}` cannot be built directly from a dynamically sized bulk",
+        all(L = "[{integer}]", A = "{integer}", any(Self = "[{integral}; _]", Self = "[{integral}; {n}]", Self = "[{A}; _]", Self = "[{A}; {n}]", Self = "[_; _]", Self = "[_; {n}]")),
+        message = "an array of type `{Self}` cannot be collected directly from a dynamically sized bulk",
         label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
     ),
-    message = "a value of type `{Self}` cannot be built from a bulk \
+    on(
+        all(L = "[{A}]"),
+        message = "a value of type `{Self}` cannot be collected from a dynamically sized bulk \
+                of elements of type `{A}`",
+        label = "value of type `{Self}` cannot be collected from `{B}` of dynamic length"
+    ),
+    message = "a value of type `{Self}` cannot be collected from a bulk \
                of elements of type `{A}`",
-    label = "value of type `{Self}` cannot be built from `bulks::Bulk<Item = {A}>`"
+    label = "value of type `{Self}` cannot be collected from `{B}`"
 )]
 pub trait FromBulk<A, B, L = <Self as CollectLength<A>>::Length>: Sized
 where

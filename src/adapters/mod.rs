@@ -4,7 +4,7 @@ moddef::moddef!(
         cloned,
         copied,
         empty,
-        infinite,
+        contained,
         inspect,
         map,
         once_with,
