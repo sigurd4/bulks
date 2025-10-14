@@ -128,7 +128,7 @@ use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBul
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        all(L = "[{A}]", any(Self = "[{A}; _]", Self = "[{A}; {n}]", Self = "[_; _]", Self = "[_; {n}]")),
+        all(any(L = "[{A}]", L = "[_]"), any(Self = "[{A}; _]", Self = "[{A}; {n}]", Self = "[_; _]", Self = "[_; {n}]")),
         message = "an array of type `{Self}` cannot be collected directly from a dynamically sized bulk",
         label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
     ),
@@ -138,7 +138,7 @@ use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBul
         label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
     ),
     on(
-        all(L = "[{A}]"),
+        any(L = "[{A}]", L = "[_]"),
         message = "a value of type `{Self}` cannot be collected from a dynamically sized bulk \
                 of elements of type `{A}`",
         label = "value of type `{Self}` cannot be collected from `{B}` of dynamic length"

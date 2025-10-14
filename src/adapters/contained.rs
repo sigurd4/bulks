@@ -1,6 +1,6 @@
-use core::ops::RangeFrom;
 use core::usize;
 
+use crate::util::InfiniteIterator;
 use crate::Bulk;
 use crate::IntoBulk;
 use crate::StaticBulk;
@@ -89,11 +89,11 @@ where
         self.iter.is_empty()
     }
 }
-impl<T> StaticBulk for Contained<RangeFrom<T>>
+impl<I> StaticBulk for Contained<I>
 where
-    RangeFrom<T>: Iterator<Item = T>
+    I: InfiniteIterator
 {
-    type Array = [T; usize::MAX];
+    type Array = [I::Item; usize::MAX];
 
     fn collect_array(self) -> Self::Array
     {

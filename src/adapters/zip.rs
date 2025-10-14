@@ -145,8 +145,9 @@ mod test
     fn it_works()
     {
         let a = [1, 3, 5];
-        let bulk = a.into_bulk().zip(1..);
-        let c = bulk.collect::<Vec<_>>();
+        let b = [2, 4, 6];
+        let bulk = a.into_bulk().zip(b).map(|(a, b)| a + b);
+        let c = bulk.collect::<[_; _]>();
         println!("{c:?}")
     }
 }

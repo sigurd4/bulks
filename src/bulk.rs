@@ -1,7 +1,5 @@
 use core::ptr::Pointee;
 
-use array_trait::AsSlice;
-
 #[cfg(feature = "array_chunks")]
 use crate::ArrayChunks;
 use crate::{util::{CollectLength, Length}, Cloned, Copied, FromBulk, Inspect, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, Take, Zip};

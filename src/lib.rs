@@ -27,6 +27,7 @@
 #![feature(const_convert)]
 #![feature(async_fn_traits)]
 #![feature(impl_trait_in_assoc_type)]
+#![feature(non_lifetime_binders)]
 #![feature(const_closures)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
@@ -485,7 +486,7 @@ mod tests {
     {
         let a = [1, 2, 3];
 
-        let vec = a.into_bulk().zip(0..4).collect::<Vec<_>>();
+        let vec = a.into_bulk().zip(0..).collect::<Vec<_>>();
 
         println!("{vec:?}")
     }
