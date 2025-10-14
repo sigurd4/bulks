@@ -49,7 +49,7 @@ where
     /// This creates a bulk that is possibly only invalid.
     /// 
     /// Always wrap this bulk in another bulk so that its length is limited.
-    pub(crate) unsafe fn new(iter: I) -> Self
+    pub(crate) const unsafe fn new(iter: I) -> Self
     {
         Self {
             iter
@@ -110,9 +110,10 @@ mod private
     /// This creates a bulk that is possibly only invalid.
     /// 
     /// Always wrap this bulk in another bulk so that its length is limited.
+    #[const_trait]
     pub unsafe trait IntoContained: IntoIterator
     {
-        type IntoContained: IntoBulk<Item = Self::Item, IntoIter: ExactSizeIterator<Item = Self::Item>>;
+        type IntoContained: ~const IntoBulk<Item = Self::Item, IntoIter: ExactSizeIterator<Item = Self::Item>>;
 
         /// # Safety
         /// 
@@ -134,9 +135,9 @@ mod private
             }
         }
     }
-    unsafe impl<T> IntoContained for T
+    unsafe impl<T> const IntoContained for T
     where
-        T: IntoBulk
+        T: ~const IntoBulk
     {
         type IntoContained = T;
 
@@ -219,15 +220,15 @@ where
     message = "value of type `{Self}` cannot be zipped with `{B}` in bulk",
     label = "value of type `{Self}` cannot be zipped with `{B}` in bulk",
 )]
-pub trait IntoContainedBy<B>: IntoContained + EitherIntoBulk<B> + Sized
+pub const trait IntoContainedBy<B>: ~const IntoContained + EitherIntoBulk<B> + Sized
 where
     B: IntoIterator
 {
 
 }
-impl<T, B> IntoContainedBy<B> for T
+impl<T, B> const IntoContainedBy<B> for T
 where
-    T: IntoContained + EitherIntoBulk<B>,
+    T: ~const IntoContained + EitherIntoBulk<B>,
     B: IntoIterator
 {
 

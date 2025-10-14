@@ -4,12 +4,12 @@ use crate::{util::Length, Bulk, ContainedIntoIter, IntoBulk, IntoContained, Stat
 
 /// Creates a bulk that only delivers the first `n` iterations of `iterable`.
 #[allow(invalid_type_param_default)]
-pub fn take<I, N = [<I as IntoIterator>::Item]>(iterable: I, n: <N as Pointee>::Metadata) -> Take<
+pub const fn take<I, N = [<I as IntoIterator>::Item]>(iterable: I, n: <N as Pointee>::Metadata) -> Take<
     <<I as IntoContained>::IntoContained as IntoBulk>::IntoBulk,
     N
 >
 where
-    I: IntoIterator,
+    I: ~const IntoContained,
     N: Length<Elem = I::Item> + ?Sized
 {
     unsafe {
@@ -37,7 +37,7 @@ where
     T: Bulk,
     N: Length<Elem = T::Item> + ?Sized
 {
-    pub(crate) fn new(bulk: T, n: <N as Pointee>::Metadata) -> Take<T, N>
+    pub(crate) const fn new(bulk: T, n: <N as Pointee>::Metadata) -> Take<T, N>
     {
         Self { bulk, n }
     }
@@ -64,14 +64,15 @@ where
         }
     }
 }
-impl<T, N> Bulk for Take<T, N>
+impl<T, N> const Bulk for Take<T, N>
 where
-    T: Bulk,
-    N: Length<Elem = T::Item> + ?Sized
+    T: ~const Bulk,
+    N: ~const Length<Elem = T::Item> + ?Sized
 {
     fn len(&self) -> usize
     {
-        N::len_metadata(self.n).min(self.bulk.len())
+        let Self { bulk, n } = self;
+        N::len_metadata(*n).min(bulk.len())
     }
 }
 impl<T, A, const N: usize, const M: usize> StaticBulk for Take<T, [A; N]>

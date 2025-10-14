@@ -1,6 +1,6 @@
-use core::fmt;
+use core::{fmt, ptr::Pointee};
 
-use crate::{Bulk, StaticBulk};
+use crate::{util::Length, Bulk, StaticBulk};
 
 /// Creates a bulk that yields an element exactly once.
 /// 
@@ -19,12 +19,15 @@ use crate::{Bulk, StaticBulk};
 /// // just one, that's all we get
 /// assert_eq!(one, [1])
 /// ```
-pub const fn repeat_n<T, const N: usize>(element: T) -> RepeatN<T, N>
+#[allow(invalid_type_param_default)]
+pub const fn repeat_n<T, N = [T]>(element: T, n: <N as Pointee>::Metadata) -> RepeatN<T, N>
 where
-    T: Clone
+    T: Clone,
+    N: Length<Elem = T> + ?Sized
 {
     RepeatN {
-        element
+        element,
+        n
     }
 }
 
@@ -33,57 +36,84 @@ where
 /// This `struct` is created by the [`once()`] function. See its documentation for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 #[derive(Clone)]
-pub struct RepeatN<A, const N: usize>
+pub struct RepeatN<A, N = [A]>
 where
-    A: Clone
+    A: Clone,
+    N: Length<Elem = A> + ?Sized
 {
-    element: A
+    element: A,
+    n: <N as Pointee>::Metadata
 }
 
-impl<A, const N: usize> fmt::Debug for RepeatN<A, N>
+impl<A, N> RepeatN<A, N>
 where
-    A: Clone + fmt::Debug
+    A: Clone,
+    N: Length<Elem = A> + ?Sized
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
+    const fn into_inner(self) -> A
     {
-        f.debug_struct("RepeatN").field("count", &N).field("element", &self.element).finish()
+        crate::const_inner!(
+            for<{A, N}> RepeatN {element, n: _} in self => RepeatN<A, N> => A
+            where {
+                A: Clone,
+                N: Length<Elem = A> + ?Sized
+            }
+            {
+                element
+            }
+        )
     }
 }
 
-impl<A, const N: usize> IntoIterator for RepeatN<A, N>
+impl<A, N> fmt::Debug for RepeatN<A, N>
 where
-    A: Clone
+    A: Clone + fmt::Debug,
+    N: Length<Elem = A> + ?Sized
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
+    {
+        f.debug_struct("RepeatN").field("count", &self.len()).field("element", &self.element).finish()
+    }
+}
+
+impl<A, N> IntoIterator for RepeatN<A, N>
+where
+    A: Clone,
+    N: Length<Elem = A> + ?Sized
 {
     type Item = A;
     type IntoIter = core::iter::RepeatN<A>;
 
     fn into_iter(self) -> Self::IntoIter
     {
-        core::iter::repeat_n(self.element, N)
+        let n = self.len();
+        core::iter::repeat_n(self.element, n)
     }
 }
-impl<A, const N: usize> Bulk for RepeatN<A, N>
+impl<A, N> const Bulk for RepeatN<A, N>
 where
-    A: Clone
+    A: Clone,
+    N: ~const Length<Elem = A> + ?Sized
 {
     fn len(&self) -> usize
     {
-        N
+        let Self { element: _, n } = self;
+        N::len_metadata(*n)
     }
 }
-impl<A, const N: usize> StaticBulk for RepeatN<A, N>
+impl<A, const N: usize> const StaticBulk for RepeatN<A, [A; N]>
 where
-    A: Clone
+    A: ~const RepeatSpec
 {
     type Array = [A; N];
 
     fn collect_array(self) -> Self::Array
     {
-        self.element.repeat()
+        self.into_inner().repeat()
     }
 }
 
-trait RepeatSpec: Clone
+const trait RepeatSpec: Clone
 {
     fn repeat<const N: usize>(self) -> [Self; N];
 }
@@ -96,7 +126,7 @@ where
         core::array::repeat(self)
     }
 }
-impl<A> RepeatSpec for A
+impl<A> const RepeatSpec for A
 where
     A: Copy
 {
@@ -114,7 +144,7 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = crate::repeat_n(1).collect::<[_; _]>();
+        let a = crate::repeat_n(1, ()).collect::<[_; _]>();
         assert_eq!(a, [1, 1, 1, 1])
     }
 }

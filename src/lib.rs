@@ -16,6 +16,18 @@
 #![feature(ptr_metadata)]
 #![feature(const_trait_impl)]
 #![feature(const_cmp)]
+#![feature(core_intrinsics)]
+#![feature(const_eval_select)]
+#![feature(decl_macro)]
+#![feature(const_default)]
+#![feature(const_clone)]
+#![feature(const_option_ops)]
+#![feature(const_destruct)]
+#![feature(fn_traits)]
+#![feature(const_convert)]
+#![feature(async_fn_traits)]
+#![feature(impl_trait_in_assoc_type)]
+#![feature(const_closures)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
 #![cfg_attr(feature = "array_chunks", feature(generic_const_exprs))]
@@ -388,6 +400,81 @@ moddef::moddef!(
     },
     mod util
 );
+
+macro first {
+    ($block:block $($other:tt)*) => {
+        $block
+    },
+    ($ident:ident$(, $($other:tt)*)?) => {
+        $ident
+    },
+    ($ident:pat$(, $($other:tt)*)?) => {
+        $ident
+    }
+}
+
+macro const_inner {
+    (
+        for$(<{$($g:tt)+}>)? $($pat:ident)?{$($([$member_mut:tt])? $member:ident$(: $member_alias:pat)?),+$(,)?} in $self:expr => $self_ty:ty => $return:ty
+        $(where {$($where:tt)+} $(where const {$($where_const:tt)+})?)?
+        $do:block
+        $(const $do_const:block)?
+    ) => {
+        {
+            fn rt$(<$($g)+>)?(bulk: $self_ty) -> $return
+            $(where $($where)*)?
+            {
+                let $($pat)? {$($($member_mut)? $member: first!($($member_alias,)? $member),)+} = bulk;
+                $do
+            }
+
+            const fn ct$(<$($g)+>)?(bulk: $self_ty) -> $return
+            $(where $($where)* $($($where_const)*)?)?
+            {
+                let $($pat)? {$($member,)+} = &bulk;
+                $(
+                    let $($member_mut)? first!($($member_alias,)? $member) = unsafe {
+                        core::ptr::read($member)
+                    };
+                )*
+                core::mem::forget(bulk);
+                first!($($do_const)? $do)
+            }
+
+            core::intrinsics::const_eval_select(($self,), ct, rt)
+        }
+    },
+    (
+        for$(<{$($g:tt)+}>)? $($pat:ident)?($($([$member_mut:tt])? $member:ident),+$(,)?) in $self:expr => $self_ty:ty => $return:ty
+        $(where {$($where:tt)+} $(where const {$($where_const:tt)+})?)?
+        $do:block
+        $(const $do_const:block)?
+    ) => {
+        {
+            fn rt$(<$($g)+>)?(bulk: $self_ty) -> $return
+            $(where $($where)*)?
+            {
+                let $($pat)? ($($($member_mut)? $member,)+) = bulk;
+                $do
+            }
+
+            const fn ct$(<$($g)+>)?(bulk: $self_ty) -> $return
+            $(where $($where)* $($($where_const)*)?)?
+            {
+                let $($pat)? ($($member,)+) = &bulk;
+                $(
+                    let $($member_mut)? $member = unsafe {
+                        core::ptr::read($member)
+                    };
+                )*
+                core::mem::forget(bulk);
+                first!($($do_const)? $do)
+            }
+
+            core::intrinsics::const_eval_select(($self,), ct, rt)
+        }
+    },
+}
 
 #[cfg(test)]
 mod tests {

@@ -7,6 +7,7 @@ moddef::moddef!(
         contained,
         inspect,
         map,
+        mutate,
         once_with,
         once,
         repeat_n,

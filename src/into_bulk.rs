@@ -1,6 +1,6 @@
 use crate::Bulk;
 
-pub trait AsBulk
+pub const trait AsBulk
 {
     /// Creates a bulk from a reference.
     ///
@@ -19,7 +19,7 @@ pub trait AsBulk
     /// ```
     fn bulk<'a>(&'a self) -> <&'a Self as IntoBulk>::IntoBulk
     where
-        &'a Self: IntoBulk
+        &'a Self: ~const IntoBulk
     {
         self.into_bulk()
     }
@@ -41,23 +41,23 @@ pub trait AsBulk
     /// ```
     fn bulk_mut<'a>(&'a mut self) -> <&'a mut Self as IntoBulk>::IntoBulk
     where
-        &'a mut Self: IntoBulk
+        &'a mut Self: ~const IntoBulk
     {
         self.into_bulk()
     }
 }
 
-impl<T> AsBulk for T
+impl<T> const AsBulk for T
 where
     T: ?Sized
 {
     
 }
 
-pub trait IntoBulk: IntoIterator<IntoIter: ExactSizeIterator>
+pub const trait IntoBulk: IntoIterator<IntoIter: ExactSizeIterator>
 {
     /// Which kind of bulk are we turning this into?
-    type IntoBulk: Bulk<Item = Self::Item, IntoIter = Self::IntoIter>;
+    type IntoBulk: ~const Bulk<Item = Self::Item, IntoIter = Self::IntoIter>;
 
     /// Creates a bulk from a value.
     ///
@@ -77,9 +77,9 @@ pub trait IntoBulk: IntoIterator<IntoIter: ExactSizeIterator>
     fn into_bulk(self) -> Self::IntoBulk;
 }
 
-impl<T> IntoBulk for T
+impl<T> const IntoBulk for T
 where 
-    Self: Bulk
+    Self: ~const Bulk
 {
     type IntoBulk = Self;
 

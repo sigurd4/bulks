@@ -1,6 +1,6 @@
 use array_trait::AsSlice;
 
-use crate::{util::{BulkLength, CollectLength}, Bulk, IntoBulk, StaticBulk};
+use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBulk};
 
 /// Conversion from a [`Bulk`].
 ///
@@ -147,10 +147,10 @@ use crate::{util::{BulkLength, CollectLength}, Bulk, IntoBulk, StaticBulk};
                of elements of type `{A}`",
     label = "value of type `{Self}` cannot be collected from `{B}`"
 )]
-pub trait FromBulk<A, B, L = <Self as CollectLength<A>>::Length>: Sized
+pub const trait FromBulk<A, B, L = <Self as CollectLength<A>>::Length>: Sized
 where
     B: BulkLength<Item = A>,
-    L: AsSlice<Elem = A> + ?Sized
+    L: Length<Elem = A> + ?Sized
 {
     /// Creates a value from a bulk.
     ///
@@ -169,7 +169,7 @@ where
     /// ```
     fn from_bulk<I>(bulk: I) -> Self
     where
-        I: IntoBulk<Item = A, IntoBulk = B>;
+        I: ~const IntoBulk<Item = A, IntoBulk = B>;
 }
 
 impl<A, B, T> FromBulk<A, B, [A]> for T
@@ -184,13 +184,13 @@ where
         bulk.into_iter().collect()
     }
 }
-impl<A, B, const N: usize> FromBulk<A, B, Self> for [A; N]
+impl<A, B, const N: usize> const FromBulk<A, B, Self> for [A; N]
 where
-    B: StaticBulk<Item = A, Array = Self>
+    B: ~const StaticBulk<Item = A, Array = Self>
 {
     fn from_bulk<I>(bulk: I) -> Self
     where
-        I: IntoBulk<Item = A, IntoBulk = B>
+        I: ~const IntoBulk<Item = A, IntoBulk = B>
     {
         bulk.into_bulk().collect_array()
     }

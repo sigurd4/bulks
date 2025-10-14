@@ -29,6 +29,19 @@ pub const fn once<T>(value: T) -> Once<T>
 #[derive(Clone, Debug)]
 pub struct Once<T>(T);
 
+impl<T> Once<T>
+{
+    const fn into_inner(self) -> T
+    {
+        crate::const_inner!(
+            for<{T}> Once (x) in self => Once<T> => T
+            {
+                x
+            }
+        )
+    }
+}
+
 impl<T> IntoIterator for Once<T>
 {
     type Item = T;
@@ -39,30 +52,30 @@ impl<T> IntoIterator for Once<T>
         core::iter::once(self.0)
     }
 }
-impl<T> Bulk for Once<T>
+impl<T> const Bulk for Once<T>
 {
     fn len(&self) -> usize
     {
         1
     }
 }
-impl<T> StaticBulk for Once<T>
+impl<T> const StaticBulk for Once<T>
 {
     type Array = [T; 1];
 
     fn collect_array(self) -> Self::Array
     {
-        [self.0]
+        [self.into_inner()]
     }
 }
 
-pub trait OnceBulk: StaticBulk<Array = [<Self as IntoIterator>::Item; 1]>
+pub const trait OnceBulk: ~const StaticBulk<Array = [<Self as IntoIterator>::Item; 1]>
 {
 
 }
-impl<T> OnceBulk for T
+impl<T> const OnceBulk for T
 where
-    T: StaticBulk<Array = [<Self as IntoIterator>::Item; 1]>
+    T: ~const StaticBulk<Array = [<Self as IntoIterator>::Item; 1]>
 {
 
 }
@@ -75,7 +88,9 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = crate::once(1).collect::<[_; _]>();
+        let a = const {
+            crate::once(1).collect::<[_; _]>()
+        };
         assert_eq!(a, [1])
     }
 }

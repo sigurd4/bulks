@@ -48,7 +48,7 @@ impl<T> IntoIterator for Empty<T>
         core::iter::empty()
     }
 }
-impl<T> IntoBulk for core::iter::Empty<T>
+impl<T> const IntoBulk for core::iter::Empty<T>
 {
     type IntoBulk = Empty<T>;
     
@@ -57,14 +57,14 @@ impl<T> IntoBulk for core::iter::Empty<T>
         empty()
     }
 }
-impl<T> Bulk for Empty<T>
+impl<T> const Bulk for Empty<T>
 {
     fn len(&self) -> usize
     {
         0
     }
 }
-impl<T> StaticBulk for Empty<T>
+impl<T> const StaticBulk for Empty<T>
 {
     type Array = [T; 0];
 
@@ -74,13 +74,13 @@ impl<T> StaticBulk for Empty<T>
     }
 }
 
-pub trait EmptyBulk: StaticBulk<Array = [<Self as IntoIterator>::Item; 0]>
+pub const trait EmptyBulk: ~const StaticBulk<Array = [<Self as IntoIterator>::Item; 0]>
 {
 
 }
-impl<T> EmptyBulk for T
+impl<T> const EmptyBulk for T
 where
-    T: StaticBulk<Array = [<Self as IntoIterator>::Item; 0]>
+    T: ~const StaticBulk<Array = [<Self as IntoIterator>::Item; 0]>
 {
 
 }
@@ -93,7 +93,9 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = crate::empty::<u8>().collect::<[_; _]>();
+        let a = const {
+            crate::empty::<u8>().collect::<[_; _]>()
+        };
         assert_eq!(a, [])
     }
 }

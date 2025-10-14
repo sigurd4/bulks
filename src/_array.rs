@@ -40,7 +40,7 @@ macro_rules! impl_bulk {
                 array.into_iter()
             }
         }
-        impl<$($a,)? $t, const $n: usize> IntoBulk for $array
+        impl<$($a,)? $t, const $n: usize> const IntoBulk for $array
         {
             type IntoBulk = array::$bulk<$($a,)? $t, $n>;
             
@@ -51,14 +51,14 @@ macro_rules! impl_bulk {
                 }
             }
         }
-        impl<$($a,)? $t, const $n: usize> Bulk for array::$bulk<$($a,)? $t, $n>
+        impl<$($a,)? $t, const $n: usize> const Bulk for array::$bulk<$($a,)? $t, $n>
         {
             fn len(&self) -> usize
             {
                 $n
             }
         }
-        impl<$($a,)? $t, const $n: usize> StaticBulk for array::$bulk<$($a,)? $t, $n>
+        impl<$($a,)? $t, const $n: usize> const StaticBulk for array::$bulk<$($a,)? $t, $n>
         {
             type Array = [$item; N];
 
@@ -72,8 +72,13 @@ impl_bulk!(
     {
         fn collect_array(self) -> Self::Array
         {
-            let Self {array} = self;
-            array
+            use array::IntoBulk;
+            crate::const_inner!(
+                for<{const N: usize, T}> IntoBulk{ array } in self => IntoBulk<T, N> => [T; N]
+                {
+                    array
+                }
+            )
         }
     }
 );
@@ -163,7 +168,9 @@ mod test
     fn it_works()
     {
         let a = [1, 2, 3];
-        let b: [_; _] = a.bulk().copied().rev().map(|x| 4 - x).collect::<[_; _], _>();
+        
+        let b = a.bulk().copied().rev().map(|x| 4 - x).collect::<[_; _], _>();
+
         println!("{:?}", b)
     }
 }

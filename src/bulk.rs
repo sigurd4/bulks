@@ -4,9 +4,9 @@ use array_trait::AsSlice;
 
 #[cfg(feature = "array_chunks")]
 use crate::ArrayChunks;
-use crate::{util::{BulkLength, CollectLength, Length}, Cloned, Copied, FromBulk, Inspect, IntoBulk, IntoContained, IntoContainedBy, Map, Rev, StaticBulk, Take, Zip};
+use crate::{util::{CollectLength, Length}, Cloned, Copied, FromBulk, Inspect, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, Take, Zip};
 
-pub trait Bulk: IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
+pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
 {
     /// Returns the exact length of the bulk.
     ///
@@ -237,7 +237,7 @@ pub trait Bulk: IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
     fn zip<U>(self, other: U) -> Zip<Self, <<U as IntoContained>::IntoContained as IntoBulk>::IntoBulk>
     where
         Self: Sized,
-        U: IntoContainedBy<Self>
+        U: ~const IntoContainedBy<Self>
     {
         crate::zip(self, other)
     }
@@ -778,6 +778,33 @@ pub trait Bulk: IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
         Inspect::new(self, f)
     }
 
+    /// Mutates with each element of a bulk, passing the value on.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulk::*;
+    /// 
+    /// let a = [1, 4, 2, 3];
+    ///
+    /// // this iterator sequence is complex.
+    /// let b = a.into_bulk()
+    ///     .mutate(|x| *x += 1)
+    ///     .collect();
+    ///
+    /// assert_eq!(b, [2, 5, 3, 4]);
+    /// ```
+    #[inline]
+    fn mutate<F>(self, f: F) -> Mutate<Self, F>
+    where
+        Self: Sized,
+        F: FnMut(&mut Self::Item),
+    {
+        Mutate::new(self, f)
+    }
+
     /// Transforms a bulk into a collection.
     ///
     /// [`collect()`](Bulk::collect) can take anything bulkable, and turn it into a relevant
@@ -874,8 +901,8 @@ pub trait Bulk: IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
     fn collect<B, L = <B as CollectLength<<Self as IntoIterator>::Item>>::Length>(self) -> B
     where
         Self: Sized,
-        B: FromBulk<Self::Item, Self, L>,
-        L: AsSlice<Elem = Self::Item> + ?Sized
+        B: ~const FromBulk<Self::Item, Self, L>,
+        L: Length<Elem = Self::Item> + ?Sized
     {
         FromBulk::from_bulk(self)
     }
@@ -932,7 +959,7 @@ pub trait Bulk: IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
     where
         Self: Sized,
         Self::Item: Try<Residual: Residual<B>>,
-        B: FromBulk<<Self::Item as Try>::Output>,
+        B: ~const FromBulk<<Self::Item as Try>::Output>,
     {
         try_process(ByRefSized(self), |i| i.collect())
     }
@@ -990,7 +1017,7 @@ pub trait Bulk: IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
     fn copied<'a, T>(self) -> Copied<Self>
     where
         T: Copy + 'a,
-        Self: Sized + Bulk<Item = &'a T>,
+        Self: Sized + ~const Bulk<Item = &'a T>,
     {
         Copied::new(self)
     }
@@ -1026,7 +1053,7 @@ pub trait Bulk: IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
     fn cloned<'a, T>(self) -> Cloned<Self>
     where
         T: Clone + 'a,
-        Self: Sized + Bulk<Item = &'a T>,
+        Self: Sized + ~const Bulk<Item = &'a T>,
     {
         Cloned::new(self)
     }

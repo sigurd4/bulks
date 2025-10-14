@@ -19,23 +19,31 @@ where
     I: Bulk<Item = &'a T>,
     T: Clone + 'a
 {
-    pub(crate) fn new(bulk: I) -> Self
+    pub(crate) const fn new(bulk: I) -> Self
     {
         Self {
             bulk
         }
     }
 
-    pub(crate) fn into_inner(self) -> I
+    pub(crate) const fn into_inner(self) -> I
     {
-        let Self { bulk } = self;
-        bulk
+        crate::const_inner!(
+            for<{'a, I, T}> Cloned{ bulk } in self => Cloned<I> => I
+            where {
+                I: Bulk<Item = &'a T>,
+                T: Clone + 'a
+            }
+            {
+                bulk
+            }
+        )
     }
 }
 
-impl<'a, I, T> Default for Cloned<I>
+impl<'a, I, T> const Default for Cloned<I>
 where
-    I: Bulk<Item = &'a T> + Default,
+    I: ~const Bulk<Item = &'a T> + ~const Default,
     T: Clone + 'a
 {
     fn default() -> Self
@@ -57,9 +65,9 @@ where
         self.into_inner().into_iter().cloned()
     }
 }
-impl<'a, I, T> Bulk for Cloned<I>
+impl<'a, I, T> const Bulk for Cloned<I>
 where
-    I: Bulk<Item = &'a T>,
+    I: ~const Bulk<Item = &'a T>,
     T: Clone + 'a
 {
     fn len(&self) -> usize
@@ -74,9 +82,9 @@ where
         bulk.is_empty()
     }
 }
-impl<'a, I, T, const N: usize> StaticBulk for Cloned<I>
+impl<'a, I, T, const N: usize> const StaticBulk for Cloned<I>
 where 
-    I: StaticBulk<Item = &'a T, Array = [&'a T; N]>,
+    I: ~const StaticClonedSpec<N, Item = &'a T, Array = [&'a T; N]>,
     T: Clone + 'a
 {
     type Array = [Self::Item; N];
@@ -87,7 +95,7 @@ where
     }
 }
 
-pub(crate) trait StaticClonedSpec<const N: usize>: StaticBulk<Array = [<Self as IntoIterator>::Item; N]>
+pub(crate) const trait StaticClonedSpec<const N: usize>: ~const StaticBulk<Array = [<Self as IntoIterator>::Item; N]>
 where
     core::iter::Cloned<Self::IntoIter>: Iterator<Item: Clone>
 {

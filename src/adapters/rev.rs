@@ -18,7 +18,7 @@ impl<I> Rev<I>
 where
     I: Bulk<IntoIter: DoubleEndedIterator>
 {
-    pub(crate) fn new(bulk: I) -> Self
+    pub(crate) const fn new(bulk: I) -> Self
     {
         Self {
             bulk
@@ -36,16 +36,23 @@ where
     /// let mut s2 = s.bulk().rev().into_inner().collect();
     /// assert_eq!(s2, "foobar");
     /// ```
-    pub fn into_inner(self) -> I
+    pub const fn into_inner(self) -> I
     {
-        let Self { bulk } = self;
-        bulk
+        crate::const_inner!(
+            for<{I}> Rev{ bulk } in self => Rev<I> => I
+            where {
+                I: Bulk<IntoIter: DoubleEndedIterator>
+            }
+            {
+                bulk
+            }
+        )
     }
 }
 
-impl<I> Default for Rev<I>
+impl<I> const Default for Rev<I>
 where
-    I: Bulk<IntoIter: DoubleEndedIterator> + Default
+    I: ~const Bulk<IntoIter: DoubleEndedIterator> + ~const Default
 {
     fn default() -> Self
     {
@@ -65,9 +72,9 @@ where
         self.into_inner().into_iter().rev()
     }
 }
-impl<I> Bulk for Rev<I>
+impl<I> const Bulk for Rev<I>
 where
-    I: Bulk<IntoIter: DoubleEndedIterator>
+    I: ~const Bulk<IntoIter: DoubleEndedIterator>
 {
     fn len(&self) -> usize
     {
@@ -79,9 +86,9 @@ where
         self.bulk.is_empty()
     }
 }
-impl<I, T, const N: usize> StaticBulk for Rev<I>
+impl<I, T, const N: usize> const StaticBulk for Rev<I>
 where
-    I: StaticBulk<Item = T, Array = [T; N], IntoIter: DoubleEndedIterator>
+    I: ~const StaticBulk<Item = T, Array = [T; N], IntoIter: DoubleEndedIterator> + ~const StaticRevSpec<N>
 {
     type Array = [Self::Item; N];
 
@@ -91,7 +98,7 @@ where
     }
 }
 
-pub(crate) trait StaticRevSpec<const N: usize>: StaticBulk<Array = [<Self as IntoIterator>::Item; N], IntoIter: DoubleEndedIterator>
+pub(crate) const trait StaticRevSpec<const N: usize>: StaticBulk<Array = [<Self as IntoIterator>::Item; N], IntoIter: DoubleEndedIterator>
 {
     fn rev_collect_array(self) -> [<Self as IntoIterator>::Item; N];
 }
@@ -106,9 +113,9 @@ where
     }
 }
 
-impl<T, I, const N: usize> StaticRevSpec<N> for Rev<I>
+impl<T, I, const N: usize> const StaticRevSpec<N> for Rev<I>
 where
-    I: StaticBulk<Item = T, Array = [T; N], IntoIter: DoubleEndedIterator>
+    I: ~const StaticBulk<Item = T, Array = [T; N], IntoIter: DoubleEndedIterator>
 {
     fn rev_collect_array(self) -> [<Self as IntoIterator>::Item; N]
     {

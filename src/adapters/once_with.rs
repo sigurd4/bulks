@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{Bulk, StaticBulk};
+use crate::{Bulk, Once, StaticBulk};
 
 /// Creates a bulk that lazily generates a value exactly once by invoking
 /// the provided closure.
@@ -38,6 +38,24 @@ pub struct OnceWith<F>(F)
 where
     F: FnOnce<()>;
 
+impl<F, A> OnceWith<F>
+where
+    F: FnOnce() -> A
+{
+    const fn into_inner(self) -> F
+    {
+        crate::const_inner!(
+            for<{F, A}> OnceWith (f) in self => OnceWith<F> => F
+            where {
+                F: FnOnce() -> A
+            }
+            {
+                f
+            }
+        )
+    }
+}
+
 impl<F, A> fmt::Debug for OnceWith<F>
 where
     F: FnOnce() -> A
@@ -60,7 +78,7 @@ where
         core::iter::once_with(self.0)
     }
 }
-impl<F, A> Bulk for OnceWith<F>
+impl<F, A> const Bulk for OnceWith<F>
 where
     F: FnOnce() -> A
 {
@@ -69,15 +87,24 @@ where
         1
     }
 }
-impl<F, A> StaticBulk for OnceWith<F>
+impl<F, A> const StaticBulk for OnceWith<F>
 where
-    F: FnOnce() -> A
+    F: ~const FnOnce() -> A
 {
     type Array = [A; 1];
 
-    fn collect_array(self) -> Self::Array
+    default fn collect_array(self) -> Self::Array
     {
-        [self.0()]
+        Once::from(self).collect_array()
+    }
+}
+impl<F, A> const From<OnceWith<F>> for Once<A>
+where
+    F: ~const FnOnce() -> A
+{
+    fn from(value: OnceWith<F>) -> Self
+    {
+        crate::once(value.into_inner()())
     }
 }
 
@@ -89,7 +116,14 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = crate::once_with(|| 1).collect::<[_; _]>();
+        const fn one() -> i32
+        {
+            1
+        }
+
+        let a = const {
+            crate::once_with(one).collect::<[_; _]>()
+        };
         assert_eq!(a, [1])
     }
 }

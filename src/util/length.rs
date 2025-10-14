@@ -6,18 +6,18 @@ use array_trait::AsSlice;
     message = "`{Self}` is not a valid bulk length",
     label = "The only valid lengths are `[_]` or `[_; _]`",
 )]
-pub trait Length: AsSlice
+pub const trait Length: AsSlice
 {
     fn len_metadata(n: <Self as Pointee>::Metadata) -> usize;
 }
-impl<T> Length for [T]
+impl<T> const Length for [T]
 {
     fn len_metadata(n: <Self as Pointee>::Metadata) -> usize
     {
         n
     }
 }
-impl<T, const N: usize> Length for [T; N]
+impl<T, const N: usize> const Length for [T; N]
 {
     fn len_metadata((): <Self as Pointee>::Metadata) -> usize
     {

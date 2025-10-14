@@ -71,7 +71,7 @@ where
     I: Bulk,
     F: FnMut<(I::Item,)>
 {
-    pub(crate) fn new(bulk: I, f: F) -> Self
+    pub(crate) const fn new(bulk: I, f: F) -> Self
     {
         Self {
             bulk,
@@ -106,9 +106,9 @@ where
         bulk.into_iter().map(f)
     }
 }
-impl<I, F> Bulk for Map<I, F>
+impl<I, F> const Bulk for Map<I, F>
 where
-    I: Bulk,
+    I: ~const Bulk,
     F: FnMut<(I::Item,)>
 {
     fn len(&self) -> usize

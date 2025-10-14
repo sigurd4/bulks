@@ -27,13 +27,13 @@ use crate::{Bulk, ContainedIntoIter, IntoBulk, IntoContained, IntoContainedBy, S
 /// let s = bulk.collect();
 /// assert_eq!(s, [((1, 4), 7), ((2, 5), 8), ((3, 6), 9)]);
 /// ```
-pub fn zip<A, B>(a: A, b: B) -> Zip<
+pub const fn zip<A, B>(a: A, b: B) -> Zip<
     A::IntoBulk,
     <B::IntoContained as IntoBulk>::IntoBulk
 >
 where
-    A: IntoBulk,
-    B: IntoContained
+    A: ~const IntoBulk,
+    B: ~const IntoContainedBy<A>
 {
     unsafe {
         Zip::new(
@@ -63,7 +63,7 @@ where
     A: Bulk,
     B: Bulk
 {
-    pub(crate) fn new(a: A, b: B) -> Zip<A, B>
+    pub(crate) const fn new(a: A, b: B) -> Zip<A, B>
     {
         Self { a, b }
     }
@@ -94,10 +94,10 @@ where
         }
     }
 }
-impl<A, B> Bulk for Zip<A, B>
+impl<A, B> const Bulk for Zip<A, B>
 where
-    A: Bulk,
-    B: Bulk
+    A: ~const Bulk,
+    B: ~const Bulk
 {
     fn len(&self) -> usize
     {
@@ -145,7 +145,6 @@ mod test
     fn it_works()
     {
         let a = [1, 3, 5];
-        let b = [2, 4, 6];
         let bulk = a.into_bulk().zip(1..);
         let c = bulk.collect::<Vec<_>>();
         println!("{c:?}")
