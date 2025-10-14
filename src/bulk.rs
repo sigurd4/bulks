@@ -2,7 +2,7 @@ use core::ptr::Pointee;
 
 #[cfg(feature = "array_chunks")]
 use crate::ArrayChunks;
-use crate::{util::{CollectLength, Length}, Cloned, Copied, FromBulk, Inspect, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, Take, Zip};
+use crate::{util::{CollectLength, Length}, Cloned, Copied, FromBulk, Inspect, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, StepBy, Take, Zip};
 
 pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
 {
@@ -80,10 +80,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(b, [0, 2, 4]);
     /// ```
     #[inline]
-    #[cfg(disabled)]
-    fn step_by<const N: usize>(self) -> StepBy<Self, N>
+    #[allow(invalid_type_param_default)]
+    fn step_by<N = [<Self as IntoIterator>::Item]>(self, step: <N as Pointee>::Metadata) -> StepBy<Self, N>
     where
-        Self: Sized,
+        N: ~const Length<Elem = Self::Item> + ?Sized,
+        Self: Sized
     {
         StepBy::new(self, step)
     }

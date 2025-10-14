@@ -86,8 +86,8 @@ where
 
     fn into_iter(self) -> Self::IntoIter
     {
-        let n = self.len();
-        core::iter::repeat_n(self.element, n)
+        let Self { element, n } = self;
+        core::iter::repeat_n(element, N::len_metadata(n))
     }
 }
 impl<A, N> const Bulk for RepeatN<A, N>
