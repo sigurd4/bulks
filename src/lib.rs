@@ -395,8 +395,8 @@
 moddef::moddef!(
     flat(pub) mod {
         adapters,
-        _array,
-        _iter,
+        impl_array,
+        impl_iter,
         bulk,
         from_bulk,
         into_bulk,

@@ -1,5 +1,3 @@
-use core::ops::{Residual, Try};
-
 use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBulk};
 
 /// Conversion from a [`Bulk`].

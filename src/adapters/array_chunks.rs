@@ -28,25 +28,6 @@ where
             bulk
         }
     }
-
-    /// Returns an iterator over the remaining elements of the original bulk
-    /// that are not going to be returned by this bulk. The returned
-    /// iterator will yield at most `N-1` elements.
-    ///
-    /// # Example
-    /// ```
-    /// use bulks::*;
-    /// 
-    /// let x = [1, 2, 3, 4, 5].into_bulk().array_chunks::<2>();
-    /// let mut rem = x.into_remainder().unwrap();
-    /// assert_eq!(rem.next(), Some(5));
-    /// assert_eq!(rem.next(), None);
-    /// ```
-    #[inline]
-    pub fn into_remainder(self) -> Option<core::array::IntoIter<I::Item, N>>
-    {
-        self.into_iter().into_remainder()
-    }
 }
 
 impl<I, const N: usize> IntoIterator for ArrayChunks<I, N>
