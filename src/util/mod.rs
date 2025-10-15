@@ -1,6 +1,6 @@
 moddef::moddef!(
     flat(pub) mod {
-        array_buffer for cfg(feature = "array_chunks"),
+        array_buffer,
         same,
         bulk_length,
         collect_length,

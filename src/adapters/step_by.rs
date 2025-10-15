@@ -2,7 +2,7 @@ use core::ptr::Pointee;
 
 use crate::{util::Length, Bulk, StaticBulk};
 
-/// An iterator for stepping iterators by a custom amount.
+/// A bulk that steps by a custom amount.
 ///
 /// This `struct` is created by the [`step_by`](Bulk::step_by) method on [`Bulk`]. See
 /// its documentation for more.

@@ -1,8 +1,6 @@
 use core::ptr::Pointee;
 
-#[cfg(feature = "array_chunks")]
-use crate::ArrayChunks;
-use crate::{util::{CollectLength, Length}, Cloned, Copied, FromBulk, Inspect, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, StepBy, Take, Zip};
+use crate::{util::{CollectLength, Length}, ArrayChunks, Cloned, Copied, FromBulk, Inspect, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, StepBy, Take, Zip};
 
 pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
 {
@@ -906,63 +904,6 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
         FromBulk::from_bulk(self)
     }
 
-    /// Fallibly transforms a bulk into a collection, short circuiting if
-    /// a failure is encountered.
-    ///
-    /// `try_collect()` is a variation of [`collect()`][`Bulk::collect`] that allows fallible
-    /// conversions during collection. Its main use case is simplifying conversions from
-    /// bulks yielding [`Option<T>`][`Option`] into `Option<Collection<T>>`, or similarly for other [`Try`](core::ops::Try)
-    /// types (e.g. [`Result`]).
-    ///
-    /// Importantly, `try_collect()` doesn't require that the outer [`Try`](core::ops::Try) type also implements [`FromBulk`](crate::FromBulk);
-    /// only the inner type produced on `Try::Output` must implement it. Concretely,
-    /// this means that collecting into `ControlFlow<_, [i32; _]>` is valid because `[i32; _]` implements
-    /// [`FromBulk`](crate::FromBulk), even though [`ControlFlow`](core::ops::ControlFlow) doesn't.
-    ///
-    /// Similar to [`Iterator::try_collect`], but unlike it, this will consume the bulk.
-    /// 
-    /// # Examples
-    /// Successfully collecting a bulk of `Option<i32>` into `Option<[i32; _]>`:
-    /// ```
-    /// use bulks::*;
-    ///
-    /// let u = [Some(1), Some(2), Some(3)];
-    /// let v = u.into_bulk().try_collect::<[i32; _]>();
-    /// assert_eq!(v, Some([1, 2, 3]));
-    /// ```
-    ///
-    /// Failing to collect in the same way:
-    /// ```
-    /// use bulks::*;
-    ///
-    /// let u = [Some(1), Some(2), None, Some(3)];
-    /// let v = u.into_bulk().try_collect::<[i32; _]>();
-    /// assert_eq!(v, None);
-    /// ```
-    ///
-    /// A similar example, but with `Result`:
-    /// ```
-    /// use bulks::*;
-    ///
-    /// let u: [Result<i32, ()>; _] = [Ok(1), Ok(2), Ok(3)];
-    /// let v = u.into_bulk().try_collect::<[i32; _]>();
-    /// assert_eq!(v, Ok([1, 2, 3]));
-    ///
-    /// let u = [Ok(1), Ok(2), Err(()), Ok(3)];
-    /// let v = u.into_bulk().try_collect::<[i32; _]>();
-    /// assert_eq!(v, Err(()));
-    /// ```
-    #[inline]
-    #[cfg(feature = "try_collect")]
-    fn try_collect<B, L>(self) -> ChangeOutputType<Self::Item, B>
-    where
-        Self: Sized,
-        Self::Item: Try<Residual: Residual<B>>,
-        B: ~const FromBulk<<Self::Item as Try>::Output>,
-    {
-        try_process(ByRefSized(self), |i| i.collect())
-    }
-
     /// Reverses a bulks's direction.
     ///
     /// Usually, bulks span from left to right. After using `rev()`,
@@ -1095,7 +1036,6 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// }
     /// ```
     #[track_caller]
-    #[cfg(feature = "array_chunks")]
     fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
     where
         Self: Sized,

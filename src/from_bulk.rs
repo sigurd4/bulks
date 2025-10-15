@@ -1,4 +1,4 @@
-use array_trait::AsSlice;
+use core::ops::{Residual, Try};
 
 use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBulk};
 
@@ -184,9 +184,9 @@ where
         bulk.into_iter().collect()
     }
 }
-impl<A, B, const N: usize> const FromBulk<A, B, Self> for [A; N]
+impl<A, B, const N: usize> const FromBulk<A, B, [A; N]> for [A; N]
 where
-    B: ~const StaticBulk<Item = A, Array = Self>
+    B: ~const StaticBulk<Item = A, Array = [A; N]>
 {
     fn from_bulk<I>(bulk: I) -> Self
     where

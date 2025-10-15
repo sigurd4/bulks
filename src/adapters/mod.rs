@@ -1,6 +1,6 @@
 moddef::moddef!(
     flat(pub) mod {
-        array_chunks for cfg(feature = "array_chunks"),
+        array_chunks,
         cloned,
         copied,
         empty,

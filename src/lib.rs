@@ -27,12 +27,15 @@
 #![feature(const_convert)]
 #![feature(async_fn_traits)]
 #![feature(impl_trait_in_assoc_type)]
+#![feature(const_index)]
+#![feature(try_trait_v2_residual)]
+#![feature(inplace_iteration)]
+#![feature(try_blocks)]
+#![feature(std_internals)]
 #![feature(non_lifetime_binders)]
 #![feature(const_closures)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
-#![cfg_attr(feature = "array_chunks", feature(generic_const_exprs))]
-#![cfg_attr(feature = "array_chunks", feature(const_index))]
 
 //! Composable external iteration.
 //!

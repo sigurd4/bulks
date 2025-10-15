@@ -1,3 +1,5 @@
+use core::ops::{Try, Residual};
+
 use crate::{Bulk, Copied, IntoBulk, StaticBulk, StaticCopiedSpec, StaticMapSpec, StaticRevSpec};
 
 pub mod array
