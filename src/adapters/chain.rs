@@ -1,6 +1,6 @@
-use core::mem::{ManuallyDrop, MaybeUninit};
+use core::mem::ManuallyDrop;
 
-use crate::{Bulk, Contained, ContainedIntoIter, IntoBulk, IntoContained, StaticBulk};
+use crate::{Bulk, IntoBulk, IntoContained, StaticBulk};
 
 
 /// A bulk that links two bulks together, in a chain.
