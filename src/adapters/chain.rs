@@ -1,4 +1,6 @@
-use crate::{Bulk, IntoBulk};
+use core::mem::{ManuallyDrop, MaybeUninit};
+
+use crate::{Bulk, Contained, ContainedIntoIter, IntoBulk, IntoContained, StaticBulk};
 
 
 /// A bulk that links two bulks together, in a chain.
@@ -72,20 +74,23 @@ where
     B: Bulk<Item = T>
 {
     type Item = T;
-    type IntoIter = core::iter::Chain<A::IntoIter, B::IntoIter>;
+    type IntoIter = <<core::iter::Chain<A::IntoIter, B::IntoIter> as IntoContained>::IntoContained as IntoIterator>::IntoIter;
     
     fn into_iter(self) -> Self::IntoIter
     {
         let Self { a, b } = self;
-        a.into_iter()
-            .chain(b)
+        unsafe {
+            a.into_iter()
+                .chain(b)
+                .into_contained()
+                .into_iter()
+        }
     }
 }
-impl<A, B, T> Bulk for Chain<A, B>
+impl<A, B, T> const Bulk for Chain<A, B>
 where
-    A: Bulk<Item = T>,
-    B: Bulk<Item = T>,
-    Self::IntoIter: ExactSizeIterator
+    A: ~const Bulk<Item = T>,
+    B: ~const Bulk<Item = T>
 {
     fn len(&self) -> usize
     {
@@ -96,5 +101,35 @@ where
     {
         let Self { a, b } = self;
         a.is_empty() && b.is_empty()
+    }
+}
+impl<A, B, T, const N: usize, const M: usize> StaticBulk for Chain<A, B>
+where
+    A: StaticBulk<Item = T, Array = [T; N]>,
+    B: StaticBulk<Item = T, Array = [T; M]>,
+    [(); N + M]:
+{
+    type Array = [T; N + M];
+
+    fn collect_array(self) -> Self::Array
+    {
+        self.into_iter().next_chunk().ok().unwrap()
+    }
+}
+
+#[cfg(test)]
+mod test
+{
+    use crate::*;
+
+    #[test]
+    fn it_works()
+    {
+        let a = [1, 2, 3];
+        let b = [4, 5, 6];
+
+        let c = a.into_bulk().chain(b).collect::<[_; _]>();
+
+        println!("{c:?}")
     }
 }

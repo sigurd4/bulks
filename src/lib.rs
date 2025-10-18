@@ -32,6 +32,7 @@
 #![feature(inplace_iteration)]
 #![feature(try_blocks)]
 #![feature(std_internals)]
+#![feature(maybe_uninit_array_assume_init)]
 #![feature(non_lifetime_binders)]
 #![feature(const_closures)]
 #![feature(specialization)]
@@ -394,7 +395,6 @@
 
 moddef::moddef!(
     flat(pub) mod {
-        bulkable_iterator,
         adapters,
         impl_array,
         impl_iter,
