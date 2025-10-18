@@ -1,6 +1,6 @@
 use core::ptr::Pointee;
 
-use crate::{util::{CollectLength, Length}, ArrayChunks, Chain, Cloned, Copied, FromBulk, Inspect, Intersperse, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, StepBy, Take, Zip};
+use crate::{util::{CollectLength, Length}, ArrayChunks, Chain, Cloned, Copied, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, StepBy, Take, Zip};
 
 pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
 {
@@ -319,7 +319,6 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(result, "Hello ❤️ to 😀 all 🦀 people 🦀 !!");
     /// ```
     #[inline]
-    #[cfg(disabled)]
     fn intersperse_with<G>(self, separator: G) -> IntersperseWith<Self, G>
     where
         Self: Sized,
