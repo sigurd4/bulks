@@ -1,6 +1,6 @@
 use core::ptr::Pointee;
 
-use crate::{util::{CollectLength, Length}, ArrayChunks, Chain, Cloned, Copied, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, StepBy, Take, Zip};
+use crate::{util::{CollectLength, Length}, ArrayChunks, Chain, Cloned, Copied, Enumerate, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, Skip, StepBy, Take, Zip};
 
 pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
 {
@@ -409,10 +409,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(b, [(0, 'a'), (1, 'b'), (2, 'c')]);
     /// ```
     #[inline]
-    #[cfg(disabled)]
     fn enumerate(self) -> Enumerate<Self>
     where
-        Self: Sized,
+        Self: Sized
     {
         Enumerate::new(self)
     }
@@ -435,12 +434,13 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(b, [3]);
     /// ```
     #[inline]
-    #[cfg(disabled)]
-    fn skip<const N: usize>(self) -> Skip<Self, N>
+    #[allow(invalid_type_param_default)]
+    fn skip<N = [<Self as IntoIterator>::Item]>(self, n: <N as Pointee>::Metadata) -> Skip<Self, N>
     where
         Self: Sized,
+        N: Length<Elem = Self::Item> + ?Sized
     {
-        Skip::new(self)
+        Skip::new(self, n)
     }
 
     /// Creates a bulk for the first `n` elements, or fewer

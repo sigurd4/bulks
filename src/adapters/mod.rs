@@ -5,6 +5,7 @@ moddef::moddef!(
         cloned,
         copied,
         empty,
+        enumerate,
         contained,
         inspect,
         intersperse_with,
@@ -15,6 +16,7 @@ moddef::moddef!(
         once,
         repeat_n,
         rev,
+        skip,
         step_by,
         take,
         zip
