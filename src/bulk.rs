@@ -30,6 +30,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// 
     /// assert_eq!(len, 5);
     /// ```
+    #[track_caller]
     fn len(&self) -> usize;
 
     /// Returns `true` if the iterator is empty.
@@ -50,6 +51,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert!(!one_element.is_empty());
     /// ```
     #[inline]
+    #[track_caller]
     fn is_empty(&self) -> bool
     {
         self.len() == 0
@@ -78,6 +80,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(b, [0, 2, 4]);
     /// ```
     #[inline]
+    #[track_caller]
     #[allow(invalid_type_param_default)]
     fn step_by<N = [<Self as IntoIterator>::Item]>(self, step: <N as Pointee>::Metadata) -> StepBy<Self, N>
     where
@@ -128,6 +131,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(a, [1, 2, 3, 4, 5, 6]);
     /// ```
     #[inline]
+    #[track_caller]
     fn chain<U>(self, other: U) -> Chain<Self, U::IntoBulk>
     where
         Self: Sized,
@@ -230,6 +234,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// # assert_eq!(c, [(2, 3), (3, 4)]);
     /// ```
     #[inline]
+    #[track_caller]
     fn zip<U>(self, other: U) -> Zip<Self, <<U as IntoContained>::IntoContained as IntoBulk>::IntoBulk>
     where
         Self: Sized,
@@ -267,6 +272,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(hello, "Hello World !");
     /// ```
     #[inline]
+    #[track_caller]
     fn intersperse(self, separator: Self::Item) -> Intersperse<Self>
     where
         Self: Sized,
@@ -319,6 +325,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(result, "Hello ❤️ to 😀 all 🦀 people 🦀 !!");
     /// ```
     #[inline]
+    #[track_caller]
     fn intersperse_with<G>(self, separator: G) -> IntersperseWith<Self, G>
     where
         Self: Sized,
@@ -369,6 +376,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// 
     /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
     #[inline]
+    #[track_caller]
     fn map<B, F>(self, f: F) -> Map<Self, F>
     where
         Self: Sized,
@@ -409,6 +417,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(b, [(0, 'a'), (1, 'b'), (2, 'c')]);
     /// ```
     #[inline]
+    #[track_caller]
     fn enumerate(self) -> Enumerate<Self>
     where
         Self: Sized
@@ -434,6 +443,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(b, [3]);
     /// ```
     #[inline]
+    #[track_caller]
     #[allow(invalid_type_param_default)]
     fn skip<N = [<Self as IntoIterator>::Item]>(self, n: <N as Pointee>::Metadata) -> Skip<Self, N>
     where
@@ -487,6 +497,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// ```
     #[doc(alias = "limit")]
     #[inline]
+    #[track_caller]
     #[allow(invalid_type_param_default)]
     fn take<N = [<Self as IntoIterator>::Item]>(self, n: <N as Pointee>::Metadata) -> Take<Self, N>
     where
@@ -521,6 +532,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(merged, "alphabetagamma");
     /// ```
     #[inline]
+    #[track_caller]
     #[cfg(disabled)]
     fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
     where
@@ -599,6 +611,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// two-dimensional and not one-dimensional. To get a one-dimensional
     /// structure, you have to [`flatten()`](Bulk::flatten) again.
     #[inline]
+    #[track_caller]
     #[cfg(disabled)]
     fn flatten(self) -> Flatten<Self>
     where
@@ -679,6 +692,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(w, [true, true, false, true, true, false]);
     /// ```
     #[inline]
+    #[track_caller]
     #[cfg(disabled)]
     fn map_windows<F, R, const N: usize>(self, f: F) -> MapWindows<Self, F, N>
     where
@@ -764,6 +778,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Sum: 3
     /// ```
     #[inline]
+    #[track_caller]
     fn inspect<F>(self, f: F) -> Inspect<Self, F>
     where
         Self: Sized,
@@ -791,6 +806,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(b, [2, 5, 3, 4]);
     /// ```
     #[inline]
+    #[track_caller]
     fn mutate<F>(self, f: F) -> Mutate<Self, F>
     where
         Self: Sized,
@@ -890,6 +906,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(result, Ok([1, 3]));
     /// ```
     #[inline]
+    #[track_caller]
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
     #[allow(invalid_type_param_default)]
     fn collect<B, L = <B as CollectLength<<Self as IntoIterator>::Item>>::Length>(self) -> B
@@ -920,6 +937,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(b, [3, 2, 1]);
     /// ```
     #[inline]
+    #[track_caller]
     #[doc(alias = "reverse")]
     fn rev(self) -> Rev<Self>
     where
@@ -951,6 +969,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(v_copied, [1, 2, 3]);
     /// assert_eq!(v_map, [1, 2, 3]);
     /// ```
+    #[inline]
+    #[track_caller]
     fn copied<'a, T>(self) -> Copied<Self>
     where
         T: Copy + 'a,
@@ -987,6 +1007,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(v_cloned, [1, 2, 3]);
     /// assert_eq!(v_map, [1, 2, 3]);
     /// ```
+    #[inline]
+    #[track_caller]
     fn cloned<'a, T>(self) -> Cloned<Self>
     where
         T: Clone + 'a,
@@ -1032,6 +1054,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     ///     assert_eq!(x + y + z, 4);
     /// }
     /// ```
+    #[inline]
     #[track_caller]
     fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
     where
