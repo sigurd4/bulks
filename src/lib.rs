@@ -33,6 +33,7 @@
 #![feature(try_blocks)]
 #![feature(std_internals)]
 #![feature(maybe_uninit_array_assume_init)]
+#![feature(const_result_trait_fn)]
 #![feature(non_lifetime_binders)]
 #![feature(const_closures)]
 #![feature(specialization)]

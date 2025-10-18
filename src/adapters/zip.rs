@@ -147,7 +147,7 @@ mod test
         let a = [1, 3, 5];
         let b = [2, 4, 6];
         let bulk = a.into_bulk().zip(b).map(|(a, b)| a + b);
-        let c = bulk.collect::<[_; _]>();
+        let c = bulk.collect::<[_; _], [_; _]>();
         println!("{c:?}")
     }
 }

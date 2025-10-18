@@ -7,6 +7,7 @@ moddef::moddef!(
         empty,
         contained,
         inspect,
+        intersperse,
         map,
         mutate,
         once_with,
