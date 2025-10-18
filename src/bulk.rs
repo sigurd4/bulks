@@ -1,6 +1,6 @@
 use core::ptr::Pointee;
 
-use crate::{util::{CollectLength, Length}, ArrayChunks, Cloned, Copied, FromBulk, Inspect, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, StepBy, Take, Zip};
+use crate::{util::{CollectLength, Length}, ArrayChunks, Chain, Cloned, Copied, FromBulk, Inspect, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, StepBy, Take, Zip};
 
 pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
 {
@@ -128,11 +128,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(a, [1, 2, 3, 4, 5, 6]);
     /// ```
     #[inline]
-    #[cfg(disabled)]
-    fn chain<U>(self, other: U) -> Chain<Self, U::IntoIter>
+    fn chain<U>(self, other: U) -> Chain<Self, U::IntoBulk>
     where
         Self: Sized,
-        U: IntoBulk<Item = Self::Item>,
+        U: ~const IntoBulk<Item = Self::Item>,
     {
         Chain::new(self, other.into_bulk())
     }

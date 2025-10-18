@@ -1,6 +1,7 @@
 moddef::moddef!(
     flat(pub) mod {
         array_chunks,
+        chain,
         cloned,
         copied,
         empty,
