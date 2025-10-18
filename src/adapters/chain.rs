@@ -103,17 +103,95 @@ where
         a.is_empty() && b.is_empty()
     }
 }
-impl<A, B, T, const N: usize, const M: usize> StaticBulk for Chain<A, B>
+impl<A, B, T, const N: usize, const M: usize> const StaticBulk for Chain<A, B>
 where
-    A: StaticBulk<Item = T, Array = [T; N]>,
-    B: StaticBulk<Item = T, Array = [T; M]>,
+    A: ~const StaticBulk<Item = T, Array = [T; N]> + ~const StaticChainSpec<N, M, B>,
+    B: ~const StaticBulk<Item = T, Array = [T; M]>,
     [(); N + M]:
 {
     type Array = [T; N + M];
 
     fn collect_array(self) -> Self::Array
     {
-        self.into_iter().next_chunk().ok().unwrap()
+        A::chain_collect_array(self)
+    }
+}
+
+const trait StaticChainSpec<const N: usize, const M: usize, Rhs>: StaticBulk<Array = [<Self as IntoIterator>::Item; N]>
+where
+    Rhs: StaticBulk<Array = [Self::Item; M], Item = Self::Item>,
+    [(); N + M]:
+{
+    fn chain_collect_array(chain: Chain<Self, Rhs>) -> [Self::Item; N + M];
+}
+impl<A, B, T, const N: usize, const M: usize> StaticChainSpec<N, M, B> for A
+where
+    A: StaticBulk<Item = T, Array = [T; N]>,
+    B: StaticBulk<Item = T, Array = [T; M]>,
+    [(); N + M]:
+{
+    default fn chain_collect_array(chain: Chain<Self, B>) -> [Self::Item; N + M]
+    {
+        chain.into_iter().next_chunk().ok().unwrap()
+    }
+}
+impl<A, B, T, const N: usize, const M: usize> const StaticChainSpec<N, M, B> for A
+where
+    A: const StaticBulk<Item = T, Array = [T; N]>,
+    B: const StaticBulk<Item = T, Array = [T; M]>,
+    [(); N + M]:
+{
+    fn chain_collect_array(chain: Chain<Self, B>) -> [T; N + M]
+    {
+        fn rt<A, B, T, const N: usize, const M: usize>(chain: Chain<A, B>) -> [T; N + M]
+        where
+            A: StaticBulk<Item = T, Array = [T; N]>,
+            B: StaticBulk<Item = T, Array = [T; M]>,
+            [(); N + M]:
+        {
+            chain.into_iter().next_chunk().ok().unwrap()
+        }
+        const fn ct<A, B, T, const N: usize, const M: usize>(chain: Chain<A, B>) -> [T; N + M]
+        where
+            A: const StaticBulk<Item = T, Array = [T; N]>,
+            B: const StaticBulk<Item = T, Array = [T; M]>,
+            [(); N + M]:
+        {
+            #[repr(C)]
+            struct Pair<A, B>
+            {
+                a: A,
+                b: B
+            }
+
+            union Concat<T, const N: usize, const M: usize>
+            where
+                [(); N + M]:
+            {
+                pair: ManuallyDrop<Pair<[T; N], [T; M]>>,
+                concat: ManuallyDrop<[T; N + M]>
+            }
+
+            let Chain { a, b } = &chain;
+            let a = unsafe {
+                core::ptr::read(a)
+            };
+            let b = unsafe {
+                core::ptr::read(b)
+            };
+            core::mem::forget(chain);
+            let ab = Concat {
+                pair: ManuallyDrop::new(Pair {
+                    a: a.collect_array(),
+                    b: b.collect_array()
+                })
+            };
+            unsafe {
+                ManuallyDrop::into_inner(ab.concat)
+            }
+        }
+        
+        core::intrinsics::const_eval_select((chain,), ct, rt)
     }
 }
 
@@ -125,10 +203,12 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = [1, 2, 3];
-        let b = [4, 5, 6];
-
-        let c = a.into_bulk().chain(b).collect::<[_; _]>();
+        let c = const {
+            let a = [1, 2, 3];
+            let b = [4, 5, 6];
+            
+            a.into_bulk().chain(b).collect::<[_; _]>()
+        };
 
         println!("{c:?}")
     }

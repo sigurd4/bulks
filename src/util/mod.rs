@@ -6,6 +6,6 @@ moddef::moddef!(
         collect_length,
         infinite_iterator,
         length,
-        mutator
+        mutator,
     }
 );
