@@ -6,6 +6,7 @@ moddef::moddef!(
         copied,
         empty,
         enumerate,
+        flat_map,
         contained,
         inspect,
         intersperse_with,
