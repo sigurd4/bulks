@@ -1,6 +1,6 @@
 use core::ptr::Pointee;
 
-use crate::{util::{CollectLength, Length}, ArrayChunks, Chain, Cloned, Copied, Enumerate, FlatMap, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, Skip, StaticBulk, StepBy, Take, Zip};
+use crate::{util::{CollectLength, Length}, ArrayChunks, Chain, Cloned, Copied, Enumerate, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, Skip, StaticBulk, StepBy, Take, Zip};
 
 pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
 {
@@ -611,11 +611,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// structure, you have to [`flatten()`](Bulk::flatten) again.
     #[inline]
     #[track_caller]
-    #[cfg(disabled)]
     fn flatten(self) -> Flatten<Self>
     where
         Self: Sized,
-        Self::Item: IntoBulk,
+        Self::Item: IntoBulk<IntoBulk: StaticBulk>,
     {
         Flatten::new(self)
     }
