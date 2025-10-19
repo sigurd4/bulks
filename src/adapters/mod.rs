@@ -12,6 +12,7 @@ moddef::moddef!(
         inspect,
         intersperse_with,
         intersperse,
+        map_windows,
         map,
         mutate,
         once_with,

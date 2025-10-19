@@ -1,6 +1,6 @@
 use core::ptr::Pointee;
 
-use crate::{util::{CollectLength, Length}, ArrayChunks, Chain, Cloned, Copied, Enumerate, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, Mutate, Rev, Skip, StaticBulk, StepBy, Take, Zip};
+use crate::{util::{CollectLength, Length}, ArrayChunks, Chain, Cloned, Copied, Enumerate, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, Zip};
 
 pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
 {
@@ -691,7 +691,6 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// ```
     #[inline]
     #[track_caller]
-    #[cfg(disabled)]
     fn map_windows<F, R, const N: usize>(self, f: F) -> MapWindows<Self, F, N>
     where
         Self: Sized,
