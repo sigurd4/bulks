@@ -8,10 +8,14 @@ use array_trait::AsSlice;
 )]
 pub const trait Length: AsSlice
 {
+    type LengthSpec: const LengthSpec<Length<Self::Elem> = Self, Metadata = <Self as Pointee>::Metadata>;
+
     fn len_metadata(n: <Self as Pointee>::Metadata) -> usize;
 }
 impl<T> const Length for [T]
 {
+    type LengthSpec = usize;
+
     fn len_metadata(n: <Self as Pointee>::Metadata) -> usize
     {
         n
@@ -19,8 +23,38 @@ impl<T> const Length for [T]
 }
 impl<T, const N: usize> const Length for [T; N]
 {
+    type LengthSpec = [(); N];
+
     fn len_metadata((): <Self as Pointee>::Metadata) -> usize
     {
         N
+    }
+}
+
+pub const trait LengthSpec: Sized
+{
+    type Length<T>: const Length<Elem = T, LengthSpec = Self> + Pointee<Metadata = Self::Metadata> + ?Sized;
+    type Metadata: Sized;
+    
+    fn len_metadata(self) -> Self::Metadata;
+}
+impl const LengthSpec for usize
+{
+    type Length<T> = [T];
+    type Metadata = usize;
+
+    fn len_metadata(self) -> Self::Metadata
+    {
+        self
+    }
+}
+impl<const N: usize> const LengthSpec for [(); N]
+{
+    type Length<T> = [T; N];
+    type Metadata = ();
+
+    fn len_metadata(self) -> Self::Metadata
+    {
+        
     }
 }

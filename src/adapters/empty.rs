@@ -1,10 +1,10 @@
-use core::{fmt, marker::PhantomData};
+use core::{fmt, marker::{Destruct, PhantomData}};
 
-use crate::{Bulk, IntoBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, StaticBulk};
 
 /// Creates a bulk that yields nothing.
 /// 
-/// Analogous to [`core::iter::empty`].
+/// Similar to [`core::iter::empty`].
 ///
 /// # Examples
 ///
@@ -63,24 +63,58 @@ impl<T> const Bulk for Empty<T>
     {
         0
     }
-}
-impl<T> const StaticBulk for Empty<T>
-{
-    type Array = [T; 0];
-
-    fn collect_array(self) -> Self::Array
+    fn is_empty(&self) -> bool
     {
-        []
+        true
+    }
+    fn for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let _ = f;
+    }
+    fn try_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        let _ = f;
+        R::from_output(())
     }
 }
+impl<T> const DoubleEndedBulk for Empty<T>
+{
+    fn rev_for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let _ = f;
+    }
+    fn try_rev_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        let _ = f;
+        R::from_output(())
+    }
+}
+impl<T> StaticBulk for Empty<T>
+{
+    type Array<U> = [U; 0];
+}
 
-pub const trait EmptyBulk: ~const StaticBulk<Array = [<Self as IntoIterator>::Item; 0]>
+pub const trait EmptyBulk: ~const DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 0]>
 {
 
 }
 impl<T> const EmptyBulk for T
 where
-    T: ~const StaticBulk<Array = [<Self as IntoIterator>::Item; 0]>
+    T: ~const DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 0]>
 {
 
 }
@@ -94,7 +128,7 @@ mod test
     fn it_works()
     {
         let a = const {
-            crate::empty::<u8>().collect::<[_; _]>()
+            crate::empty::<u8>().collect_array()
         };
         assert_eq!(a, [])
     }

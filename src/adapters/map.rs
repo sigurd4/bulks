@@ -1,6 +1,6 @@
-use core::fmt;
+use core::{fmt, marker::Destruct};
 
-use crate::{Bulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, StaticBulk};
 
 /// A bulk that maps the values of `bulk` with `f`.
 ///
@@ -108,44 +108,107 @@ where
 }
 impl<I, F> const Bulk for Map<I, F>
 where
-    I: ~const Bulk,
-    F: FnMut<(I::Item,)>
+    I: ~const Bulk<Item: ~const Destruct>,
+    F: ~const FnMut<(I::Item,)> + ~const Destruct
 {
     fn len(&self) -> usize
     {
-        self.bulk.len()
+        let Self { bulk, f: _ } = self;
+        bulk.len()
     }
 
     fn is_empty(&self) -> bool
     {
-        self.bulk.is_empty()
+        let Self { bulk, f: _ } = self;
+        bulk.is_empty()
+    }
+    fn for_each<FF>(self, f: FF)
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { bulk, f: map } = self;
+        bulk.for_each(Closure {
+            map,
+            f
+        })
+    }
+    fn try_for_each<FF, R>(self, f: FF) -> R
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk, f: map } = self;
+        bulk.try_for_each(Closure {
+            map,
+            f
+        })
     }
 }
-impl<I, F, T, U, const N: usize> StaticBulk for Map<I, F>
+impl<I, F> const DoubleEndedBulk for Map<I, F>
 where
-    I: StaticBulk<Item = T, Array = [T; N]>,
-    F: FnMut(T) -> U
+    I: ~const DoubleEndedBulk<Item: ~const Destruct>,
+    F: ~const FnMut<(I::Item,)> + ~const Destruct
 {
-    type Array = [Self::Item; N];
-
-    fn collect_array(self) -> Self::Array
+    fn rev_for_each<FF>(self, f: FF)
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) + ~const Destruct
     {
-        let Self { bulk, f } = self;
-        bulk.map_collect_array(f)
+        let Self { bulk, f: map } = self;
+        bulk.rev_for_each(Closure {
+            map,
+            f
+        })
+    }
+    fn try_rev_for_each<FF, R>(self, f: FF) -> R
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk, f: map } = self;
+        bulk.try_rev_for_each(Closure {
+            map,
+            f
+        })
     }
 }
-
-pub(crate) trait StaticMapSpec<const N: usize>: StaticBulk<Array = [<Self as IntoIterator>::Item; N]>
+impl<I, F> StaticBulk for Map<I, F>
+where
+    I: StaticBulk,
+    F: FnMut<(I::Item,)>
 {
-    fn map_collect_array<U>(self, f: impl FnMut(Self::Item) -> U) -> [U; N];
+    type Array<U> = I::Array<U>;
 }
 
-impl<T, I, const N: usize> StaticMapSpec<N> for I
-where
-    I: StaticBulk<Item = T, Array = [T; N]>
+struct Closure<M, F>
 {
-    default fn map_collect_array<U>(self, f: impl FnMut(T) -> U) -> [U; N]
+    map: M,
+    f: F
+}
+impl<M, F, T, U, R> const FnOnce<(T,)> for Closure<M, F>
+where
+    M: ~const FnOnce(T) -> U,
+    F: ~const FnOnce(U) -> R
+{
+    type Output = R;
+
+    extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
     {
-        self.into_iter().map(f).next_chunk().ok().unwrap()
+        let Self { map, f } = self;
+        f(map(x))
+    }
+}
+impl<M, F, T, U, R> const FnMut<(T,)> for Closure<M, F>
+where
+    M: ~const FnMut(T) -> U,
+    F: ~const FnMut(U) -> R
+{
+    extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+    {
+        let Self { map, f } = self;
+        f(map(x))
     }
 }

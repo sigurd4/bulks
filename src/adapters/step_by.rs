@@ -1,6 +1,6 @@
-use core::ptr::Pointee;
+use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
-use crate::{util::Length, Bulk, StaticBulk};
+use crate::{util::{Length, LengthSpec}, Bulk, StaticBulk};
 
 /// A bulk that steps by a custom amount.
 ///
@@ -22,10 +22,11 @@ where
     T: Bulk,
     N: Length<Elem = T::Item> + ?Sized
 {
-    pub(crate) const fn new(bulk: T, step: <N as Pointee>::Metadata) -> StepBy<T, N>
+    pub(crate) const fn new(bulk: T, step: N::LengthSpec) -> StepBy<T, N>
     where
         N: ~const Length<Elem = T::Item>
     {
+        let step = step.len_metadata();
         assert!(N::len_metadata(step) != 0);
         Self { bulk, step }
     }
@@ -48,7 +49,7 @@ where
 }
 impl<T, N> const Bulk for StepBy<T, N>
 where
-    T: ~const Bulk,
+    T: ~const Bulk<Item: ~const Destruct>,
     N: ~const Length<Elem = T::Item> + ?Sized
 {
     fn len(&self) -> usize
@@ -56,18 +57,121 @@ where
         let Self { bulk, step } = self;
         bulk.len()/N::len_metadata(*step)
     }
+
+    fn for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        struct Closure<F>
+        {
+            f: F,
+            n: usize,
+            step: usize
+        }
+        impl<F, T> const FnOnce<(T,)> for Closure<F>
+        where
+            T: ~const Destruct,
+            F: ~const FnOnce(T) + ~const Destruct
+        {
+            type Output = ();
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                let Self { f, n, step: _ } = self;
+                if n == 0
+                {
+                    f(x)
+                }
+            }
+        }
+        impl<F, T> const FnMut<(T,)> for Closure<F>
+        where
+            T: ~const Destruct,
+            F: ~const FnMut(T)
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                let Self { f, n, step } = self;
+                if *n == 0
+                {
+                    f(x)
+                }
+                *n += 1;
+                *n %= *step
+            }
+        }
+
+        let Self { bulk, step } = self;
+        bulk.for_each(Closure {
+            f,
+            n: 0,
+            step: N::len_metadata(step)
+        })
+    }
+    fn try_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        struct Closure<F>
+        {
+            f: F,
+            n: usize,
+            step: usize
+        }
+        impl<F, T, R> const FnOnce<(T,)> for Closure<F>
+        where
+            T: ~const Destruct,
+            F: ~const FnOnce(T) -> R + ~const Destruct,
+            R: ~const Try<Output = (), Residual: ~const Destruct>
+        {
+            type Output = R;
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                let Self { f, n, step: _ } = self;
+                if n == 0
+                {
+                    f(x)?
+                }
+                R::from_output(())
+            }
+        }
+        impl<F, T, R> const FnMut<(T,)> for Closure<F>
+        where
+            T: ~const Destruct,
+            F: ~const FnMut(T) -> R,
+            R: ~const Try<Output = (), Residual: ~const Destruct>
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                let Self { f, n, step } = self;
+                if *n == 0
+                {
+                    f(x)?
+                }
+                *n += 1;
+                *n %= *step;
+                R::from_output(())
+            }
+        }
+
+        let Self { bulk, step } = self;
+        bulk.try_for_each(Closure {
+            f,
+            n: 0,
+            step: N::len_metadata(step)
+        })
+    }
 }
 impl<T, A, const N: usize, const M: usize> StaticBulk for StepBy<T, [A; N]>
 where
-    T: StaticBulk<Item = A, Array = [A; M]>,
-    [A; M/N]:
+    T: StaticBulk<Item = A, Array<A> = [A; M]>,
+    [A; M.div_ceil(N)]:
 {
-    type Array = [A; M/N];
-
-    fn collect_array(self) -> Self::Array
-    {
-        self.into_iter().next_chunk().ok().unwrap()
-    }
+    type Array<U> = [U; M.div_ceil(N)];
 }
 
 #[cfg(test)]
@@ -79,8 +183,10 @@ mod test
     fn it_works()
     {
         let a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let a = a.into_bulk().step_by::<[_; 2]>(()).collect::<[_; _]>();
+        let a_even = a.into_bulk().step_by([(); 2]).collect::<[_; _]>();
+        println!("{a_even:?}");
 
-        println!("{a:?}")
+        let a_odd = a.into_bulk().skip([(); 1]).step_by([(); 2]).collect::<[_; _]>();
+        println!("{a_odd:?}");
     }
 }

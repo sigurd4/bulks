@@ -1,6 +1,6 @@
-use core::fmt;
+use core::{fmt, marker::Destruct};
 
-use crate::{Bulk, Once, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, Once, StaticBulk};
 
 /// Creates a bulk that lazily generates a value exactly once by invoking
 /// the provided closure.
@@ -38,24 +38,6 @@ pub struct OnceWith<F>(F)
 where
     F: FnOnce<()>;
 
-impl<F, A> OnceWith<F>
-where
-    F: FnOnce() -> A
-{
-    const fn into_inner(self) -> F
-    {
-        crate::const_inner!(
-            for<{F, A}> OnceWith (f) in self => OnceWith<F> => F
-            where {
-                F: FnOnce() -> A
-            }
-            {
-                f
-            }
-        )
-    }
-}
-
 impl<F, A> fmt::Debug for OnceWith<F>
 where
     F: FnOnce() -> A
@@ -80,23 +62,58 @@ where
 }
 impl<F, A> const Bulk for OnceWith<F>
 where
-    F: FnOnce() -> A
+    F: ~const FnOnce() -> A
 {
     fn len(&self) -> usize
     {
         1
     }
+    fn is_empty(&self) -> bool
+    {
+        false
+    }
+    fn for_each<FF>(self, mut f: FF)
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        f(self.0())
+    }
+    fn try_for_each<FF, R>(self, mut f: FF) -> R
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = ()>
+    {
+        f(self.0())
+    }
 }
-impl<F, A> const StaticBulk for OnceWith<F>
+impl<F, A> const DoubleEndedBulk for OnceWith<F>
 where
     F: ~const FnOnce() -> A
 {
-    type Array = [A; 1];
-
-    default fn collect_array(self) -> Self::Array
+    fn rev_for_each<FF>(self, f: FF)
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) + ~const Destruct
     {
-        Once::from(self).collect_array()
+        self.for_each(f);
     }
+    fn try_rev_for_each<FF, R>(self, f: FF) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        self.try_for_each(f)
+    }
+}
+impl<F, A> StaticBulk for OnceWith<F>
+where
+    F: FnOnce() -> A
+{
+    type Array<U> = [U; 1];
 }
 impl<F, A> const From<OnceWith<F>> for Once<A>
 where
@@ -104,7 +121,7 @@ where
 {
     fn from(value: OnceWith<F>) -> Self
     {
-        crate::once(value.into_inner()())
+        crate::once(value.0())
     }
 }
 

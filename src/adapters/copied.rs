@@ -1,4 +1,6 @@
-use crate::{Bulk, Rev, StaticBulk};
+use core::marker::Destruct;
+
+use crate::{Bulk, DoubleEndedBulk, StaticBulk};
 
 /// A bulk that copies the elements of an underlying bulk.
 ///
@@ -25,20 +27,6 @@ where
             bulk
         }
     }
-
-    pub(crate) const fn into_inner(self) -> I
-    {
-        crate::const_inner!(
-            for<{'a, I, T}> Copied{ bulk } in self => Copied<I> => I
-            where {
-                I: Bulk<Item = &'a T>,
-                T: Copy + 'a
-            }
-            {
-                bulk
-            }
-        )
-    }
 }
 
 impl<'a, I, T> const Default for Copied<I>
@@ -62,7 +50,8 @@ where
 
     fn into_iter(self) -> Self::IntoIter
     {
-        self.into_inner().into_iter().copied()
+        let Self { bulk } = self;
+        bulk.into_iter().copied()
     }
 }
 impl<'a, I, T> const Bulk for Copied<I>
@@ -81,45 +70,105 @@ where
         let Self { bulk } = self;
         bulk.is_empty()
     }
+    
+    fn for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { bulk } = self;
+        bulk.for_each(Closure {
+            f
+        })
+    }
+    
+    fn try_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk } = self;
+        bulk.try_for_each(Closure {
+            f
+        })
+    }
 }
-impl<'a, I, T, const N: usize> const StaticBulk for Copied<I>
+impl<'a, I, T> const DoubleEndedBulk for Copied<I>
+where
+    I: ~const DoubleEndedBulk<Item = &'a T>,
+    T: Copy + 'a
+{
+    fn rev_for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { bulk } = self;
+        bulk.rev_for_each(Closure {
+            f
+        })
+    }
+    
+    fn try_rev_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk } = self;
+        bulk.try_rev_for_each(Closure {
+            f
+        })
+    }
+}
+impl<'a, I, T, const N: usize> StaticBulk for Copied<I>
 where 
-    I: ~const StaticCopiedSpec<N, Item = &'a T, Array = [&'a T; N]>,
+    I: StaticBulk<Item = &'a T, Array<&'a T> = [&'a T; N]>,
     T: Copy + 'a
 {
-    type Array = [Self::Item; N];
+    type Array<U> = [U; N];
+}
 
-    fn collect_array(self) -> Self::Array
+struct Closure<F>
+{
+    f: F
+}
+impl<F, T, R> const FnOnce<(&T,)> for Closure<F>
+where
+    F: ~const FnOnce(T) -> R,
+    T: Copy
+{
+    type Output = R;
+
+    extern "rust-call" fn call_once(self, (x,): (&T,)) -> Self::Output
     {
-        self.into_inner().copied_collect_array()
+        (self.f)(*x)
+    }
+}
+impl<F, T, R> const FnMut<(&T,)> for Closure<F>
+where
+    F: ~const FnMut(T) -> R,
+    T: Copy
+{
+    extern "rust-call" fn call_mut(&mut self, (x,): (&T,)) -> Self::Output
+    {
+        (self.f)(*x)
     }
 }
 
-pub(crate) const trait StaticCopiedSpec<const N: usize>: ~const StaticBulk<Array = [<Self as IntoIterator>::Item; N]>
-where
-    core::iter::Copied<Self::IntoIter>: Iterator<Item: Copy>
+#[cfg(test)]
+mod test
 {
-    fn copied_collect_array(self) -> [<core::iter::Copied<Self::IntoIter> as Iterator>::Item; N];
-}
+    use crate::*;
 
-impl<'a, I, T, const N: usize> StaticCopiedSpec<N> for I
-where
-    I: StaticBulk<Item = &'a T, Array = [&'a T; N]>,
-    T: Copy + 'a
-{
-    default fn copied_collect_array(self) -> [T; N]
+    #[test]
+    fn it_works()
     {
-        self.into_iter().copied().next_chunk().ok().unwrap()
-    }
-}
+        let a = ['v', 'e', 'r', 'y', 'c', 'o', 'o', 'l'];
+        let a = a.bulk().collect_array();
+        let b = a.into_bulk().copied().collect_array();
 
-impl<'a, I, T, const N: usize> StaticCopiedSpec<N> for Rev<I>
-where
-    I: StaticBulk<Item = &'a T, Array = [&'a T; N], IntoIter: DoubleEndedIterator>,
-    T: Copy + 'a
-{
-    fn copied_collect_array(self) -> [T; N]
-    {
-        self.into_inner().copied().rev().collect()
+        println!("{b:?}")
     }
 }

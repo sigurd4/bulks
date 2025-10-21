@@ -1,6 +1,6 @@
-use core::{fmt, marker::Destruct};
+use core::{fmt, marker::Destruct, ops::Try};
 
-use crate::{Bulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, StaticBulk};
 
 /// A bulk that calls a function with a reference to each element before
 /// yielding it.
@@ -61,73 +61,138 @@ where
 impl<I, F> const Bulk for Inspect<I, F>
 where
     I: ~const Bulk,
-    F: FnMut(&I::Item)
+    F: ~const FnMut(&I::Item) + ~const Destruct
 {
     fn len(&self) -> usize
     {
-        self.bulk.len()
+        let Self { bulk, f: _ } = self;
+        bulk.len()
     }
 
     fn is_empty(&self) -> bool
     {
-        self.bulk.is_empty()
+        let Self { bulk, f: _ } = self;
+        bulk.is_empty()
+    }
+
+    fn for_each<FF>(self, f: FF)
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { bulk, f: inspect } = self;
+        bulk.for_each(Closure {
+            inspect,
+            f
+        });
+    }
+    fn try_for_each<FF, R>(self, f: FF) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk, f: inspect } = self;
+        bulk.try_for_each(Closure {
+            inspect,
+            f
+        })
+    }
+}
+impl<I, F> const DoubleEndedBulk for Inspect<I, F>
+where
+    I: ~const DoubleEndedBulk,
+    F: ~const FnMut(&I::Item) + ~const Destruct
+{
+    fn rev_for_each<FF>(self, f: FF)
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { bulk, f: inspect } = self;
+        bulk.rev_for_each(Closure {
+            inspect,
+            f
+        });
+    }
+    fn try_rev_for_each<FF, R>(self, f: FF) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk, f: inspect } = self;
+        bulk.try_rev_for_each(Closure {
+            inspect,
+            f
+        })
     }
 }
 
-impl<I, F, T, const N: usize> const StaticBulk for Inspect<I, F>
+impl<I, F> StaticBulk for Inspect<I, F>
 where
-    I: ~const StaticBulk<Item = T, Array = [T; N]> + ~const StaticInspectSpec<F>,
-    F: ~const FnMut(&T) + ~const Destruct
+    I: StaticBulk,
+    F: FnMut(&I::Item)
 {
-    type Array = [Self::Item; N];
+    type Array<U> = I::Array<U>;
+}
 
-    fn collect_array(self) -> Self::Array
+struct Closure<F, FF>
+{
+    inspect: F,
+    f: FF
+}
+impl<F, FF, T, R> const FnOnce<(T,)> for Closure<F, FF>
+where
+    F: ~const FnOnce(&T),
+    FF: ~const FnOnce(T) -> R
+{
+    type Output = R;
+
+    extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
     {
-        I::inspect_collect_array(self)
+        (self.inspect)(&x);
+        (self.f)(x)
+    }
+}
+impl<F, FF, T, R> const FnMut<(T,)> for Closure<F, FF>
+where
+    F: ~const FnMut(&T),
+    FF: ~const FnMut(T) -> R
+{
+    extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+    {
+        (self.inspect)(&x);
+        (self.f)(x)
     }
 }
 
-const trait StaticInspectSpec<F>: ~const StaticBulk + Sized
-where
-    F: FnMut(&<Self as IntoIterator>::Item)
+#[cfg(test)]
+mod test
 {
-    fn inspect_collect_array(bulk: Inspect<Self, F>) -> Self::Array;
-}
-impl<I, F, T, const N: usize> StaticInspectSpec<F> for I
-where
-    I: StaticBulk<Item = T, Array = [T; N]>,
-    F: FnMut(&T)
-{
-    default fn inspect_collect_array(bulk: Inspect<Self, F>) -> [T; N]
+    use crate::*;
+
+    #[test]
+    fn it_works()
     {
-        let Inspect { bulk, mut f } = bulk;
-        let array = bulk.collect_array();
-        for x in &array
-        {
-            f(x)
-        }
-        array
-    }
-}
-impl<I, F, T, const N: usize> const StaticInspectSpec<F> for I
-where
-    I: ~const StaticBulk<Item = T, Array = [T; N]>,
-    F: ~const FnMut(&T) + ~const Destruct
-{
-    fn inspect_collect_array(bulk_inspect: Inspect<Self, F>) -> [T; N]
-    {
-        let Inspect { bulk, f } = &bulk_inspect;
-        let bulk = unsafe {core::ptr::read(bulk)};
-        let mut f = unsafe {core::ptr::read(f)};
-        core::mem::forget(bulk_inspect);
+        let a = ['0', '1', '2', '3', '4', '5', '6', '7'];
+
+        let b = a.into_bulk()
+            .map(|a| a.to_string().parse::<usize>())
+            .try_collect_array()
+            .unwrap();
+
+        println!("{b:?}");
         
-        let array = bulk.collect_array();
-        let mut i = 0;
-        while i < N
-        {
-            f(&array[i]);
-            i += 1
-        }
-        array
+        let c = b.into_bulk()
+            .enumerate()
+            .inspect(|&(i, a)| assert_eq!(i, a))
+            .map(|(_, a)| a.to_string().into_chars().next())
+            .try_collect_array()
+            .unwrap();
+
+        assert_eq!(a, c);
     }
 }

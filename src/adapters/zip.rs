@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{Bulk, ContainedIntoIter, IntoBulk, IntoContained, IntoContainedBy, StaticBulk};
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, StaticBulk};
 
 /// Converts the arguments to bulks and zips them.
 ///
@@ -94,34 +94,66 @@ where
         }
     }
 }
-impl<A, B> const Bulk for Zip<A, B>
+impl<A, B> Bulk for Zip<A, B>
 where
-    A: ~const Bulk,
-    B: ~const Bulk
+    A: Bulk,
+    B: Bulk
 {
     fn len(&self) -> usize
     {
         let Self { a, b } = self;
-        a.len().min(b.len())
+        Ord::min(a.len(), b.len())
     }
     fn is_empty(&self) -> bool
     {
         let Self { a, b } = self;
         a.is_empty() || b.is_empty()
     }
+    fn for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: FnMut(Self::Item)
+    {
+        self.into_iter().for_each(f)
+    }
+    fn try_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> R,
+        R: core::ops::Try<Output = ()>
+    {
+        self.into_iter().try_for_each(f)
+    }
+}
+impl<A, B> DoubleEndedBulk for Zip<A, B>
+where
+    A: DoubleEndedBulk,
+    B: DoubleEndedBulk,
+    Self::IntoIter: DoubleEndedIterator
+{
+    fn rev_for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: FnMut(Self::Item)
+    {
+        self.into_iter().rev().for_each(f)
+    }
+    fn try_rev_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> R,
+        R: core::ops::Try<Output = ()>
+    {
+        self.into_iter().rev().try_for_each(f)
+    }
 }
 impl<A, B, const N: usize, const M: usize> StaticBulk for Zip<A, B>
 where
-    A: StaticBulk<Array = [<A as IntoIterator>::Item; N]>,
-    B: StaticBulk<Array = [<B as IntoIterator>::Item; M]>,
+    A: StaticBulk<Array<<A as IntoIterator>::Item> = [<A as IntoIterator>::Item; N]>,
+    B: StaticBulk<Array<<B as IntoIterator>::Item> = [<B as IntoIterator>::Item; M]>,
     [(); N.min(M)]:
 {
-    type Array = [Self::Item; N.min(M)];
-
-    fn collect_array(self) -> Self::Array
-    {
-        self.into_iter().next_chunk().ok().unwrap()
-    }
+    type Array<U> = [U; N.min(M)];
 }
 // TODO: Specialize
 

@@ -49,11 +49,28 @@ where
     {
         self.inner.len()
     }
-
     #[inline]
     fn is_empty(&self) -> bool
     {
         self.inner.is_empty()
+    }
+
+    #[inline]
+    fn for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: FnMut(Self::Item)
+    {
+        self.inner.for_each(f)
+    }
+    #[inline]
+    fn try_for_each<F, R>(mut self, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> R,
+        R: core::ops::Try<Output = ()>
+    {
+        self.inner.try_for_each(f)
     }
 }
 

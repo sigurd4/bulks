@@ -1,4 +1,6 @@
-use crate::{Bulk, Rev, StaticBulk};
+use core::marker::Destruct;
+
+use crate::{Bulk, DoubleEndedBulk, StaticBulk};
 
 /// A bulk that clones the elements of an underlying bulk.
 ///
@@ -25,20 +27,6 @@ where
             bulk
         }
     }
-
-    pub(crate) const fn into_inner(self) -> I
-    {
-        crate::const_inner!(
-            for<{'a, I, T}> Cloned{ bulk } in self => Cloned<I> => I
-            where {
-                I: Bulk<Item = &'a T>,
-                T: Clone + 'a
-            }
-            {
-                bulk
-            }
-        )
-    }
 }
 
 impl<'a, I, T> const Default for Cloned<I>
@@ -62,13 +50,14 @@ where
 
     fn into_iter(self) -> Self::IntoIter
     {
-        self.into_inner().into_iter().cloned()
+        let Self { bulk } = self;
+        bulk.into_iter().cloned()
     }
 }
 impl<'a, I, T> const Bulk for Cloned<I>
 where
     I: ~const Bulk<Item = &'a T>,
-    T: Clone + 'a
+    T: ~const Clone + 'a
 {
     fn len(&self) -> usize
     {
@@ -81,45 +70,107 @@ where
         let Self { bulk } = self;
         bulk.is_empty()
     }
+    
+    fn for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { bulk } = self;
+        bulk.for_each(Closure {
+            f
+        })
+    }
+    
+    fn try_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk } = self;
+        bulk.try_for_each(Closure {
+            f
+        })
+    }
 }
-impl<'a, I, T, const N: usize> const StaticBulk for Cloned<I>
+impl<'a, I, T> const DoubleEndedBulk for Cloned<I>
+where
+    I: ~const DoubleEndedBulk<Item = &'a T>,
+    T: ~const Clone + 'a
+{
+    fn rev_for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { bulk } = self;
+        bulk.rev_for_each(Closure {
+            f
+        })
+    }
+    
+    fn try_rev_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk } = self;
+        bulk.try_rev_for_each(Closure {
+            f
+        })
+    }
+}
+impl<'a, I, T, const N: usize> StaticBulk for Cloned<I>
 where 
-    I: ~const StaticClonedSpec<N, Item = &'a T, Array = [&'a T; N]>,
+    I: StaticBulk<Item = &'a T, Array<&'a T> = [&'a T; N]>,
     T: Clone + 'a
 {
-    type Array = [Self::Item; N];
+    type Array<U> = [U; N];
+}
 
-    fn collect_array(self) -> Self::Array
+struct Closure<F>
+{
+    f: F
+}
+impl<F, T, R> const FnOnce<(&T,)> for Closure<F>
+where
+    F: ~const FnOnce(T) -> R,
+    T: ~const Clone
+{
+    type Output = R;
+
+    extern "rust-call" fn call_once(self, (x,): (&T,)) -> Self::Output
     {
-        self.into_inner().cloned_collect_array()
+        (self.f)(x.clone())
+    }
+}
+impl<F, T, R> const FnMut<(&T,)> for Closure<F>
+where
+    F: ~const FnMut(T) -> R,
+    T: ~const Clone
+{
+    extern "rust-call" fn call_mut(&mut self, (x,): (&T,)) -> Self::Output
+    {
+        (self.f)(x.clone())
     }
 }
 
-pub(crate) const trait StaticClonedSpec<const N: usize>: ~const StaticBulk<Array = [<Self as IntoIterator>::Item; N]>
-where
-    core::iter::Cloned<Self::IntoIter>: Iterator<Item: Clone>
+#[cfg(test)]
+mod test
 {
-    fn cloned_collect_array(self) -> [<core::iter::Cloned<Self::IntoIter> as Iterator>::Item; N];
-}
+    use crate::*;
 
-impl<'a, I, T, const N: usize> StaticClonedSpec<N> for I
-where
-    I: StaticBulk<Item = &'a T, Array = [&'a T; N]>,
-    T: Clone + 'a
-{
-    default fn cloned_collect_array(self) -> [T; N]
+    #[test]
+    fn it_works()
     {
-        self.into_iter().cloned().next_chunk().ok().unwrap()
-    }
-}
+        let a = ["it", "works", "right?"];
+        let a = a.into_bulk().map(|s| s.to_string()).collect::<[_; _]>();
+        let a = a.bulk().collect::<[_; _]>();
 
-impl<'a, I, T, const N: usize> StaticClonedSpec<N> for Rev<I>
-where
-    I: StaticBulk<Item = &'a T, Array = [&'a T; N], IntoIter: DoubleEndedIterator>,
-    T: Copy + 'a
-{
-    fn cloned_collect_array(self) -> [T; N]
-    {
-        self.into_inner().copied().collect_array()
+        let b = a.into_bulk().cloned().collect::<[_; _]>();
+
+        println!("{b:?}")
     }
 }

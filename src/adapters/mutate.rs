@@ -1,6 +1,6 @@
-use core::{fmt, marker::Destruct};
+use core::{fmt, marker::Destruct, ops::Try};
 
-use crate::{util::Mutator, Bulk, StaticBulk};
+use crate::{util::Mutator, Bulk, DoubleEndedBulk, StaticBulk};
 
 /// A bulk that calls a function with a mutable reference to each element before
 /// yielding it.
@@ -61,7 +61,7 @@ where
 impl<I, F> const Bulk for Mutate<I, F>
 where
     I: ~const Bulk,
-    F: FnMut(&mut I::Item)
+    F: ~const FnMut(&mut I::Item) + ~const Destruct
 {
     fn len(&self) -> usize
     {
@@ -72,62 +72,101 @@ where
     {
         self.bulk.is_empty()
     }
-}
 
-impl<I, F, T, const N: usize> const StaticBulk for Mutate<I, F>
-where
-    I: ~const StaticBulk<Item = T, Array = [T; N]> + ~const StaticMutateSpec<F>,
-    F: ~const FnMut(&mut T) + ~const Destruct
-{
-    type Array = [Self::Item; N];
-
-    fn collect_array(self) -> Self::Array
+    fn for_each<FF>(self, f: FF)
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) + ~const Destruct
     {
-        I::mutate_collect_array(self)
+        let Self { bulk, f: mutate } = self;
+
+        bulk.for_each(Closure {
+            mutate,
+            f
+        });
+    }
+    fn try_for_each<FF, R>(self, f: FF) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk, f: mutate } = self;
+
+        bulk.try_for_each(Closure {
+            mutate,
+            f
+        })
+    }
+}
+impl<I, F> const DoubleEndedBulk for Mutate<I, F>
+where
+    I: ~const DoubleEndedBulk,
+    F: ~const FnMut(&mut I::Item) + ~const Destruct
+{
+    fn rev_for_each<FF>(self, f: FF)
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { bulk, f: mutate } = self;
+
+        bulk.rev_for_each(Closure {
+            mutate,
+            f
+        });
+    }
+    fn try_rev_for_each<FF, R>(self, f: FF) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk, f: mutate } = self;
+
+        bulk.try_rev_for_each(Closure {
+            mutate,
+            f
+        })
     }
 }
 
-const trait StaticMutateSpec<F>: ~const StaticBulk + Sized
+impl<I, F> StaticBulk for Mutate<I, F>
 where
-    F: FnMut(&mut <Self as IntoIterator>::Item)
+    I: StaticBulk,
+    F: FnMut(&mut I::Item)
 {
-    fn mutate_collect_array(bulk: Mutate<Self, F>) -> Self::Array;
+    type Array<U> = I::Array<U>;
 }
-impl<I, F, T, const N: usize> StaticMutateSpec<F> for I
-where
-    I: StaticBulk<Item = T, Array = [T; N]>,
-    F: FnMut(&mut T)
+
+struct Closure<F, FF>
 {
-    default fn mutate_collect_array(bulk: Mutate<Self, F>) -> [T; N]
+    mutate: F,
+    f: FF
+}
+impl<F, FF, T, R> const FnOnce<(T,)> for Closure<F, FF>
+where
+    F: ~const FnOnce(&mut T),
+    FF: ~const FnOnce(T) -> R
+{
+    type Output = R;
+
+    extern "rust-call" fn call_once(self, (mut x,): (T,)) -> Self::Output
     {
-        let Mutate { bulk, mut f } = bulk;
-        let mut array = bulk.collect_array();
-        for x in &mut array
-        {
-            f(x)
-        }
-        array
+        (self.mutate)(&mut x);
+        (self.f)(x)
     }
 }
-impl<I, F, T, const N: usize> const StaticMutateSpec<F> for I
+impl<F, FF, T, R> const FnMut<(T,)> for Closure<F, FF>
 where
-    I: ~const StaticBulk<Item = T, Array = [T; N]>,
-    F: ~const FnMut(&mut T) + ~const Destruct
+    F: ~const FnMut(&mut T),
+    FF: ~const FnMut(T) -> R
 {
-    fn mutate_collect_array(bulk_inspect: Mutate<Self, F>) -> [T; N]
+    extern "rust-call" fn call_mut(&mut self, (mut x,): (T,)) -> Self::Output
     {
-        let Mutate { bulk, f } = &bulk_inspect;
-        let bulk = unsafe {core::ptr::read(bulk)};
-        let mut f = unsafe {core::ptr::read(f)};
-        core::mem::forget(bulk_inspect);
-        
-        let mut array = bulk.collect_array();
-        let mut i = 0;
-        while i < N
-        {
-            f(&mut array[i]);
-            i += 1
-        }
-        array
+        (self.mutate)(&mut x);
+        (self.f)(x)
     }
 }

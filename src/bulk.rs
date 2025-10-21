@@ -1,6 +1,8 @@
-use core::ptr::Pointee;
+use core::{marker::Destruct, mem::MaybeUninit, ops::{Residual, Try}};
 
-use crate::{util::{CollectLength, Length}, ArrayChunks, Chain, Cloned, Copied, Enumerate, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, Zip};
+use array_trait::AsSlice;
+
+use crate::{util::{CollectLength, Length, LengthSpec}, ArrayChunks, Chain, Cloned, Copied, DoubleEndedBulk, Enumerate, FlatMap, Flatten, FromBulk, Guard, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, Zip};
 
 pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
 {
@@ -14,7 +16,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// This function has the same safety guarantees as the
     /// [`Iterator::size_hint`] function.
     /// 
-    /// Analogous to [`ExactSizeIterator::len`].
+    /// Similar to [`ExactSizeIterator::len`].
     ///
     /// # Examples
     ///
@@ -38,7 +40,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// This method has a default implementation using
     /// [`Bulk::len()`], so you don't need to implement it yourself.
     /// 
-    /// Analogous to [`ExactSizeIterator::is_empty`].
+    /// Similar to [`ExactSizeIterator::is_empty`].
     ///
     /// # Examples
     ///
@@ -56,11 +58,71 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     {
         self.len() == 0
     }
+
+    /// Calls a closure on each element of a bulk.
+    ///
+    /// This is equivalent to using a [`for`] loop on the bulk, although
+    /// `break` and `continue` are not possible from a closure. It's generally
+    /// more idiomatic to use a `for` loop, but `for_each` may be more legible
+    /// when processing items at the end of longer iterator chains. In some
+    /// cases `for_each` may also be faster than a loop, because it will use
+    /// internal iteration on adapters like [`Chain`](crate::Chain).
+    ///
+    /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3, 4];
+    /// let mut x0 = 0;
+    /// a.into_bulk()
+    ///     .for_each(|x| {
+    ///         assert_eq!(x, x0 + 1);
+    ///         x0 = x;
+    ///     })
+    /// ```
+    fn for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct;
+
+    /// A bulk method that applies a fallible function to each item in the
+    /// bulk, stopping at the first error and returning that error.
+    ///
+    /// This can also be thought of as the fallible form of [`for_each()`](Bulk::for_each)
+    /// or as the stateless version of [`try_fold()`](Bulk::try_fold).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = ["1", "2", "3", "4", "wrong"];
+    /// let mut x0 = 0;
+    /// let res = a.into_bulk()
+    ///     .try_for_each(|x| {
+    ///         let x = u32::parse(x)?;
+    ///         assert_eq!(x, x0 + 1);
+    ///         x0 = x;
+    ///         Ok(())
+    ///     });
+    /// assert_eq!(res, "wrong")
+    /// ```
+    fn try_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = (), Residual: ~const Destruct>;
     
     /// Creates a bulk starting at the same point, but stepping by
     /// the given amount at each iteration.
     /// 
-    /// Analogous to [`Iterator::step_by`].
+    /// Similar to [`Iterator::step_by`].
     ///
     /// # Panics
     ///
@@ -81,11 +143,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// ```
     #[inline]
     #[track_caller]
-    #[allow(invalid_type_param_default)]
-    fn step_by<N = [<Self as IntoIterator>::Item]>(self, step: <N as Pointee>::Metadata) -> StepBy<Self, N>
+    fn step_by<L>(self, step: L) -> StepBy<Self, L::Length<Self::Item>>
     where
-        N: ~const Length<Elem = Self::Item> + ?Sized,
-        Self: Sized
+        Self: Sized,
+        L: ~const LengthSpec
     {
         StepBy::new(self, step)
     }
@@ -94,7 +155,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     ///
     /// In other words, it links two bulks together, in a chain. 🔗
     /// 
-    /// Analogous to [`Iterator::chain`].
+    /// Similar to [`Iterator::chain`].
     ///
     /// # Examples
     ///
@@ -142,7 +203,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
 
     /// 'Zips up' two bulks or iterators into a single bulk of pairs. One of them must be a bulk.
     /// 
-    /// Analogous to [`Iterator::zip`].
+    /// Similar to [`Iterator::zip`].
     ///
     /// # Examples
     ///
@@ -246,7 +307,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Creates a new bulk which places a copy of `separator` between adjacent
     /// items of the original bulk.
     /// 
-    /// Analogous to [`Iterator::intersperse`].
+    /// Similar to [`Iterator::intersperse`].
     ///
     /// In case `separator` does not implement [`Clone`](core::clone::Clone) or needs to be
     /// computed every time, use [`intersperse_with`](Bulk::intersperse_with).
@@ -289,7 +350,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// the closure is not called if the underlying bulk has less than
     /// two items.
     /// 
-    /// Analogous to [`Iterator::intersperse_with`].
+    /// Similar to [`Iterator::intersperse_with`].
     ///
     /// If the bulk's item implements [`Clone`](core::clone::Clone), it may be easier to use
     /// [`intersperse`](Bulk::intersperse).
@@ -341,7 +402,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// something that implements [`FnMut`]. It produces a new bulk which
     /// calls this closure on each element of the original bulk.
     /// 
-    /// Analogous to [`Iterator::map`].
+    /// Similar to [`Iterator::map`].
     ///
     /// # Examples
     ///
@@ -390,7 +451,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// The bulk returned yields pairs `(i, val)`, where `i` is the
     /// current index of iteration and `val` is its corresponding value.
     /// 
-    /// Analogous to [`Iterator::enumerate`].
+    /// Similar to [`Iterator::enumerate`].
     ///
     /// [`enumerate()`](Bulk::enumerate) keeps its count as a [`usize`]. If you want to count by a
     /// different sized integer, the [`zip`](Bulk::zip) function provides similar
@@ -427,7 +488,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
 
     /// Creates a bulk that skips the first `n` elements.
     /// 
-    /// Analogous to [`Iterator::skip`].
+    /// Similar to [`Iterator::skip`].
     ///
     /// [`skip(n)`](Bulk::skip) skips elements until `n` elements are skipped or the end of the
     /// bulk is reached (whichever happens first). The returned bulk will yield the remaining elements.
@@ -444,11 +505,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// ```
     #[inline]
     #[track_caller]
-    #[allow(invalid_type_param_default)]
-    fn skip<N = [<Self as IntoIterator>::Item]>(self, n: <N as Pointee>::Metadata) -> Skip<Self, N>
+    fn skip<L>(self, n: L) -> Skip<Self, L::Length<Self::Item>>
     where
         Self: Sized,
-        N: Length<Elem = Self::Item> + ?Sized
+        L: ~const LengthSpec
     {
         Skip::new(self, n)
     }
@@ -498,11 +558,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     #[doc(alias = "limit")]
     #[inline]
     #[track_caller]
-    #[allow(invalid_type_param_default)]
-    fn take<N = [<Self as IntoIterator>::Item]>(self, n: <N as Pointee>::Metadata) -> Take<Self, N>
+    fn take<L>(self, n: L) -> Take<Self, L::Length<Self::Item>>
     where
         Self: Sized,
-        N: Length<Elem = Self::Item> + ?Sized
+        L: LengthSpec
     {
         Take::new(self, n)
     }
@@ -514,7 +573,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// an extra layer of indirection. [`flat_map()`](Bulk::flat_map) will remove this extra layer
     /// on its own.
     /// 
-    /// Analogous to [`Iterator::flat_map`].
+    /// Similar to [`Iterator::flat_map`].
     ///
     /// You can think of `flat_map(f)` as the semantic equivalent
     /// of [`map`](Bulk::map)ping, and then [`flatten`](Bulk::flatten)ing as in `map(f).flatten()`.
@@ -548,7 +607,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// things that can be turned into bulks and you want to remove one
     /// level of indirection.
     /// 
-    /// Analogous to [`Iterator::flatten`].
+    /// Similar to [`Iterator::flatten`].
     ///
     /// # Examples
     ///
@@ -622,7 +681,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Calls the given function `f` for each contiguous window of size `N` over
     /// `self` and returns a bulk of the outputs of `f`. The windows during mapping will overlap.
     /// 
-    /// Analogous to [`Iterator::map_windows`].
+    /// Similar to [`Iterator::map_windows`].
     ///
     /// In the following example, the closure is called three times with the
     /// arguments `&['a', 'b']`, `&['b', 'c']` and `&['c', 'd']` respectively.
@@ -706,7 +765,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// happening at various parts in the pipeline. To do that, insert
     /// a call to [`inspect()`](Bulk::inspect).
     /// 
-    /// Analogous to [`Iterator::inspect`].
+    /// Similar to [`Iterator::inspect`].
     ///
     /// # Examples
     ///
@@ -817,7 +876,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// [`collect()`](Bulk::collect) can take anything bulkable, and turn it into a relevant
     /// collection.
     /// 
-    /// Analogous to [`Iterator::collect`].
+    /// Similar to [`Iterator::collect`].
     ///
     /// # Examples
     ///
@@ -915,12 +974,114 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
         FromBulk::from_bulk(self)
     }
 
+    fn collect_array(self) -> <Self as StaticBulk>::Array<<Self as IntoIterator>::Item>
+    where
+        Self: StaticBulk
+    {
+        let mut array = MaybeUninit::<Self::Array<Self::Item>>::uninit();
+        let array_mut = unsafe {
+            array.as_mut_ptr().cast::<Self::Array<MaybeUninit<Self::Item>>>().as_mut().unwrap().as_mut_slice()
+        };
+        let mut guard = Guard { array_mut, initialized: 0..0 };
+
+        struct Closure<'a, 'b, T>
+        {
+            guard: &'a mut Guard<'b, T>
+        }
+
+        impl<'a, 'b, T> const FnOnce<(T,)> for Closure<'a, 'b, T>
+        {
+            type Output = ();
+
+            extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        impl<'a, 'b, T> const FnMut<(T,)> for Closure<'a, 'b, T>
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                unsafe {
+                    self.guard.push_back_unchecked(x);
+                }
+            }
+        }
+
+        let pusher = Closure {
+            guard: &mut guard
+        };
+
+        self.for_each(pusher);
+        
+        core::mem::forget(guard);
+        unsafe {
+            MaybeUninit::assume_init(array)
+        }
+    }
+
+    fn try_collect_array(self) -> <<Self::Item as Try>::Residual as Residual<Self::Array<<Self::Item as Try>::Output>>>::TryType
+    where
+        Self: StaticBulk<Item: ~const Destruct + ~const Try<Residual: Residual<(), TryType: ~const Try> + Residual<Self::Array<<Self::Item as Try>::Output>, TryType: ~const Try> + ~const Destruct, Output: ~const Destruct>> + ~const Bulk
+    {
+        let mut array = MaybeUninit::<Self::Array<<Self::Item as Try>::Output>>::uninit();
+        let array_mut = unsafe {
+            array.as_mut_ptr().cast::<Self::Array<MaybeUninit<<Self::Item as Try>::Output>>>().as_mut().unwrap().as_mut_slice()
+        };
+        let mut guard = Guard { array_mut, initialized: 0..0 };
+
+        struct Closure<'a, 'b, T>
+        where
+            T: Try<Residual: Residual<()>>
+        {
+            guard: &'a mut Guard<'b, <T as Try>::Output>
+        }
+
+        impl<'a, 'b, T> const FnOnce<(T,)> for Closure<'a, 'b, T>
+        where
+            T: ~const Try<Residual: Residual<(), TryType: ~const Try>>
+        {
+            type Output = <<T as Try>::Residual as Residual<()>>::TryType;
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                unsafe {
+                    self.guard.push_back_unchecked(x?);
+                }
+                Try::from_output(())
+            }
+        }
+        impl<'a, 'b, T> const FnMut<(T,)> for Closure<'a, 'b, T>
+        where
+            T: ~const Try<Residual: Residual<(), TryType: ~const Try>>
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                unsafe {
+                    self.guard.push_back_unchecked(x?);
+                }
+                Try::from_output(())
+            }
+        }
+
+        let pusher = Closure {
+            guard: &mut guard
+        };
+
+        self.try_for_each(pusher)?;
+        
+        core::mem::forget(guard);
+        unsafe {
+            Try::from_output(MaybeUninit::assume_init(array))
+        }
+    }
+
     /// Reverses a bulks's direction.
     ///
     /// Usually, bulks span from left to right. After using `rev()`,
     /// a bulk will instead span from right to left.
     /// 
-    /// Analogous to [`Iterator::rev`].
+    /// Similar to [`Iterator::rev`].
     ///
     /// # Examples
     ///
@@ -939,7 +1100,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     fn rev(self) -> Rev<Self>
     where
         Self: Sized,
-        Self::IntoIter: DoubleEndedIterator
+        Self: DoubleEndedBulk
     {
         Rev::new(self)
     }
@@ -949,7 +1110,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// This is useful when you have a bulk of `&T`, but you need a
     /// bulk of `T`.
     /// 
-    /// Analogous to [`Iterator::copied`].
+    /// Similar to [`Iterator::copied`].
     ///
     /// # Examples
     ///
@@ -985,7 +1146,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// being called *or* optimized away. So code should not depend on
     /// either.
     /// 
-    /// Analogous to [`Iterator::cloned`].
+    /// Similar to [`Iterator::cloned`].
     ///
     /// # Examples
     ///
@@ -1021,7 +1182,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// can then be retrieved from [`.into_remainder()`][crate::ArrayChunks::into_remainder]
     /// or [`.collect_with_remainder()`][crate::ArrayChunks::collect_with_remainder]
     /// 
-    /// Analogous to [`Iterator::array_chunks`].
+    /// Similar to [`Iterator::array_chunks`].
     ///
     /// # Panics
     ///

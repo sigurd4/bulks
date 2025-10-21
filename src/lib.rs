@@ -3,25 +3,18 @@
 #![feature(rustc_attrs)]
 #![feature(extend_one)]
 #![feature(unboxed_closures)]
-#![feature(iter_next_chunk)]
 #![feature(exact_size_is_empty)]
-#![feature(step_trait)]
-#![feature(new_range_api)]
 #![feature(iter_array_chunks)]
 #![feature(iter_intersperse)]
 #![feature(iter_map_windows)]
 #![feature(tuple_trait)]
 #![feature(try_trait_v2)]
-#![feature(iter_advance_by)]
 #![feature(ptr_metadata)]
 #![feature(const_trait_impl)]
 #![feature(const_cmp)]
 #![feature(core_intrinsics)]
-#![feature(const_eval_select)]
-#![feature(decl_macro)]
 #![feature(const_default)]
 #![feature(const_clone)]
-#![feature(const_option_ops)]
 #![feature(const_destruct)]
 #![feature(fn_traits)]
 #![feature(const_convert)]
@@ -29,13 +22,13 @@
 #![feature(impl_trait_in_assoc_type)]
 #![feature(const_index)]
 #![feature(try_trait_v2_residual)]
-#![feature(inplace_iteration)]
-#![feature(try_blocks)]
-#![feature(std_internals)]
-#![feature(maybe_uninit_array_assume_init)]
-#![feature(const_result_trait_fn)]
-#![feature(non_lifetime_binders)]
-#![feature(const_closures)]
+#![feature(maybe_uninit_slice)]
+#![feature(const_try)]
+#![feature(slice_as_array)]
+#![feature(const_drop_in_place)]
+#![feature(const_precise_live_drops)]
+#![feature(control_flow_into_value)]
+#![feature(string_into_chars)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
 
@@ -400,6 +393,7 @@ moddef::moddef!(
         impl_array,
         impl_iter,
         bulk,
+        double_ended_bulk,
         from_bulk,
         into_bulk,
         static_bulk
@@ -407,83 +401,9 @@ moddef::moddef!(
     mod util
 );
 
-macro first {
-    ($block:block $($other:tt)*) => {
-        $block
-    },
-    ($ident:ident$(, $($other:tt)*)?) => {
-        $ident
-    },
-    ($ident:pat$(, $($other:tt)*)?) => {
-        $ident
-    }
-}
-
-macro const_inner {
-    (
-        for$(<{$($g:tt)+}>)? $($pat:ident)?{$($([$member_mut:tt])? $member:ident$(: $member_alias:pat)?),+$(,)?} in $self:expr => $self_ty:ty => $return:ty
-        $(where {$($where:tt)+} $(where const {$($where_const:tt)+})?)?
-        $do:block
-        $(const $do_const:block)?
-    ) => {
-        {
-            fn rt$(<$($g)+>)?(bulk: $self_ty) -> $return
-            $(where $($where)*)?
-            {
-                let $($pat)? {$($($member_mut)? $member: first!($($member_alias,)? $member),)+} = bulk;
-                $do
-            }
-
-            const fn ct$(<$($g)+>)?(bulk: $self_ty) -> $return
-            $(where $($where)* $($($where_const)*)?)?
-            {
-                let $($pat)? {$($member,)+} = &bulk;
-                $(
-                    let $($member_mut)? first!($($member_alias,)? $member) = unsafe {
-                        core::ptr::read($member)
-                    };
-                )*
-                core::mem::forget(bulk);
-                first!($($do_const)? $do)
-            }
-
-            core::intrinsics::const_eval_select(($self,), ct, rt)
-        }
-    },
-    (
-        for$(<{$($g:tt)+}>)? $($pat:ident)?($($([$member_mut:tt])? $member:ident),+$(,)?) in $self:expr => $self_ty:ty => $return:ty
-        $(where {$($where:tt)+} $(where const {$($where_const:tt)+})?)?
-        $do:block
-        $(const $do_const:block)?
-    ) => {
-        {
-            fn rt$(<$($g)+>)?(bulk: $self_ty) -> $return
-            $(where $($where)*)?
-            {
-                let $($pat)? ($($($member_mut)? $member,)+) = bulk;
-                $do
-            }
-
-            const fn ct$(<$($g)+>)?(bulk: $self_ty) -> $return
-            $(where $($where)* $($($where_const)*)?)?
-            {
-                let $($pat)? ($($member,)+) = &bulk;
-                $(
-                    let $($member_mut)? $member = unsafe {
-                        core::ptr::read($member)
-                    };
-                )*
-                core::mem::forget(bulk);
-                first!($($do_const)? $do)
-            }
-
-            core::intrinsics::const_eval_select(($self,), ct, rt)
-        }
-    },
-}
-
 #[cfg(test)]
-mod tests {
+mod tests
+{
     use crate::*;
 
     #[test]

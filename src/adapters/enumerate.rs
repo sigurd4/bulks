@@ -1,4 +1,6 @@
-use crate::{Bulk, StaticBulk};
+use core::{marker::Destruct, ops::Try};
+
+use crate::{Bulk, DoubleEndedBulk, StaticBulk};
 
 /// A bulk that yields the element's index and the element.
 ///
@@ -23,19 +25,6 @@ where
             bulk
         }
     }
-
-    pub(crate) const fn into_inner(self) -> I
-    {
-        crate::const_inner!(
-            for<{I, T}> Enumerate{ bulk } in self => Enumerate<I> => I
-            where {
-                I: Bulk<Item = T>
-            }
-            {
-                bulk
-            }
-        )
-    }
 }
 
 impl<I, T> const Default for Enumerate<I>
@@ -57,12 +46,14 @@ where
 
     fn into_iter(self) -> Self::IntoIter
     {
-        self.into_inner().into_iter().enumerate()
+        let Self { bulk } = self;
+        bulk.into_iter().enumerate()
     }
 }
 impl<I, T> const Bulk for Enumerate<I>
 where
-    I: ~const Bulk<Item = T>
+    I: ~const Bulk<Item = T>,
+    T: ~const Destruct
 {
     fn len(&self) -> usize
     {
@@ -75,15 +66,122 @@ where
         let Self { bulk } = self;
         bulk.is_empty()
     }
+
+    fn for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { bulk } = self;
+        bulk.for_each(Closure::<_, false> {
+            i: 0,
+            f
+        })
+    }
+
+    fn try_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk } = self;
+        bulk.try_for_each(Closure::<_, false> {
+            i: 0,
+            f
+        })
+    }
+}
+impl<I, T> const DoubleEndedBulk for Enumerate<I>
+where
+    I: ~const DoubleEndedBulk<Item = T> + ~const Bulk,
+    T: ~const Destruct
+{
+    fn rev_for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { bulk } = self;
+        let i = bulk.len();
+        bulk.rev_for_each(Closure::<_, true> {
+            i,
+            f
+        })
+    }
+
+    fn try_rev_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk } = self;
+        let i = bulk.len();
+        bulk.try_rev_for_each(Closure::<_, true> {
+            i,
+            f
+        })
+    }
 }
 impl<I, T, const N: usize> StaticBulk for Enumerate<I>
 where 
-    I: StaticBulk<Item = T, Array = [T; N]>
+    I: StaticBulk<Item = T, Array<T> = [T; N]>
 {
-    type Array = [Self::Item; N];
+    type Array<U> = [U; N];
+}
 
-    fn collect_array(self) -> Self::Array
+struct Closure<F, const REV: bool>
+{
+    i: usize,
+    f: F
+}
+impl<F, T, R, const REV: bool> const FnOnce<(T,)> for Closure<F, REV>
+where
+    F: ~const FnOnce((usize, T)) -> R
+{
+    type Output = R;
+
+    extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
     {
-        self.into_iter().next_chunk().ok().unwrap()
+        (self.f)((self.i - REV as usize, x))
+    }
+}
+impl<F, T, R, const REV: bool> const FnMut<(T,)> for Closure<F, REV>
+where
+    F: ~const FnMut((usize, T)) -> R
+{
+    extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+    {
+        if REV
+        {
+            self.i -= 1;
+        }
+        let result = (self.f)((self.i, x));
+        if !REV
+        {
+            self.i += 1;
+        }
+        result
+    }
+}
+
+#[cfg(test)]
+mod test
+{
+    use crate::*;
+
+    #[test]
+    fn it_works()
+    {
+        let a = ['0', '1', '2', '3', '4', '5', '6', '7'];
+        
+        for (i, a) in a.into_bulk()
+            .enumerate()
+        {
+            assert_eq!(i, a.to_string().parse().unwrap())
+        }
     }
 }

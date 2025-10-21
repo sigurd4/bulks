@@ -1,3 +1,5 @@
+use core::marker::Destruct;
+
 use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBulk};
 
 /// Conversion from a [`Bulk`].
@@ -184,12 +186,37 @@ where
 }
 impl<A, B, const N: usize> const FromBulk<A, B, [A; N]> for [A; N]
 where
-    B: ~const StaticBulk<Item = A, Array = [A; N]>
+    B: ~const Bulk + StaticBulk<Item = A, Array<A> = [A; N]>
 {
     fn from_bulk<I>(bulk: I) -> Self
     where
         I: ~const IntoBulk<Item = A, IntoBulk = B>
     {
         bulk.into_bulk().collect_array()
+    }
+}
+impl<A, B, const N: usize> const FromBulk<Option<A>, B, [Option<A>; N]> for Option<[A; N]>
+where
+    A: ~const Destruct,
+    B: ~const Bulk + StaticBulk<Item = Option<A>, Array<Option<A>> = [Option<A>; N], Array<A> = [A; N]>
+{
+    fn from_bulk<I>(bulk: I) -> Self
+    where
+        I: ~const IntoBulk<Item = Option<A>, IntoBulk = B>
+    {
+        bulk.into_bulk().try_collect_array()
+    }
+}
+impl<A, E, B, const N: usize> const FromBulk<Result<A, E>, B, [Result<A, E>; N]> for Result<[A; N], E>
+where
+    A: ~const Destruct,
+    E: ~const Destruct,
+    B: ~const Bulk + StaticBulk<Item = Result<A, E>, Array<Result<A, E>> = [Result<A, E>; N], Array<A> = [A; N]>
+{
+    fn from_bulk<I>(bulk: I) -> Self
+    where
+        I: ~const IntoBulk<Item = Result<A, E>, IntoBulk = B>
+    {
+        bulk.into_bulk().try_collect_array()
     }
 }

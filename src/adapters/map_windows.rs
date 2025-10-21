@@ -1,4 +1,6 @@
-use crate::{Bulk, StaticBulk};
+use core::{marker::Destruct, ops::Try};
+
+use crate::{util::ArrayBuffer, Bulk, DoubleEndedBulk, StaticBulk};
 
 /// A bulk over the mapped windows of another bulk.
 ///
@@ -55,10 +57,10 @@ where
     }
 }
 
-impl<I: Bulk, F, U, const N: usize> Bulk for MapWindows<I, F, N>
+impl<I: Bulk, F, U, const N: usize> const Bulk for MapWindows<I, F, N>
 where
-    I: Bulk,
-    F: FnMut(&[I::Item; N]) -> U
+    I: ~const Bulk<Item: ~const Destruct>,
+    F: ~const FnMut(&[I::Item; N]) -> U + ~const Destruct
 {
     fn len(&self) -> usize
     {
@@ -70,19 +72,151 @@ where
         let Self { bulk, f: _ } = self;
         bulk.len() > N - 1
     }
+    fn for_each<FF>(self, f: FF)
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { bulk, f: map } = self;
+        bulk.for_each(Closure::<_, _, _, _, _, false> {
+            map,
+            f,
+            buffer: ArrayBuffer::new()
+        });
+    }
+    fn try_for_each<FF, R>(self, f: FF) -> R
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk, f: map } = self;
+        bulk.try_for_each(TryClosure::<_, _, _, _, _, _, false> {
+            map,
+            f,
+            buffer: ArrayBuffer::new()
+        })
+    }
 }
-
+impl<I: Bulk, F, U, const N: usize> const DoubleEndedBulk for MapWindows<I, F, N>
+where
+    I: ~const DoubleEndedBulk<Item: ~const Destruct>,
+    F: ~const FnMut(&[I::Item; N]) -> U + ~const Destruct,
+    Self::IntoIter: DoubleEndedIterator
+{
+    fn rev_for_each<FF>(self, f: FF)
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { bulk, f: map } = self;
+        bulk.rev_for_each(Closure::<_, _, _, _, _, true> {
+            map,
+            f,
+            buffer: ArrayBuffer::new()
+        });
+    }
+    fn try_rev_for_each<FF, R>(self, f: FF) -> R
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk, f: map } = self;
+        bulk.try_rev_for_each(TryClosure::<_, _, _, _, _, _, true> {
+            map,
+            f,
+            buffer: ArrayBuffer::new()
+        })
+    }
+}
 impl<I: Bulk, F, T, U, const N: usize, const M: usize> StaticBulk for MapWindows<I, F, N>
 where
-    I: StaticBulk<Item = T, Array = [T; M]>,
+    I: StaticBulk<Item = T, Array<T> = [T; M]>,
     F: FnMut(&[T; N]) -> U,
     [(); M.saturating_sub(N - 1)]:
 {
-    type Array = [U; M.saturating_sub(N - 1)];
+    type Array<W> = [W; M.saturating_sub(N - 1)];
+}
 
-    fn collect_array(self) -> Self::Array
+struct Closure<F, FF, T, U, const N: usize, const REV: bool>
+where
+    F: FnMut(&[T; N]) -> U,
+    FF: FnMut(U)
+{
+    map: F,
+    f: FF,
+    buffer: ArrayBuffer<T, N, REV>
+}
+impl<F, FF, T, U, const N: usize, const REV: bool> const FnOnce<(T,)> for Closure<F, FF, T, U, N, REV>
+where
+    T: ~const Destruct,
+    F: ~const FnMut(&[T; N]) -> U + ~const Destruct,
+    FF: ~const FnMut(U) + ~const Destruct
+{
+    type Output = ();
+
+    extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
     {
-        self.into_iter().next_chunk().ok().unwrap()
+        self.call_mut(args)
+    }
+}
+impl<F, FF, T, U, const N: usize, const REV: bool> const FnMut<(T,)> for Closure<F, FF, T, U, N, REV>
+where
+    T: ~const Destruct,
+    F: ~const FnMut(&[T; N]) -> U,
+    FF: ~const FnMut(U)
+{
+    extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+    {
+        let Self { map, f, buffer } = self;
+        buffer.push_out(x);
+        if let Some(window) = buffer.as_array()
+        {
+            f(map(window))
+        }
+    }
+}
+
+struct TryClosure<F, FF, T, U, R, const N: usize, const REV: bool>
+where
+    F: FnMut(&[T; N]) -> U,
+    FF: FnMut(U) -> R
+{
+    map: F,
+    f: FF,
+    buffer: ArrayBuffer<T, N, REV>
+}
+impl<F, FF, T, U, R, const N: usize, const REV: bool> const FnOnce<(T,)> for TryClosure<F, FF, T, U, R, N, REV>
+where
+    T: ~const Destruct,
+    F: ~const FnMut(&[T; N]) -> U + ~const Destruct,
+    FF: ~const FnMut(U) -> R + ~const Destruct,
+    R: ~const Try<Output = (), Residual: ~const Destruct>
+{
+    type Output = R;
+
+    extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
+    {
+        self.call_mut(args)
+    }
+}
+impl<F, FF, T, U, R, const N: usize, const REV: bool> const FnMut<(T,)> for TryClosure<F, FF, T, U, R, N, REV>
+where
+    T: ~const Destruct,
+    F: ~const FnMut(&[T; N]) -> U,
+    FF: ~const FnMut(U) -> R,
+    R: ~const Try<Output = (), Residual: ~const Destruct>
+{
+    extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+    {
+        let Self { map, f, buffer } = self;
+        buffer.push_out(x);
+        if let Some(window) = buffer.as_array()
+        {
+            f(map(window))?
+        }
+        R::from_output(())
     }
 }
 
@@ -94,12 +228,11 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = [1, 2, 3, 4];
-
-        let b = a.into_bulk()
+        let mut i = 0;
+        let a = crate::repeat_n_with(|| {i += 1; i}, [(); 20])
             .map_windows(|&[n, m]| n + m)
             .collect::<[_; _]>();
 
-        println!("{b:?}")
+        println!("{a:?}")
     }
 }

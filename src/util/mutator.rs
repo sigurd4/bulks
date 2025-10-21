@@ -4,28 +4,6 @@ use crate::util::Same;
 
 pub struct Mutator<F>(pub(crate) F);
 
-const fn single_into_inner<T>(single: (T,)) -> T
-{
-    crate::const_inner!(
-        for<{T}> (x) in single => (T,) => T
-        {
-            x
-        }
-    )
-}
-
-impl<F> Mutator<F>
-{
-    const fn into_inner(self) -> F
-    {
-        crate::const_inner!(
-            for<{F}> Mutator (f) in self => Mutator<F> => F
-            {
-                f
-            }
-        )
-    }
-}
 impl<F, T> const FnOnce<(T,)> for Mutator<F>
 where
     F: ~const FnOnce(&mut T),
@@ -33,10 +11,9 @@ where
 {
     type Output = T;
 
-    extern "rust-call" fn call_once(self, args: (T,)) -> Self::Output
+    extern "rust-call" fn call_once(self, (mut x,): (T,)) -> Self::Output
     {
-        let mut x = single_into_inner(args);
-        let f = self.into_inner();
+        let Self(f) = self;
         f(&mut x);
         x
     }
@@ -45,10 +22,10 @@ impl<F, T> const FnMut<(T,)> for Mutator<F>
 where
     F: ~const FnMut(&mut T)
 {
-    extern "rust-call" fn call_mut(&mut self, args: (T,)) -> Self::Output
+    extern "rust-call" fn call_mut(&mut self, (mut x,): (T,)) -> Self::Output
     {
-        let mut x = single_into_inner(args);
-        self.0(&mut x);
+        let Self(f) = self;
+        f(&mut x);
         x
     }
 }
@@ -56,10 +33,10 @@ impl<F, T> const Fn<(T,)> for Mutator<F>
 where
     F: ~const Fn(&mut T)
 {
-    extern "rust-call" fn call(&self, args: (T,)) -> Self::Output
+    extern "rust-call" fn call(&self, (mut x,): (T,)) -> Self::Output
     {
-        let mut x = single_into_inner(args);
-        self.0(&mut x);
+        let Self(f) = self;
+        f(&mut x);
         x
     }
 }
@@ -113,7 +90,7 @@ where
 
     extern "rust-call" fn async_call_once(self, (mut x,): (T,)) -> Self::CallOnceFuture
     {
-        let f = self.into_inner();
+        let Self(f) = self;
         async {
             f(&mut x).await;
             x
@@ -130,8 +107,9 @@ where
 
     fn async_call_mut_spec_spec(&mut self, mut x: T) -> Self::CallRefFutureSpec<'_>
     {
+        let Self(f) = self;
         async {
-            self.0(&mut x).await;
+            f(&mut x).await;
             x
         }
     }
@@ -146,8 +124,9 @@ where
 
     fn async_call_spec_spec(&'_ self, mut x: T) -> Self::CallFutureSpecSpec<'_>
     {
+        let Self(f) = self;
         async {
-            self.0(&mut x).await;
+            f(&mut x).await;
             x
         }
     }

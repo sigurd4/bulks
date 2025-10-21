@@ -1,8 +1,10 @@
-use crate::{Bulk, StaticBulk};
+use core::marker::Destruct;
+
+use crate::{Bulk, DoubleEndedBulk, StaticBulk};
 
 /// Creates a bulk that yields an element exactly once.
 /// 
-/// Analogous to [`core::iter::once`].
+/// Similar to [`core::iter::once`].
 ///
 /// # Examples
 ///
@@ -29,19 +31,6 @@ pub const fn once<T>(value: T) -> Once<T>
 #[derive(Clone, Debug)]
 pub struct Once<T>(T);
 
-impl<T> Once<T>
-{
-    const fn into_inner(self) -> T
-    {
-        crate::const_inner!(
-            for<{T}> Once (x) in self => Once<T> => T
-            {
-                x
-            }
-        )
-    }
-}
-
 impl<T> IntoIterator for Once<T>
 {
     type Item = T;
@@ -58,24 +47,58 @@ impl<T> const Bulk for Once<T>
     {
         1
     }
-}
-impl<T> const StaticBulk for Once<T>
-{
-    type Array = [T; 1];
-
-    fn collect_array(self) -> Self::Array
+    fn is_empty(&self) -> bool
     {
-        [self.into_inner()]
+        false
+    }
+    fn for_each<FF>(self, mut f: FF)
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        f(self.0)
+    }
+    fn try_for_each<FF, R>(self, mut f: FF) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        f(self.0)
     }
 }
+impl<T> const DoubleEndedBulk for Once<T>
+{
+    fn rev_for_each<FF>(self, f: FF)
+    where
+        Self: Sized,
+        FF: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        self.for_each(f);
+    }
+    fn try_rev_for_each<FF, R>(self, f: FF) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        self.try_for_each(f)
+    }
+}
+impl<T> StaticBulk for Once<T>
+{
+    type Array<U> = [U; 1];
+}
 
-pub const trait OnceBulk: ~const StaticBulk<Array = [<Self as IntoIterator>::Item; 1]>
+pub const trait OnceBulk: ~const DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 1]>
 {
 
 }
 impl<T> const OnceBulk for T
 where
-    T: ~const StaticBulk<Array = [<Self as IntoIterator>::Item; 1]>
+    T: ~const DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 1]>
 {
 
 }

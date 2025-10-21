@@ -1,6 +1,8 @@
+use core::{marker::Destruct, ops::Try};
+
 use array_trait::AsArray;
 
-use crate::{Bulk, IntoBulk, IntoContained, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk};
 
 /// A bulk that flattens one level of nesting in a of things
 /// that can be turned into bulks.
@@ -46,36 +48,190 @@ where
         }
     }
 }
-impl<I> Bulk for Flatten<I>
+impl<I> const Bulk for Flatten<I>
 where
-    I: Bulk<Item: IntoBulk<IntoBulk: StaticBulk>>
+    I: ~const Bulk<Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct>
 {
     fn len(&self) -> usize
     {
-        self.bulk.len()*<<<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array as AsArray>::LENGTH
+        let Self { bulk } = self;
+        bulk.len()*<<<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<<I::Item as IntoIterator>::Item> as AsArray>::LENGTH
     }
     fn is_empty(&self) -> bool
     {
-        <<<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array as AsArray>::LENGTH == 0 || self.bulk.is_empty()
+        let Self { bulk } = self;
+        <<<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<<I::Item as IntoIterator>::Item> as AsArray>::LENGTH == 0 || bulk.is_empty()
+    }
+    fn for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        struct Closure<F>
+        {
+            f: F
+        }
+        impl<F, T> const FnOnce<(T,)> for Closure<F>
+        where
+            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk>,
+            F: ~const FnMut(T::Item) + ~const Destruct
+        {
+            type Output = ();
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                x.into_bulk().for_each(self.f)
+            }
+        }
+        impl<F, T> const FnMut<(T,)> for Closure<F>
+        where
+            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk>,
+            F: ~const FnMut(T::Item) + ~const Destruct
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                x.into_bulk().for_each(&mut self.f)
+            }
+        }
+
+        let Self { bulk } = self;
+        bulk.for_each(Closure {
+            f
+        })
+    }
+    fn try_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = (), Residual: ~const Destruct>
+    {
+        struct Closure<F>
+        {
+            f: F
+        }
+        impl<F, T, R> const FnOnce<(T,)> for Closure<F>
+        where
+            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk, Item: ~const Destruct>,
+            F: ~const FnMut(T::Item) -> R + ~const Destruct,
+            R: ~const Try<Output = (), Residual: ~const Destruct>
+        {
+            type Output = R;
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                x.into_bulk().try_for_each(self.f)
+            }
+        }
+        impl<F, T, R> const FnMut<(T,)> for Closure<F>
+        where
+            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk, Item: ~const Destruct>,
+            F: ~const FnMut(T::Item) -> R + ~const Destruct,
+            R: ~const Try<Output = (), Residual: ~const Destruct>
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                x.into_bulk().try_for_each(&mut self.f)
+            }
+        }
+
+        let Self { bulk } = self;
+        bulk.try_for_each(Closure {
+            f
+        })
+    }
+}
+impl<I> const DoubleEndedBulk for Flatten<I>
+where
+    I: ~const DoubleEndedBulk<Item: ~const IntoBulk<IntoBulk: ~const DoubleEndedBulk + StaticBulk> + ~const Destruct>,
+    Self::IntoIter: DoubleEndedIterator
+{
+    fn rev_for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        struct Closure<F>
+        {
+            f: F
+        }
+        impl<F, T> const FnOnce<(T,)> for Closure<F>
+        where
+            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk>,
+            F: ~const FnMut(T::Item) + ~const Destruct
+        {
+            type Output = ();
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                x.into_bulk().rev_for_each(self.f)
+            }
+        }
+        impl<F, T> const FnMut<(T,)> for Closure<F>
+        where
+            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk>,
+            F: ~const FnMut(T::Item) + ~const Destruct
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                x.into_bulk().rev_for_each(&mut self.f)
+            }
+        }
+
+        let Self { bulk } = self;
+        bulk.rev_for_each(Closure {
+            f
+        })
+    }
+    fn try_rev_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = (), Residual: ~const Destruct>
+    {
+        struct Closure<F>
+        {
+            f: F
+        }
+        impl<F, T, R> const FnOnce<(T,)> for Closure<F>
+        where
+            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk, Item: ~const Destruct>,
+            F: ~const FnMut(T::Item) -> R + ~const Destruct,
+            R: ~const Try<Output = (), Residual: ~const Destruct>
+        {
+            type Output = R;
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                x.into_bulk().try_rev_for_each(self.f)
+            }
+        }
+        impl<F, T, R> const FnMut<(T,)> for Closure<F>
+        where
+            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk, Item: ~const Destruct>,
+            F: ~const FnMut(T::Item) -> R + ~const Destruct,
+            R: ~const Try<Output = (), Residual: ~const Destruct>
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                x.into_bulk().try_rev_for_each(&mut self.f)
+            }
+        }
+
+        let Self { bulk } = self;
+        bulk.try_rev_for_each(Closure {
+            f
+        })
     }
 }
 impl<I, T, V, const N: usize, const M: usize> StaticBulk for Flatten<I>
 where
-    I: StaticBulk<Item = T, Array = [T; N]>,
-    T: IntoBulk<Item = V, IntoBulk: StaticBulk<Item = V, Array = [V; M]>>,
+    I: StaticBulk<Item = T, Array<T> = [T; N]>,
+    T: IntoBulk<Item = V, IntoBulk: StaticBulk<Item = V, Array<V> = [V; M]>>,
     [(); N*M]:
 {
-    type Array = [V; N*M];
-
-    fn collect_array(self) -> Self::Array
-    {
-        let Self { bulk } = self;
-        bulk.into_iter()
-            .flatten()
-            .next_chunk()
-            .ok()
-            .unwrap()
-    }
+    type Array<W> = [W; N*M];
 }
 
 #[cfg(test)]
@@ -89,7 +245,7 @@ mod test
         let a = [[1, -1], [2, -2], [3, -3]];
         let b = a.into_bulk()
             .flatten()
-            .collect::<[_; _]>();
+            .collect_array();
 
         println!("{b:?}")
     }

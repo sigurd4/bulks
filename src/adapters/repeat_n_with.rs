@@ -39,66 +39,94 @@ use crate::{util::{Length, LengthSpec}, Bulk, DoubleEndedBulk, StaticBulk};
 /// assert_eq!(last.len(), 0);
 /// assert_eq!(last.capacity(), 123);
 /// ```
+
+/// Creates a new bulk that repeats elements of type `A` a given number of times
+/// applying the provided closure, the repeater, `F: FnMut() -> A`.
+///
+/// The `repeat_n_with()` function calls the repeater a set amount of times.
+///
+/// If the element type of the iterator you need implements [`Clone`], and
+/// it is OK to keep the source element in memory, you should instead use
+/// the [`repeat_n()`](crate::repeat_n) function.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// use bulks::*;
+///
+/// // let's assume we have some value of a type that is not `Clone`
+/// // or which we don't want to have in memory just yet because it is expensive:
+/// #[derive(PartialEq, Debug)]
+/// struct Expensive;
+///
+/// // a particular value forever:
+/// let mut things = bulks::repeat_n_with(|| Expensive, 4).collect::<[_; _]>();
+///
+/// assert_eq!(things, [Expensive, Expensive, Expensive, Expensive])
+/// ```
 #[allow(invalid_type_param_default)]
-pub const fn repeat_n<T, L>(element: T, n: L) -> RepeatN<T, L::Length<T>>
+pub const fn repeat_n_with<G, L>(repeater: G, n: L) -> RepeatNWith<G, L::Length<G::Output>>
 where
-    T: Clone,
+    G: FnMut<()>,
     L: ~const LengthSpec
 {
-    RepeatN {
-        element,
+    RepeatNWith {
+        repeater,
         n: n.len_metadata()
     }
 }
 
-/// A bulk that repeats an element an exact number of times.
+/// A bulk that repeats elements of type `A` an exact number of times by
+/// applying the provided closure `F: FnMut() -> A`.
 ///
-/// This `struct` is created by the [`repeat_n()`] function.
+/// This `struct` is created by the [`repeat_n_with()`] function.
 /// See its documentation for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 #[derive(Clone)]
-pub struct RepeatN<A, N = [A]>
+pub struct RepeatNWith<G, N = [<G as FnOnce<()>>::Output]>
 where
-    A: Clone,
-    N: Length<Elem = A> + ?Sized
+    G: FnMut<()>,
+    N: Length<Elem = G::Output> + ?Sized
 {
-    element: A,
+    repeater: G,
     n: <N as Pointee>::Metadata
 }
 
-impl<A, N> fmt::Debug for RepeatN<A, N>
+impl<A, G, N> fmt::Debug for RepeatNWith<G, N>
 where
-    A: Clone + fmt::Debug,
+    G: FnMut() -> A,
     N: Length<Elem = A> + ?Sized
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
     {
-        f.debug_struct("RepeatN").field("count", &self.len()).field("element", &self.element).finish()
+        f.debug_struct("RepeatNWith").field("count", &self.len()).finish()
     }
 }
 
-impl<A, N> IntoIterator for RepeatN<A, N>
+impl<A, G, N> IntoIterator for RepeatNWith<G, N>
 where
-    A: Clone,
+    G: FnMut() -> A,
     N: Length<Elem = A> + ?Sized
 {
     type Item = A;
-    type IntoIter = core::iter::RepeatN<A>;
+    type IntoIter = core::iter::Take<core::iter::RepeatWith<G>>;
 
     fn into_iter(self) -> Self::IntoIter
     {
-        let Self { element, n } = self;
-        core::iter::repeat_n(element, N::len_metadata(n))
+        let Self { repeater, n } = self;
+        core::iter::repeat_with(repeater).take(N::len_metadata(n))
     }
 }
-impl<A, N> const Bulk for RepeatN<A, N>
+impl<A, G, N> const Bulk for RepeatNWith<G, N>
 where
-    A: ~const Clone + ~const Destruct,
+    G: ~const FnMut() -> A + ~const Destruct,
     N: ~const Length<Elem = A> + ?Sized
 {
     fn len(&self) -> usize
     {
-        let Self { element: _, n } = self;
+        let Self { repeater: _, n } = self;
         N::len_metadata(*n)
     }
     fn for_each<F>(self, mut f: F)
@@ -106,17 +134,13 @@ where
         Self: Sized,
         F: ~const FnMut(Self::Item) + ~const Destruct
     {
-        let Self { element, n } = self;
+        let Self { mut repeater, n } = self;
         let n = N::len_metadata(n);
-        let mut i = 1;
+        let mut i = 0;
         while i < n
         {
-            f(element.clone());
+            f(repeater());
             i += 1
-        }
-        if i == n
-        {
-            f(element)
         }
     }
     fn try_for_each<F, R>(self, mut f: F) -> R
@@ -125,25 +149,22 @@ where
         F: ~const FnMut(Self::Item) -> R + ~const Destruct,
         R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
     {
-        let Self { element, n } = self;
+        let Self { mut repeater, n } = self;
         let n = N::len_metadata(n);
-        let mut i = 1;
+        let mut i = 0;
         while i < n
         {
-            f(element.clone())?;
+            f(repeater())?;
             i += 1
-        }
-        if i == n
-        {
-            f(element)?
         }
         R::from_output(())
     }
 }
-impl<A, N> const DoubleEndedBulk for RepeatN<A, N>
+impl<A, G, N> const DoubleEndedBulk for RepeatNWith<G, N>
 where
-    A: ~const Clone + ~const Destruct,
-    N: ~const Length<Elem = A> + ?Sized
+    G: ~const FnMut() -> A + ~const Destruct,
+    N: ~const Length<Elem = A> + ?Sized,
+    Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<F>(self, f: F)
     where
@@ -155,15 +176,16 @@ where
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
+        A: ~const Destruct,
         F: ~const FnMut(Self::Item) -> R + ~const Destruct,
         R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
     {
         self.try_for_each(f)
     }
 }
-impl<A, const N: usize> StaticBulk for RepeatN<A, [A; N]>
+impl<A, G, const N: usize> StaticBulk for RepeatNWith<G, [A; N]>
 where
-    A: Clone
+    G: FnMut() -> A
 {
     type Array<U> = [U; N];
 }
@@ -176,7 +198,9 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = crate::repeat_n(1, [(); _]).collect::<[_; _]>();
-        assert_eq!(a, [1, 1, 1, 1])
+        let mut i = 0;
+        let a = crate::repeat_n_with(|| {i += 1; i}, [(); _])
+            .collect_array();
+        assert_eq!(a, [1, 2, 3, 4])
     }
 }

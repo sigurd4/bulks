@@ -2,6 +2,7 @@ use core::usize;
 
 use crate::util::InfiniteIterator;
 use crate::Bulk;
+use crate::DoubleEndedBulk;
 use crate::IntoBulk;
 use crate::StaticBulk;
 
@@ -39,6 +40,15 @@ where
         Bulk::is_empty(self)
     }
 }
+impl<I> DoubleEndedIterator for Contained<I>
+where
+    I: DoubleEndedIterator
+{
+    fn next_back(&mut self) -> Option<Self::Item>
+    {
+        self.iter.next_back()
+    }
+}
 
 impl<I> Contained<I>
 where
@@ -72,6 +82,25 @@ where
     {
         Bulk::len(self) == 0
     }
+    
+    #[inline]
+    default fn for_each<F>(self, _f: F)
+    where
+        Self: Sized,
+        F: FnMut(Self::Item)
+    {
+        panic!("Possibly infinite iterator.")
+    }
+    
+    #[inline]
+    default fn try_for_each<F, R>(self, _f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> R,
+        R: core::ops::Try<Output = ()>
+    {
+        panic!("Possibly infinite iterator.")
+    }
 }
 impl<I> Bulk for Contained<I>
 where
@@ -88,17 +117,77 @@ where
     {
         self.iter.is_empty()
     }
+    
+    #[inline]
+    fn for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: FnMut(Self::Item)
+    {
+        self.iter.for_each(f);
+    }
+    
+    #[inline]
+    fn try_for_each<F, R>(mut self, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> R,
+        R: core::ops::Try<Output = ()>
+    {
+        self.iter.try_for_each(f)
+    }
+}
+impl<I> DoubleEndedBulk for Contained<I>
+where
+    I: DoubleEndedIterator
+{
+    #[inline]
+    default fn rev_for_each<F>(self, _f: F)
+    where
+        Self: Sized,
+        F: FnMut(Self::Item)
+    {
+        panic!("Possibly infinite iterator.")
+    }
+    
+    #[inline]
+    default fn try_rev_for_each<F, R>(self, _f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> R,
+        R: core::ops::Try<Output = ()>
+    {
+        panic!("Possibly infinite iterator.")
+    }
+}
+impl<I> DoubleEndedBulk for Contained<I>
+where
+    I: DoubleEndedIterator + ExactSizeIterator
+{
+    #[inline]
+    fn rev_for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: FnMut(Self::Item)
+    {
+        self.iter.rev().for_each(f);
+    }
+    
+    #[inline]
+    fn try_rev_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> R,
+        R: core::ops::Try<Output = ()>
+    {
+        self.iter.rev().try_for_each(f)
+    }
 }
 impl<I> StaticBulk for Contained<I>
 where
     I: InfiniteIterator
 {
-    type Array = [I::Item; usize::MAX];
-
-    fn collect_array(self) -> Self::Array
-    {
-        panic!("Arrays cannot be collected from a possibly infinite iterator.")
-    }
+    type Array<U> = [U; usize::MAX];
 }
 
 mod private

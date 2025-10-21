@@ -1,4 +1,6 @@
-use crate::{Bulk, Copied, IntoBulk, StaticBulk, StaticCopiedSpec, StaticMapSpec, StaticRevSpec};
+use core::{marker::Destruct, ops::Try};
+
+use crate::{util, Bulk, Guard, IntoBulk, StaticBulk, DoubleEndedBulk};
 
 pub mod array
 {
@@ -25,7 +27,19 @@ macro_rules! impl_bulk {
     (
         impl $bulk:ident<$($a:lifetime,)? $t:ident, const $n:ident: usize>; for $item:ty; in $array:ty;
         {
-            fn collect_array($self_collect_array:ident) -> Self::Array
+            fn for_each($self_for_each:ident, $f_for_each:ident) -> _
+            $for_each:block
+
+            fn try_for_each($self_try_for_each:ident, $f_try_for_each:ident) -> _
+            $try_for_each:block
+
+            fn rev_for_each($self_rev_for_each:ident, $f_rev_for_each:ident) -> _
+            $rev_for_each:block
+
+            fn try_rev_for_each($self_try_rev_for_each:ident, $f_try_rev_for_each:ident) -> _
+            $try_rev_for_each:block
+
+            fn collect_array($self_collect_array:ident) -> _
             $collect_array:block
         }
     ) => {
@@ -34,6 +48,7 @@ macro_rules! impl_bulk {
             type Item = $item;
             type IntoIter = <$array as IntoIterator>::IntoIter;
 
+            #[inline]
             fn into_iter(self) -> Self::IntoIter
             {
                 let Self {array} = self;
@@ -44,6 +59,7 @@ macro_rules! impl_bulk {
         {
             type IntoBulk = array::$bulk<$($a,)? $t, $n>;
             
+            #[inline]
             fn into_bulk(self) -> Self::IntoBulk
             {
                 array::$bulk {
@@ -53,39 +69,178 @@ macro_rules! impl_bulk {
         }
         impl<$($a,)? $t, const $n: usize> const Bulk for array::$bulk<$($a,)? $t, $n>
         {
+            #[inline]
             fn len(&self) -> usize
             {
                 $n
             }
-        }
-        impl<$($a,)? $t, const $n: usize> const StaticBulk for array::$bulk<$($a,)? $t, $n>
-        {
-            type Array = [$item; N];
 
-            fn collect_array($self_collect_array) -> Self::Array
+            #[inline]
+            fn collect_array($self_collect_array) -> <Self as StaticBulk>::Array<Self::Item>
             $collect_array
+
+            #[inline]
+            fn for_each<F>($self_for_each, mut $f_for_each: F)
+            where
+                F: ~const FnMut($item) + ~const Destruct
+            $for_each
+
+            #[inline]
+            fn try_for_each<F, R>($self_try_for_each, mut $f_try_for_each: F) -> R
+            where
+                $item: ~const Destruct,
+                F: ~const FnMut($item) -> R + ~const Destruct,
+                R: ~const Try<Output = (), Residual: ~const Destruct>
+            $try_for_each
+        }
+        impl<$($a,)? $t, const $n: usize> const DoubleEndedBulk for array::$bulk<$($a,)? $t, $n>
+        {
+            #[inline]
+            fn rev_for_each<F>($self_rev_for_each, mut $f_rev_for_each: F)
+            where
+                F: ~const FnMut($item) + ~const Destruct
+            $rev_for_each
+
+            #[inline]
+            fn try_rev_for_each<F, R>($self_try_rev_for_each, mut $f_try_rev_for_each: F) -> R
+            where
+                $item: ~const Destruct,
+                F: ~const FnMut($item) -> R + ~const Destruct,
+                R: ~const Try<Output = (), Residual: ~const Destruct>
+            $try_rev_for_each
+        }
+        impl<$($a,)? $t, const $n: usize> StaticBulk for array::$bulk<$($a,)? $t, $n>
+        {
+            type Array<U> = [U; $n];
         }
     };
 }
 impl_bulk!(
     impl IntoBulk<T, const N: usize>; for T; in [T; N];
     {
-        fn collect_array(self) -> Self::Array
+        fn for_each(self, f) -> _
         {
-            use array::IntoBulk;
-            crate::const_inner!(
-                for<{const N: usize, T}> IntoBulk{ array } in self => IntoBulk<T, N> => [T; N]
-                {
-                    array
+            let Self { array } = self;
+            let mut src_array = util::new_init_array(array);
+            let mut src_guard = Guard { array_mut: &mut src_array, initialized: 0..N };
+
+            while src_guard.initialized.start < src_guard.initialized.end
+            {
+                unsafe {
+                    f(src_guard.pop_front_unchecked())
                 }
-            )
+            }
+
+            core::mem::forget(src_guard);
+        }
+
+        fn try_for_each(self, f) -> _
+        {
+            let Self { array } = self;
+            let mut src_array = util::new_init_array(array);
+            let mut src_guard = Guard { array_mut: &mut src_array, initialized: 0..N };
+
+            while src_guard.initialized.start < src_guard.initialized.end
+            {
+                unsafe {
+                    f(src_guard.pop_front_unchecked())?
+                }
+            }
+
+            core::mem::forget(src_guard);
+            R::from_output(())
+        }
+
+        fn rev_for_each(self, f) -> _
+        {
+            let Self { array } = self;
+            let mut src_array = util::new_init_array(array);
+            let mut src_guard = Guard { array_mut: &mut src_array, initialized: 0..N };
+
+            while src_guard.initialized.start < src_guard.initialized.end
+            {
+                unsafe {
+                    f(src_guard.pop_back_unchecked())
+                }
+            }
+
+            core::mem::forget(src_guard);
+        }
+
+        fn try_rev_for_each(self, f) -> _
+        {
+            let Self { array } = self;
+            let mut src_array = util::new_init_array(array);
+            let mut src_guard = Guard { array_mut: &mut src_array, initialized: 0..N };
+
+            while src_guard.initialized.start < src_guard.initialized.end
+            {
+                unsafe {
+                    f(src_guard.pop_back_unchecked())?
+                }
+            }
+
+            core::mem::forget(src_guard);
+            R::from_output(())
+        }
+
+        fn collect_array(self) -> _
+        {
+            let Self {array} = self;
+            array
         }
     }
 );
 impl_bulk!(
     impl Bulk<'a, T, const N: usize>; for &'a T; in &'a [T; N];
     {
-        fn collect_array(self) -> Self::Array
+        fn for_each(self, f) -> _
+        {
+            let Self {array} = self;
+            let mut n = 0;
+            while n < N
+            {
+                f(&array[n]);
+                n += 1;
+            }
+        }
+
+        fn try_for_each(self, f) -> _
+        {
+            let Self {array} = self;
+            let mut n = 0;
+            while n < N
+            {
+                f(&array[n])?;
+                n += 1;
+            }
+            R::from_output(())
+        }
+
+        fn rev_for_each(self, f) -> _
+        {
+            let Self {array} = self;
+            let mut n = N;
+            while n > 0
+            {
+                n -= 1;
+                f(&array[n]);
+            }
+        }
+
+        fn try_rev_for_each(self, f) -> _
+        {
+            let Self {array} = self;
+            let mut n = N;
+            while n > 0
+            {
+                n -= 1;
+                f(&array[n])?;
+            }
+            R::from_output(())
+        }
+
+        fn collect_array(self) -> _
         {
             let Self {array} = self;
             array.each_ref()
@@ -95,7 +250,53 @@ impl_bulk!(
 impl_bulk!(
     impl BulkMut<'a, T, const N: usize>; for &'a mut T; in &'a mut [T; N];
     {
-        fn collect_array(self) -> Self::Array
+        fn for_each(self, f) -> _
+        {
+            let Self {array} = self;
+            let mut n = 0;
+            while n < N
+            {
+                f(unsafe {&mut *(&mut array[n] as *mut _)});
+                n += 1;
+            }
+        }
+
+        fn try_for_each(self, f) -> _
+        {
+            let Self {array} = self;
+            let mut n = 0;
+            while n < N
+            {
+                f(unsafe {&mut *(&mut array[n] as *mut _)})?;
+                n += 1;
+            }
+            R::from_output(())
+        }
+
+        fn rev_for_each(self, f) -> _
+        {
+            let Self {array} = self;
+            let mut n = N;
+            while n > 0
+            {
+                n -= 1;
+                f(unsafe {&mut *(&mut array[n] as *mut _)});
+            }
+        }
+
+        fn try_rev_for_each(self, f) -> _
+        {
+            let Self {array} = self;
+            let mut n = N;
+            while n > 0
+            {
+                n -= 1;
+                f(unsafe {&mut *(&mut array[n] as *mut _)})?;
+            }
+            R::from_output(())
+        }
+
+        fn collect_array(self) -> _
         {
             let Self {array} = self;
             array.each_mut()
@@ -103,7 +304,7 @@ impl_bulk!(
     }
 );
 
-impl<T, const N: usize> StaticMapSpec<N> for array::IntoBulk<T, N>
+/*impl<T, const N: usize> StaticMapSpec<N> for array::IntoBulk<T, N>
 {
     fn map_collect_array<U>(self, f: impl FnMut(Self::Item) -> U) -> [U; N]
     {
@@ -157,7 +358,7 @@ where
         let Self {array} = self;
         *array
     }
-}
+}*/
 
 #[cfg(test)]
 mod test

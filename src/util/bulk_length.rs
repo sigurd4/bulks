@@ -23,7 +23,7 @@ impl<T> BulkLength for T
 where
     Self: StaticBulk
 {
-    type Length = <Self as StaticBulk>::Array;
+    type Length = <Self as StaticBulk>::Array<Self::Item>;
 
     fn len_metadata(&self) -> <Self::Length as Pointee>::Metadata
     {

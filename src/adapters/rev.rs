@@ -1,4 +1,6 @@
-use crate::{Bulk, StaticBulk};
+use core::marker::Destruct;
+
+use crate::{Bulk, DoubleEndedBulk, StaticBulk};
 
 
 /// A double-ended bulk with the direction inverted.
@@ -9,14 +11,14 @@ use crate::{Bulk, StaticBulk};
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 pub struct Rev<I>
 where
-    I: Bulk<IntoIter: DoubleEndedIterator>
+    I: DoubleEndedBulk
 {
     bulk: I,
 }
 
 impl<I> Rev<I>
 where
-    I: Bulk<IntoIter: DoubleEndedIterator>
+    I: DoubleEndedBulk
 {
     pub(crate) const fn new(bulk: I) -> Self
     {
@@ -38,21 +40,14 @@ where
     /// ```
     pub const fn into_inner(self) -> I
     {
-        crate::const_inner!(
-            for<{I}> Rev{ bulk } in self => Rev<I> => I
-            where {
-                I: Bulk<IntoIter: DoubleEndedIterator>
-            }
-            {
-                bulk
-            }
-        )
+        let Self { bulk } = self;
+        bulk
     }
 }
 
 impl<I> const Default for Rev<I>
 where
-    I: ~const Bulk<IntoIter: DoubleEndedIterator> + ~const Default
+    I: ~const Bulk + DoubleEndedBulk + ~const Default
 {
     fn default() -> Self
     {
@@ -62,7 +57,7 @@ where
 
 impl<I> IntoIterator for Rev<I>
 where
-    I: Bulk<IntoIter: DoubleEndedIterator>
+    I: DoubleEndedBulk
 {
     type IntoIter = core::iter::Rev<I::IntoIter>;
     type Item = I::Item;
@@ -74,51 +69,63 @@ where
 }
 impl<I> const Bulk for Rev<I>
 where
-    I: ~const Bulk<IntoIter: DoubleEndedIterator>
+    I: ~const Bulk + ~const DoubleEndedBulk
 {
     fn len(&self) -> usize
     {
-        self.bulk.len()
+        let Self { bulk } = self;
+        bulk.len()
     }
-
     fn is_empty(&self) -> bool
     {
-        self.bulk.is_empty()
+        let Self { bulk } = self;
+        bulk.is_empty()
     }
-}
-impl<I, T, const N: usize> const StaticBulk for Rev<I>
-where
-    I: ~const StaticBulk<Item = T, Array = [T; N], IntoIter: DoubleEndedIterator> + ~const StaticRevSpec<N>
-{
-    type Array = [Self::Item; N];
-
-    fn collect_array(self) -> Self::Array
+    fn for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
     {
-        self.into_inner().rev_collect_array()
+        let Self { bulk } = self;
+        bulk.rev_for_each(f);
     }
-}
-
-pub(crate) const trait StaticRevSpec<const N: usize>: StaticBulk<Array = [<Self as IntoIterator>::Item; N], IntoIter: DoubleEndedIterator>
-{
-    fn rev_collect_array(self) -> [<Self as IntoIterator>::Item; N];
-}
-
-impl<T, I, const N: usize> StaticRevSpec<N> for I
-where
-    I: StaticBulk<Item = T, Array = [T; N], IntoIter: DoubleEndedIterator>
-{
-    default fn rev_collect_array(self) -> [<Self as IntoIterator>::Item; N]
+    fn try_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
     {
-        self.into_iter().rev().next_chunk().ok().unwrap()
+        let Self { bulk } = self;
+        bulk.try_rev_for_each(f)
     }
 }
-
-impl<T, I, const N: usize> const StaticRevSpec<N> for Rev<I>
+impl<I> const DoubleEndedBulk for Rev<I>
 where
-    I: ~const StaticBulk<Item = T, Array = [T; N], IntoIter: DoubleEndedIterator>
+    I: ~const Bulk + DoubleEndedBulk
 {
-    fn rev_collect_array(self) -> [<Self as IntoIterator>::Item; N]
+    fn rev_for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
     {
-        self.into_inner().collect_array()
+        let Self { bulk } = self;
+        bulk.for_each(f);
     }
+    fn try_rev_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+    {
+        let Self { bulk } = self;
+        bulk.try_for_each(f)
+    }
+}
+impl<I> StaticBulk for Rev<I>
+where
+    I: StaticBulk + DoubleEndedBulk
+{
+    type Array<U> = I::Array<U>;
 }
