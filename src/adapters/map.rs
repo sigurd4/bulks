@@ -184,7 +184,7 @@ where
         })
     }
 }
-impl<I, F> StaticBulk for Map<I, F>
+unsafe impl<I, F> StaticBulk for Map<I, F>
 where
     I: StaticBulk,
     F: FnMut<(I::Item,)>

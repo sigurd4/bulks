@@ -277,7 +277,7 @@ where
         })
     }
 }
-impl<I, U, F, T, V, const N: usize, const M: usize> StaticBulk for FlatMap<I, U, F>
+unsafe impl<I, U, F, T, V, const N: usize, const M: usize> StaticBulk for FlatMap<I, U, F>
 where
     I: StaticBulk<Item = T, Array<T> = [T; N]>,
     F: FnMut(T) -> U,

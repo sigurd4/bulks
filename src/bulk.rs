@@ -2,16 +2,32 @@ use core::{marker::Destruct, mem::MaybeUninit, ops::{ControlFlow, FromResidual, 
 
 use array_trait::AsSlice;
 
-use crate::{util::{CollectLength, Length, LengthSpec}, ArrayChunks, Chain, Cloned, Copied, DoubleEndedBulk, Enumerate, FlatMap, Flatten, FromBulk, Guard, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, Zip};
+use crate::{util::{CollectLength, Length, LengthSpec}, ArrayChunks, Chain, Cloned, Copied, DoubleEndedBulk, Enumerate, FlatMap, Flatten, FromBulk, Guard, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, TryFromBulk, Zip};
 
-pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterator>
+//fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
+
+/// A trait for dealing with bulks.
+///
+/// This is the main bulk trait. For more about the concept of bulks
+/// generally, please see the [crate-level documentation](crate). In particular, you
+/// may want to know how to [implement `Bulk`][crate#implementing-bulk].
+#[rustc_on_unimplemented(
+    on(
+        Self = "core::ops::range::RangeTo<Idx>",
+        note = "you might have meant to use a bounded `Range`"
+    ),
+    on(
+        Self = "core::ops::range::RangeToInclusive<Idx>",
+        note = "you might have meant to use a bounded `RangeInclusive`"
+    ),
+    label = "`{Self}` is not a bulk",
+    message = "`{Self}` is not a bulk"
+)]
+#[doc(notable_trait)]
+#[must_use = "bulks are lazy and do nothing unless consumed"]
+pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 {
     /// Returns the exact length of the bulk.
-    ///
-    /// This method has a default implementation, so you usually should not
-    /// implement it directly. However, if you can provide a more efficient
-    /// implementation, you can do so. See the [trait-level] docs for an
-    /// example.
     ///
     /// This function has the same safety guarantees as the
     /// [`Iterator::size_hint`] function.
@@ -210,7 +226,104 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
         F: ~const FnMut(Self::Item) -> R + ~const Destruct,
         R: ~const Try<Output = (), Residual: ~const Destruct>;
 
-    /// TODO
+    /// Folds every element into an accumulator by applying an operation,
+    /// returning the final result.
+    ///
+    /// `fold()` takes two arguments: an initial value, and a closure with two
+    /// arguments: an 'accumulator', and an element. The closure returns the value that
+    /// the accumulator should have for the next iteration.
+    ///
+    /// The initial value is the value the accumulator will have on the first
+    /// call.
+    ///
+    /// After applying this closure to every element of the iterator, `fold()`
+    /// returns the accumulator.
+    ///
+    /// This operation is sometimes called 'reduce' or 'inject'.
+    ///
+    /// Folding is useful whenever you have a collection of something, and want
+    /// to produce a single value from it.
+    ///
+    /// Note: [`reduce()`](Bulk::reduce) can be used to use the first element as the initial
+    /// value, if the accumulator type and item type is the same.
+    ///
+    /// Note: `fold()` combines elements in a *left-associative* fashion. For associative
+    /// operators like `+`, the order the elements are combined in is not important, but for non-associative
+    /// operators like `-` the order will affect the final result.
+    /// For a *right-associative* version of `fold()`, see [`DoubleEndedBulk::rfold()`].
+    ///
+    /// # Note to Implementors
+    ///
+    /// Several of the other (forward) methods have default implementations in
+    /// terms of this one, so try to implement this explicitly if it can
+    /// do something better than the default `for` loop implementation.
+    ///
+    /// In particular, try to have this call `fold()` on the internal parts
+    /// from which this iterator is composed.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// // the sum of all of the elements of the array
+    /// let sum = a.bulk().fold(0, |acc, x| acc + x);
+    ///
+    /// assert_eq!(sum, 6);
+    /// ```
+    ///
+    /// Let's walk through each step of the iteration here:
+    ///
+    /// | element | acc | x | result |
+    /// |---------|-----|---|--------|
+    /// |         | 0   |   |        |
+    /// | 1       | 0   | 1 | 1      |
+    /// | 2       | 1   | 2 | 3      |
+    /// | 3       | 3   | 3 | 6      |
+    ///
+    /// And so, our final result, `6`.
+    ///
+    /// This example demonstrates the left-associative nature of `fold()`:
+    /// it builds a string, starting with an initial value
+    /// and continuing with each element from the front until the back:
+    ///
+    /// ```
+    /// let numbers = [1, 2, 3, 4, 5];
+    ///
+    /// let zero = "0".to_string();
+    ///
+    /// let result = numbers.bulk().fold(zero, |acc, &x| {
+    ///     format!("({acc} + {x})")
+    /// });
+    ///
+    /// assert_eq!(result, "(((((0 + 1) + 2) + 3) + 4) + 5)");
+    /// ```
+    /// It's common for people who haven't used iterators a lot to
+    /// use a `for` loop with a list of things to build up a result. Those
+    /// can be turned into `fold()`s:
+    ///
+    /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
+    ///
+    /// ```
+    /// let numbers = [1, 2, 3, 4, 5];
+    ///
+    /// let mut result = 0;
+    ///
+    /// // for loop:
+    /// for i in &numbers {
+    ///     result = result + i;
+    /// }
+    ///
+    /// // fold:
+    /// let result2 = numbers.bulk().fold(0, |acc, &x| acc + x);
+    ///
+    /// // they're the same
+    /// assert_eq!(result, result2);
+    /// ```
+    #[doc(alias = "inject", alias = "foldl")]
+    #[inline]
     fn fold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
@@ -1300,7 +1413,6 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// assert_eq!(result, Ok([1, 3]));
     /// ```
     #[inline]
-    #[track_caller]
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
     #[allow(invalid_type_param_default)]
     fn collect<B, L = <B as CollectLength<<Self as IntoIterator>::Item>>::Length>(self) -> B
@@ -1312,6 +1424,116 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
         FromBulk::from_bulk(self)
     }
 
+    /// Fallibly transforms a bulk into a collection, short circuiting if
+    /// a failure is encountered.
+    ///
+    /// `try_collect()` is a variation of [`collect()`][`Bulk::collect`] that allows fallible
+    /// conversions during collection. Its main use case is simplifying conversions from
+    /// iterators yielding [`Option<T>`][`Option`] into `Option<Collection<T>>`, or similarly for other [`Try`]
+    /// types (e.g. [`Result`]).
+    ///
+    /// Importantly, `try_collect()` doesn't require that the outer [`Try`] type also implements [`FromBulk`];
+    /// only the inner type produced on `Try::Output` must implement it. Concretely,
+    /// this means that collecting into `ControlFlow<_, Vec<i32>>` is valid because `Vec<i32>` implements
+    /// [`FromBulk`], even though [`ControlFlow`] doesn't.
+    /// 
+    /// Unlike with [`Iterator::try_collect`], the bulk is fully consumed even if it short-circuits.
+    /// A short-circuit will cause the rest of the elements of the bulk to be dropped.
+    ///
+    /// # Examples
+    /// 
+    /// Successfully collecting a bulk of `Option<i32>` into `Option<[i32; _]>`:
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let u = vec![Some(1), Some(2), Some(3)];
+    /// let v = u.into_bulk().try_collect::<[i32; _]>();
+    /// assert_eq!(v, Some([1, 2, 3]));
+    /// ```
+    ///
+    /// Failing to collect in the same way:
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let u = vec![Some(1), Some(2), None, Some(3)];
+    /// let v = u.into_bulk().try_collect::<[i32; _]>();
+    /// assert_eq!(v, None);
+    /// ```
+    ///
+    /// A similar example, but with `Result`:
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let u: [Result<i32, ()>; _] = [Ok(1), Ok(2), Ok(3)];
+    /// let v = u.into_bulk().try_collect::<[i32; _]>();
+    /// assert_eq!(v, Ok([1, 2, 3]));
+    ///
+    /// let u = vec![Ok(1), Ok(2), Err(()), Ok(3)];
+    /// let v = u.into_bulk().try_collect::<[i32; _]>();
+    /// assert_eq!(v, Err(()));
+    /// ```
+    ///
+    /// Finally, even [`ControlFlow`] works, despite the fact that it
+    /// doesn't implement [`FromBulk`].
+    ///
+    /// ```
+    /// use core::ops::ControlFlow::{Break, Continue};
+    ///
+    /// let u = [Continue(1), Continue(2), Break(3), Continue(4), Continue(5)];
+    /// 
+    /// let v = u.into_bulk().try_collect::<[_; _]>();
+    /// assert_eq!(v, Break(3));
+    ///
+    /// let v = u.into_bulk().take([(); 2])
+    ///     .chain(u.into_bulk().skip([(); 3]))
+    ///     .try_collect::<[_; _]>();
+    /// assert_eq!(v, Continue([1, 2, 4, 5]));
+    /// ```
+    #[inline]
+    #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
+    #[allow(invalid_type_param_default)]
+    fn try_collect<B, L = <B as CollectLength<<<Self as IntoIterator>::Item as Try>::Output>>::Length>(self) -> <<Self::Item as Try>::Residual as Residual<B>>::TryType
+    where
+        Self: Sized,
+        Self::Item: Try<Residual: Residual<B>>,
+        B: ~const TryFromBulk<<Self::Item as Try>::Output, Self, L>,
+        L: Length<Elem = <Self::Item as Try>::Output> + ?Sized
+    {
+        TryFromBulk::try_from_bulk(self)
+    }
+
+    /// Transforms a statically sized bulk into an array.
+    /// The bulk must implement [`StaticBulk`].
+    /// 
+    /// This is equivalent to [`collect()`](Bulk::collect), but the type does not need to be inferred.
+    /// For types other than arrays, use [`collect()`](Bulk::collect).
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// let doubled = a.bulk()
+    ///     .map(|x| x * 2)
+    ///     .collect_array();
+    ///
+    /// assert_eq!(doubled, [2, 4, 6]);
+    /// ```
+    /// 
+    /// Alternatively, [`collect()`](Bulk::collect) can be used, but this requires us to specify the return type.
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// let doubled: [i32; 3] = a.bulk()
+    ///     .map(|x| x * 2)
+    ///     .collect();
+    ///
+    /// assert_eq!(doubled, [2, 4, 6]);
+    /// ```
+    #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
     fn collect_array(self) -> <Self as StaticBulk>::Array<<Self as IntoIterator>::Item>
     where
         Self: StaticBulk
@@ -1358,6 +1580,85 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
         }
     }
 
+    /// Fallibly transforms a statically sized bulk into an array, short circuiting if
+    /// a failure is encountered.
+    /// The bulk must implement [`StaticBulk`].
+    ///
+    /// `try_collect_array()` is a variation of [`collect_array()`][`Bulk::collect_array`] that allows fallible
+    /// conversions during collection. Its main use case is simplifying conversions from
+    /// iterators yielding [`Option<T>`][`Option`] into `Option<Collection<T>>`, or similarly for other [`Try`]
+    /// types (e.g. [`Result`]).
+    ///
+    /// Importantly, `try_collect()` doesn't require that the outer [`Try`] type also implements [`FromBulk`];
+    /// only the inner type produced on `Try::Output` must implement it. Concretely,
+    /// this means that collecting into `ControlFlow<_, Vec<i32>>` is valid because `Vec<i32>` implements
+    /// [`FromBulk`], even though [`ControlFlow`] doesn't.
+    /// 
+    /// This is equivalent to [`try_collect()`](Bulk::try_collect), but the type does not need to be inferred.
+    /// For types other than arrays, use [`try_collect()`](Bulk::try_collect).
+    /// 
+    /// Unlike with [`Iterator::try_collect`], the bulk is fully consumed even if it short-circuits.
+    /// A short-circuit will cause the rest of the elements of the bulk to be dropped.
+    ///
+    /// # Examples
+    /// 
+    /// Successfully collecting a bulk of `Option<i32>` into `Option<[i32; _]>`:
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let u = vec![Some(1), Some(2), Some(3)];
+    /// let v = u.into_bulk().try_collect_array();
+    /// assert_eq!(v, Some([1, 2, 3]));
+    /// ```
+    ///
+    /// Failing to collect in the same way:
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let u = vec![Some(1), Some(2), None, Some(3)];
+    /// let v = u.into_bulk().try_collect_array();
+    /// assert_eq!(v, None);
+    /// ```
+    /// 
+    /// Alternatively, [`try_collect()`](Bulk::try_collect) can be used, but this requires us to specify the return type.
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let u = vec![Some(1), Some(2), Some(3)];
+    /// let v: Option<[i32; 3]> = u.into_bulk().try_collect();
+    /// assert_eq!(v, Some([1, 2, 3]));
+    /// ```
+    ///
+    /// A similar example, but with `Result`:
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let u: [Result<i32, ()>; _] = [Ok(1), Ok(2), Ok(3)];
+    /// let v = u.into_bulk().try_collect_array();
+    /// assert_eq!(v, Ok([1, 2, 3]));
+    ///
+    /// let u = vec![Ok(1), Ok(2), Err(()), Ok(3)];
+    /// let v = u.into_bulk().try_collect_array();
+    /// assert_eq!(v, Err(()));
+    /// ```
+    ///
+    /// Finally, even [`ControlFlow`] works, despite the fact that it
+    /// doesn't implement [`FromBulk`].
+    ///
+    /// ```
+    /// use core::ops::ControlFlow::{Break, Continue};
+    ///
+    /// let u = [Continue(1), Continue(2), Break(3), Continue(4), Continue(5)];
+    /// 
+    /// let v = u.into_bulk().try_collect_array();
+    /// assert_eq!(v, Break(3));
+    ///
+    /// let v = u.into_bulk().take([(); 2])
+    ///     .chain(u.into_bulk().skip([(); 3]))
+    ///     .try_collect_array();
+    /// assert_eq!(v, Continue([1, 2, 4, 5]));
+    /// ```
+    #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
     fn try_collect_array(self) -> <<Self::Item as Try>::Residual as Residual<Self::Array<<Self::Item as Try>::Output>>>::TryType
     where
         Self: StaticBulk<Item: ~const Destruct + ~const Try<Residual: Residual<(), TryType: ~const Try> + Residual<Self::Array<<Self::Item as Try>::Output>, TryType: ~const Try> + ~const Destruct, Output: ~const Destruct>> + ~const Bulk
@@ -1586,3 +1887,9 @@ mod test
         println!("variance = {variance}");
     }
 }
+
+/*
+# MISSING FEATURES:
+- collect_into (requires `Extend` to become a const-trait)
+- try_collect
+*/

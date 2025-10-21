@@ -103,7 +103,7 @@ impl<T> const DoubleEndedBulk for Once<T>
         self.try_for_each(f)
     }
 }
-impl<T> StaticBulk for Once<T>
+unsafe impl<T> StaticBulk for Once<T>
 {
     type Array<U> = [U; 1];
 }

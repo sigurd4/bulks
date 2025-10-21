@@ -219,7 +219,7 @@ where
         bulk.rev().skip(m).try_for_each(f)
     }
 }
-impl<T, A, const N: usize, const M: usize> StaticBulk for Take<T, [A; N]>
+unsafe impl<T, A, const N: usize, const M: usize> StaticBulk for Take<T, [A; N]>
 where
     T: StaticBulk<Item = A, Array<A> = [A; M]>,
     [A; N.min(M)]:

@@ -184,7 +184,7 @@ where
         self.try_for_each(f)
     }
 }
-impl<A, G, const N: usize> StaticBulk for RepeatNWith<G, [A; N]>
+unsafe impl<A, G, const N: usize> StaticBulk for RepeatNWith<G, [A; N]>
 where
     G: FnMut() -> A
 {

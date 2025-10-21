@@ -164,7 +164,7 @@ where
         })
     }
 }
-impl<I, T, const N: usize> StaticBulk for Enumerate<I>
+unsafe impl<I, T, const N: usize> StaticBulk for Enumerate<I>
 where 
     I: StaticBulk<Item = T, Array<T> = [T; N]>
 {

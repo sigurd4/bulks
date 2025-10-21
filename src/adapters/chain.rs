@@ -169,7 +169,7 @@ where
         a.try_rev_for_each(f)
     }
 }
-impl<A, B, T, const N: usize, const M: usize> StaticBulk for Chain<A, B>
+unsafe impl<A, B, T, const N: usize, const M: usize> StaticBulk for Chain<A, B>
 where
     A: StaticBulk<Item = T, Array<T> = [T; N]>,
     B: StaticBulk<Item = T, Array<T> = [T; M]>,

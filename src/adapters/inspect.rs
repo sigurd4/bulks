@@ -140,7 +140,7 @@ where
     }
 }
 
-impl<I, F> StaticBulk for Inspect<I, F>
+unsafe impl<I, F> StaticBulk for Inspect<I, F>
 where
     I: StaticBulk,
     F: FnMut(&I::Item)

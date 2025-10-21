@@ -127,7 +127,7 @@ impl<T> const DoubleEndedBulk for Empty<T>
         R::from_output(())
     }
 }
-impl<T> StaticBulk for Empty<T>
+unsafe impl<T> StaticBulk for Empty<T>
 {
     type Array<U> = [U; 0];
 }

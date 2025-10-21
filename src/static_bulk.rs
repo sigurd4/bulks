@@ -87,11 +87,17 @@ where
     }
 }
 
+/// A trait for bulks whose length can be determined at compile-time.
+/// 
+/// # Safety
+/// 
+/// We must guarantee that the bulk will always yield an exact amount of elements.
+/// The bulk's length must always be the same as the length of [`Self::Array`](StaticBulk::Array).
 #[rustc_on_unimplemented(
     message = "cannot determine the length of bulk `{Self}` at compile-time",
     label = "the bulk `{Self}` is not statically sized",
 )]
-pub trait StaticBulk: Bulk + BulkLength<Length: Array> + Sized
+pub unsafe trait StaticBulk: Bulk + BulkLength<Length: Array> + Sized
 {
     type Array<U>: const Array<Elem = U> + Length;
 }

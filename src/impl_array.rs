@@ -127,7 +127,7 @@ macro_rules! impl_bulk {
                 R: ~const Try<Output = (), Residual: ~const Destruct>
             $try_rev_for_each
         }
-        impl<$($a,)? $t, const $n: usize> StaticBulk for array::$bulk<$($a,)? $t, $n>
+        unsafe impl<$($a,)? $t, const $n: usize> StaticBulk for array::$bulk<$($a,)? $t, $n>
         {
             type Array<U> = [U; $n];
         }

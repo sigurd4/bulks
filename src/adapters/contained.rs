@@ -204,7 +204,7 @@ where
         self.iter.rev().try_for_each(f)
     }
 }
-impl<I> StaticBulk for Contained<I>
+unsafe impl<I> StaticBulk for Contained<I>
 where
     I: InfiniteIterator
 {

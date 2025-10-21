@@ -123,7 +123,7 @@ where
         bulk.try_for_each(f)
     }
 }
-impl<I> StaticBulk for Rev<I>
+unsafe impl<I> StaticBulk for Rev<I>
 where
     I: StaticBulk + DoubleEndedBulk
 {

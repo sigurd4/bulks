@@ -166,7 +166,7 @@ where
         })
     }
 }
-impl<T, A, const N: usize, const M: usize> StaticBulk for StepBy<T, [A; N]>
+unsafe impl<T, A, const N: usize, const M: usize> StaticBulk for StepBy<T, [A; N]>
 where
     T: StaticBulk<Item = A, Array<A> = [A; M]>,
     [A; M.div_ceil(N)]:

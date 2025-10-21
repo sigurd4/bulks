@@ -136,7 +136,7 @@ where
         })
     }
 }
-impl<I, G, T, const N: usize> StaticBulk for IntersperseWith<I, G>
+unsafe impl<I, G, T, const N: usize> StaticBulk for IntersperseWith<I, G>
 where
     I: StaticBulk<Item = T, Array<T> = [T; N]>,
     G: FnMut() -> T,

@@ -131,7 +131,7 @@ where
         })
     }
 }
-impl<I: Bulk, F, T, U, const N: usize, const M: usize> StaticBulk for MapWindows<I, F, N>
+unsafe impl<I: Bulk, F, T, U, const N: usize, const M: usize> StaticBulk for MapWindows<I, F, N>
 where
     I: StaticBulk<Item = T, Array<T> = [T; M]>,
     F: FnMut(&[T; N]) -> U,

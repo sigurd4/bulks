@@ -148,7 +148,7 @@ where
         })
     }
 }
-impl<'a, I, T, const N: usize> StaticBulk for Copied<I>
+unsafe impl<'a, I, T, const N: usize> StaticBulk for Copied<I>
 where 
     I: StaticBulk<Item = &'a T, Array<&'a T> = [&'a T; N]>,
     T: Copy + 'a

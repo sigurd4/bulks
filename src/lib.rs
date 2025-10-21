@@ -32,365 +32,272 @@
 #![feature(new_range_api)]
 #![feature(const_option_ops)]
 #![feature(step_trait)]
+#![feature(iterator_try_collect)]
+#![feature(doc_notable_trait)]
 #![feature(mem_copy_fn)]
 #![feature(const_closures)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
 
-//! Composable external iteration.
+//! Composable bulk-iteration.
+//! 
+//! This crate adds [`Bulk`]s, which are similar to iterators, except they are stricter. They can only be wholly consumed, where every value is operated on in bulk. This, unlike with classic [`Iterator`]s, makes them fully compatible with arrays!
+//! 
+//! # Constraints
+//! 
+//! Bulks are subject to some extra constraints that don't affect normal iterators.
+//! In order for a bulk to be evaluated as is, the whole bulk must be consumed.
+//! Alternatively, it can be converted into an iterator to evaluate each iteration seperately.
+//! While iterators can be mutably exhausted, bulks cannot, and are therefore guaranteed to be intact.
+//! 
+//! Their constrained nature means fewer operations are possible, but the guarantees it gives makes it possible to use them with arrays while still retaining the array's length.
+//! Operations that preserves the length of the data like [`map`](Bulk::map), [`zip`](Bulk::zip), [`enumerate`](Bulk::enumerate), [`rev`](Bulk::rev) and [`inspect`](Bulk::inspect) are allowed.
+//! By enabling the [`generic_const_exprs`](https://github.com/rust-lang/rust/issues/76560)-feature, some other length-modifying operations are also allowed such as [`flat_map`](Bulk::flat_map), [`flatten`](Bulk::flatten), [`intersperse`](Bulk::intersperse), [`array_chunks`](Bulk::array_chunks) and [`map_windows`](Bulk::map_windows)
+//! since these modify the bulk's length in a predetermined way.
+//! Of course, wholly consuming operations like [`fold`](Bulk::fold), [`try_fold`](Bulk::try_fold), [`reduce`](Bulk::reduce), [`try_reduce`](Bulk::reduce), [`collect`](Bulk::collect) and [`try_collect`](Bulk::try_collect) are fully supported.
+//! There's also [`collect_array`](Bulk::collect_array) and [`try_collect_array`](Bulk::try_collect_array) to avoid turbofish-syntax when doing [`collect`](Bulk::collect) or [`try_collect`](Bulk::try_collect).
+//! 
+//! Any `Bulk` that was created from an array can be collected back into an array, given that the operations done on it makes the length predetermined at compile-time.
+//! Bulks can also be used with other structures, allowing generic implementations that work the same on arrays as with other iterables.
+//! 
+//! # Bulk
 //!
-//! If you've found yourself with a collection of some kind, and needed to
-//! perform an operation on the elements of said collection, you'll quickly run
-//! into 'iterators'. Iterators are heavily used in idiomatic Rust code, so
-//! it's worth becoming familiar with them.
-//!
-//! Before explaining more, let's talk about how this module is structured:
-//!
-//! # Organization
-//!
-//! This module is largely organized by type:
-//!
-//! * [Traits] are the core portion: these traits define what kind of iterators
-//!   exist and what you can do with them. The methods of these traits are worth
-//!   putting some extra study time into.
-//! * [Functions] provide some helpful ways to create some basic iterators.
-//! * [Structs] are often the return types of the various methods on this
-//!   module's traits. You'll usually want to look at the method that creates
-//!   the `struct`, rather than the `struct` itself. For more detail about why,
-//!   see '[Implementing Iterator](#implementing-iterator)'.
-//!
-//! [Traits]: #traits
-//! [Functions]: #functions
-//! [Structs]: #structs
-//!
-//! That's it! Let's dig into iterators.
-//!
-//! # Iterator
-//!
-//! The heart and soul of this module is the [`Iterator`] trait. The core of
-//! [`Iterator`] looks like this:
+//! The trait [`Bulk`] is similar to [`Iterator`], but lacks the [`next`](Iterator::next) method.
+//! Instead, its function is based on the [`for_each`](Bulk::for_each) and [`try_for_each`](Bulk::try_for_each) methods.
 //!
 //! ```
-//! trait Iterator {
-//!     type Item;
-//!     fn next(&mut self) -> Option<Self::Item>;
+//! trait Bulk: IntoIterator
+//! {
+//!     fn len(&self) -> usize;
+//! 
+//!     fn for_each<F>(self, f: F)
+//!     where
+//!         Self: Sized,
+//!         F: FnMut(Self::Item);
+//! 
+//!     fn try_for_each<F, R>(self, f: F) -> R
+//!     where
+//!         Self: Sized,
+//!         F: FnMut(Self::Item) -> R,
+//!         R: Try<Output = ()>;
 //! }
 //! ```
 //!
-//! An iterator has a method, [`next`], which when called, returns an
-//! <code>[Option]\<Item></code>. Calling [`next`] will return [`Some(Item)`] as long as there
-//! are elements, and once they've all been exhausted, will return `None` to
-//! indicate that iteration is finished. Individual iterators may choose to
-//! resume iteration, and so calling [`next`] again may or may not eventually
-//! start returning [`Some(Item)`] again at some point (for example, see [`TryIter`]).
-//!
-//! [`Iterator`]'s full definition includes a number of other methods as well,
-//! but they are default methods, built on top of [`next`], and so you get
+//! [`Bulk`]'s full definition includes a number of other methods as well,
+//! but they are default methods, built on top of [`for_each`](Bulk::for_each) and [`try_for_each`](Bulk::try_for_each), and so you get
 //! them for free.
 //!
-//! Iterators are also composable, and it's common to chain them together to do
+//! Bulks are also composable, and it's common to chain them together to do
 //! more complex forms of processing. See the [Adapters](#adapters) section
 //! below for more details.
 //!
-//! [`Some(Item)`]: Some
-//! [`next`]: Iterator::next
-//! [`TryIter`]: ../../std/sync/mpsc/struct.TryIter.html
+//! # The three forms of bulk-iteration
 //!
-//! # The three forms of iteration
+//! There are three common methods which can create bulks from a collection:
 //!
-//! There are three common methods which can create iterators from a collection:
+//! * [`bulk()`](AsBulk::bulk), which iterates over `&T`.
+//! * [`bulk_mut()`](AsBulk::bulk_mut), which iterates over `&mut T`.
+//! * [`into_bulk()`](IntoBulk::into_bulk), which iterates over `T`.
+//! 
+//! These are the in-bulk counterparts of `iter()`, `iter_mut()` and [`into_iter()`](IntoIterator::into_iter).
+//! The trait [`IntoBulk`] provides the method [`into_bulk`](IntoBulk::into_bulk).
+//! 
+//! [`bulk()`](AsBulk::bulk) is available for any `T` where `&T` implements [`IntoBulk`], and
+//! [`bulk_mut()`](AsBulk::bulk_mut) is available for any `T` where `&mut T` is [`IntoBulk`].
+//! They are just shorthand for doing [`into_bulk`](IntoBulk::into_bulk) on a reference.
+//! 
+//! [`IntoBulk`] is automatically implemented for all [`Bulk`]s.
+//! Other types that can be converted into an [`ExactSizeIterator`] through [`IntoIterator`] also automatically implement [`IntoBulk`],
+//! converting them to a [`bulks::iter::Bulk`](crate::iter::Bulk), however this implementation can be specialized.
+//! For example, arrays specialize this implementation, converting to [`bulks::array::IntoBulk`](crate::array::IntoBulk) instead.
+//! Specializing [`IntoBulk`] is useful for collections whose length must be retained at compile-time, like arrays.
 //!
-//! * `iter()`, which iterates over `&T`.
-//! * `iter_mut()`, which iterates over `&mut T`.
-//! * `into_iter()`, which iterates over `T`.
-//!
-//! Various things in the standard library may implement one or more of the
-//! three, where appropriate.
-//!
-//! # Implementing Iterator
-//!
-//! Creating an iterator of your own involves two steps: creating a `struct` to
-//! hold the iterator's state, and then implementing [`Iterator`] for that `struct`.
-//! This is why there are so many `struct`s in this module: there is one for
-//! each iterator and iterator adapter.
-//!
-//! Let's make an iterator named `Counter` which counts from `1` to `5`:
+//! # Implementing Bulk
+//! 
+//! Making your own bulk is a bit similar to making an [`Iterator`], but a little bit less convenient.
+//! 
+//! Your bulk needs a corresponding iterator that it can be converted to, which must be an [`ExactSizeIterator`].
 //!
 //! ```
-//! // First, the struct:
-//!
-//! /// An iterator which counts from one to five
-//! struct Counter {
+//! use bulks::*;
+//! 
+//! /// An iterator which counts from one to `N`
+//! struct CounterIter<const N: usize>
+//! {
 //!     count: usize,
 //! }
 //!
 //! // we want our count to start at one, so let's add a new() method to help.
-//! // This isn't strictly necessary, but is convenient. Note that we start
-//! // `count` at zero, we'll see why in `next()`'s implementation below.
-//! impl Counter {
-//!     fn new() -> Counter {
-//!         Counter { count: 0 }
+//! // This isn't strictly necessary, but is convenient.
+//! impl<const N: usize> CounterIter<N>
+//! {
+//!     pub fn new() -> Self
+//!     {
+//!         CounterIter { count: 0 }
 //!     }
 //! }
 //!
-//! // Then, we implement `Iterator` for our `Counter`:
-//!
-//! impl Iterator for Counter {
-//!     // we will be counting with usize
+//! // Then, we implement `Iterator` for our `CounterIter`:
+//! impl<const N: usize> Iterator for CounterIter<N>
+//! {
+//!     // We will be counting with usize
 //!     type Item = usize;
 //!
 //!     // next() is the only required method
-//!     fn next(&mut self) -> Option<Self::Item> {
+//!     fn next(&mut self) -> Option<Self::Item>
+//!     {
 //!         // Increment our count. This is why we started at zero.
 //!         self.count += 1;
 //!
 //!         // Check to see if we've finished counting or not.
-//!         if self.count < 6 {
+//!         if self.count <= N
+//!         {
 //!             Some(self.count)
-//!         } else {
+//!         }
+//!         else
+//!         {
 //!             None
 //!         }
 //!     }
+//! 
+//!     // Since we're implementing `ExactSizeIterator`, it's a good idea to override `size_hint`.
+//!     fn size_hint(&self) -> (usize, Option<usize>)
+//!     {
+//!         let len = self.len();
+//!         (len, Some(len))
+//!     }
+//! }
+//! 
+//! // We also need our `CounterIter` to be an `ExactSizeIterator`.
+//! impl<const N: usize> ExactSizeIterator for CounterIter<N>
+//! {
+//!     fn len(&self) -> usize
+//!     {
+//!         N.saturating_sub(self.count)
+//!     }
+//! }
+//! 
+//! // Now that we have an iterator we can start defining our bulk-iterator.
+//! 
+//! /// A bulk which counts from one to five
+//! struct Counter<const N: usize>;
+//! 
+//! // Then, we implement `IntoIterator` for our `Counter`:
+//! impl<const N: usize> IntoIterator for Counter<N>
+//! {
+//!     // We will be counting with usize
+//!     type Item = usize;
+//!     // This is iterator needs to be equivalent to our bulk.
+//!     type IntoIter = CounterIter<N>;
+//! 
+//!     fn into_iter(self) -> Self::IntoIter
+//!     {
+//!         CounterIter::new()
+//!     }
+//! }
+//! 
+//! // Then, we implement `Bulk` for our `Counter`:
+//! impl<const N: usize> Bulk for Counter<N>
+//! {
+//!     fn len(&self) -> usize
+//!     {
+//!         N
+//!     }
+//! 
+//!     fn for_each<F>(self, f: F)
+//!     where
+//!         Self: Sized,
+//!         F: FnMut(Self::Item)
+//!     {
+//!         for i in self
+//!         {
+//!             f(i)
+//!         }
+//!     }
+//! 
+//!     fn try_for_each<F, R>(self, f: F) -> R
+//!     where
+//!         Self: Sized,
+//!         F: FnMut(Self::Item) -> R,
+//!         R: Try<Output = ()>
+//!     {
+//!         for i in self
+//!         {
+//!             f(i)?
+//!         }
+//!         R::from_output(())
+//!     }
+//! }
+//! 
+//! // To allow collection into arrays, we can implement `StaticBulk`.
+//! // SAFETY: We must guarantee that `Counter<N>` will always yield exactly `N` elements.
+//! unsafe impl<const N: usize> StaticBulk for Counter<N>
+//! {
+//!     type Array<U> = [U; N];
 //! }
 //!
 //! // And now we can use it!
-//!
-//! let mut counter = Counter::new();
-//!
-//! assert_eq!(counter.next(), Some(1));
-//! assert_eq!(counter.next(), Some(2));
-//! assert_eq!(counter.next(), Some(3));
-//! assert_eq!(counter.next(), Some(4));
-//! assert_eq!(counter.next(), Some(5));
-//! assert_eq!(counter.next(), None);
+//! let counter = Counter::<5>::new();
+//! let result: [_; _] = counter.collect();
+//! 
+//! assert_eq!(result, [1, 2, 3, 4, 5]);
 //! ```
-//!
-//! Calling [`next`] this way gets repetitive. Rust has a construct which can
-//! call [`next`] on your iterator, until it reaches `None`. Let's go over that
-//! next.
-//!
-//! Also note that `Iterator` provides a default implementation of methods such as `nth` and `fold`
-//! which call `next` internally. However, it is also possible to write a custom implementation of
-//! methods like `nth` and `fold` if an iterator can compute them more efficiently without calling
-//! `next`.
-//!
-//! # `for` loops and `IntoIterator`
-//!
-//! Rust's `for` loop syntax is actually sugar for iterators. Here's a basic
-//! example of `for`:
-//!
-//! ```
-//! let values = vec![1, 2, 3, 4, 5];
-//!
-//! for x in values {
-//!     println!("{x}");
-//! }
-//! ```
-//!
-//! This will print the numbers one through five, each on their own line. But
-//! you'll notice something here: we never called anything on our vector to
-//! produce an iterator. What gives?
-//!
-//! There's a trait in the standard library for converting something into an
-//! iterator: [`IntoIterator`]. This trait has one method, [`into_iter`],
-//! which converts the thing implementing [`IntoIterator`] into an iterator.
-//! Let's take a look at that `for` loop again, and what the compiler converts
-//! it into:
-//!
-//! [`into_iter`]: IntoIterator::into_iter
-//!
-//! ```
-//! let values = vec![1, 2, 3, 4, 5];
-//!
-//! for x in values {
-//!     println!("{x}");
-//! }
-//! ```
-//!
-//! Rust de-sugars this into:
-//!
-//! ```
-//! let values = vec![1, 2, 3, 4, 5];
-//! {
-//!     let result = match IntoIterator::into_iter(values) {
-//!         mut iter => loop {
-//!             let next;
-//!             match iter.next() {
-//!                 Some(val) => next = val,
-//!                 None => break,
-//!             };
-//!             let x = next;
-//!             let () = { println!("{x}"); };
-//!         },
-//!     };
-//!     result
-//! }
-//! ```
-//!
-//! First, we call `into_iter()` on the value. Then, we match on the iterator
-//! that returns, calling [`next`] over and over until we see a `None`. At
-//! that point, we `break` out of the loop, and we're done iterating.
-//!
-//! There's one more subtle bit here: the standard library contains an
-//! interesting implementation of [`IntoIterator`]:
-//!
-//! ```ignore (only-for-syntax-highlight)
-//! impl<I: Iterator> IntoIterator for I
-//! ```
-//!
-//! In other words, all [`Iterator`]s implement [`IntoIterator`], by just
-//! returning themselves. This means two things:
-//!
-//! 1. If you're writing an [`Iterator`], you can use it with a `for` loop.
-//! 2. If you're creating a collection, implementing [`IntoIterator`] for it
-//!    will allow your collection to be used with the `for` loop.
-//!
-//! # Iterating by reference
-//!
-//! Since [`into_iter()`] takes `self` by value, using a `for` loop to iterate
-//! over a collection consumes that collection. Often, you may want to iterate
-//! over a collection without consuming it. Many collections offer methods that
-//! provide iterators over references, conventionally called `iter()` and
-//! `iter_mut()` respectively:
-//!
-//! ```
-//! let mut values = vec![41];
-//! for x in values.iter_mut() {
-//!     *x += 1;
-//! }
-//! for x in values.iter() {
-//!     assert_eq!(*x, 42);
-//! }
-//! assert_eq!(values.len(), 1); // `values` is still owned by this function.
-//! ```
-//!
-//! If a collection type `C` provides `iter()`, it usually also implements
-//! `IntoIterator` for `&C`, with an implementation that just calls `iter()`.
-//! Likewise, a collection `C` that provides `iter_mut()` generally implements
-//! `IntoIterator` for `&mut C` by delegating to `iter_mut()`. This enables a
-//! convenient shorthand:
-//!
-//! ```
-//! let mut values = vec![41];
-//! for x in &mut values {
-//!     //   ^ same as `values.iter_mut()`
-//!     *x += 1;
-//! }
-//! for x in &values {
-//!     //   ^ same as `values.iter()`
-//!     assert_eq!(*x, 42);
-//! }
-//! assert_eq!(values.len(), 1);
-//! ```
-//!
-//! While many collections offer `iter()`, not all offer `iter_mut()`. For
-//! example, mutating the keys of a [`HashSet<T>`] could put the collection
-//! into an inconsistent state if the key hashes change, so this collection
-//! only offers `iter()`.
-//!
-//! [`into_iter()`]: IntoIterator::into_iter
-//! [`HashSet<T>`]: ../../std/collections/struct.HashSet.html
 //!
 //! # Adapters
+//! 
+//! Just like with iterators there are adapters for bulks.
+//! These are functions which take a [`Bulk`] and return another [`Bulk`].
 //!
-//! Functions which take an [`Iterator`] and return another [`Iterator`] are
-//! often called 'iterator adapters', as they're a form of the 'adapter
-//! pattern'.
-//!
-//! Common iterator adapters include [`map`], [`take`], and [`filter`].
+//! Common bulk adapters include [`map`](Bulk::map), [`take`](Bulk::take), and [`rev`](Bulk::rev).
 //! For more, see their documentation.
-//!
-//! If an iterator adapter panics, the iterator will be in an unspecified (but
-//! memory safe) state.  This state is also not guaranteed to stay the same
-//! across versions of Rust, so you should avoid relying on the exact values
-//! returned by an iterator which panicked.
-//!
-//! [`map`]: Iterator::map
-//! [`take`]: Iterator::take
-//! [`filter`]: Iterator::filter
 //!
 //! # Laziness
 //!
-//! Iterators (and iterator [adapters](#adapters)) are *lazy*. This means that
-//! just creating an iterator doesn't _do_ a whole lot. Nothing really happens
-//! until you call [`next`]. This is sometimes a source of confusion when
-//! creating an iterator solely for its side effects. For example, the [`map`]
+//! Bulks (and bulk [adapters](#adapters)), just like iterators, are *lazy*. This means that
+//! just creating a bulk doesn't _do_ a whole lot. Nothing really happens
+//! until you consume it. This is sometimes a source of confusion when
+//! creating a bulk solely for its side effects. For example, the [`map`](Bulk::map)
 //! method calls a closure on each element it iterates over:
 //!
 //! ```
 //! # #![allow(unused_must_use)]
 //! # #![allow(map_unit_fn)]
-//! let v = vec![1, 2, 3, 4, 5];
-//! v.iter().map(|x| println!("{x}"));
+//! let a = [1, 2, 3, 4, 5];
+//! a.bulk().map(|x| println!("{x}"));
 //! ```
 //!
-//! This will not print any values, as we only created an iterator, rather than
+//! This will not print any values, as we only created a bulk, rather than
 //! using it. The compiler will warn us about this kind of behavior:
 //!
 //! ```text
-//! warning: unused result that must be used: iterators are lazy and
+//! warning: unused result that must be used: bulks are lazy and
 //! do nothing unless consumed
 //! ```
 //!
-//! The idiomatic way to write a [`map`] for its side effects is to use a
-//! `for` loop or call the [`for_each`] method:
+//! The idiomatic way to write a [`map`](Bulk::map) for its side effects is to use a
+//! `for` loop or call the [`for_each`](Bulk::for_each) method:
 //!
 //! ```
-//! let v = vec![1, 2, 3, 4, 5];
+//! let a = [1, 2, 3, 4, 5];
 //!
-//! v.iter().for_each(|x| println!("{x}"));
+//! a.bulk().for_each(|x| println!("{x}"));
 //! // or
-//! for x in &v {
+//! for x in &v
+//! {
 //!     println!("{x}");
 //! }
 //! ```
 //!
-//! [`map`]: Iterator::map
-//! [`for_each`]: Iterator::for_each
-//!
-//! Another common way to evaluate an iterator is to use the [`collect`]
+//! Another common way to evaluate a bulk is to use the [`collect`](Bulk::collect)
 //! method to produce a new collection.
-//!
-//! [`collect`]: Iterator::collect
-//!
-//! # Infinity
-//!
-//! Iterators do not have to be finite. As an example, an open-ended range is
-//! an infinite iterator:
-//!
+//! 
 //! ```
-//! let numbers = 0..;
+//! let a = [1, 2, 3, 4, 5];
+//! 
+//! let b: [_; _] = a.into_bulk().collect();
+//! 
+//! assert_eq!(a, b);
 //! ```
-//!
-//! It is common to use the [`take`] iterator adapter to turn an infinite
-//! iterator into a finite one:
-//!
-//! ```
-//! let numbers = 0..;
-//! let five_numbers = numbers.take(5);
-//!
-//! for number in five_numbers {
-//!     println!("{number}");
-//! }
-//! ```
-//!
-//! This will print the numbers `0` through `4`, each on their own line.
-//!
-//! Bear in mind that methods on infinite iterators, even those for which a
-//! result can be determined mathematically in finite time, might not terminate.
-//! Specifically, methods such as [`min`], which in the general case require
-//! traversing every element in the iterator, are likely not to return
-//! successfully for any infinite iterators.
-//!
-//! ```no_run
-//! let ones = std::iter::repeat(1);
-//! let least = ones.min().unwrap(); // Oh no! An infinite loop!
-//! // `ones.min()` causes an infinite loop, so we won't reach this point!
-//! println!("The smallest number one is {least}.");
-//! ```
-//!
-//! [`take`]: Iterator::take
-//! [`min`]: Iterator::min
 
 moddef::moddef!(
     flat(pub) mod {
@@ -401,7 +308,8 @@ moddef::moddef!(
         double_ended_bulk,
         from_bulk,
         into_bulk,
-        static_bulk
+        static_bulk,
+        try_from_bulk
     },
     mod util
 );

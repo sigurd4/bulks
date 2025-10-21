@@ -247,7 +247,7 @@ where
         })
     }
 }
-impl<I, T, V, const N: usize, const M: usize> StaticBulk for Flatten<I>
+unsafe impl<I, T, V, const N: usize, const M: usize> StaticBulk for Flatten<I>
 where
     I: StaticBulk<Item = T, Array<T> = [T; N]>,
     T: IntoBulk<Item = V, IntoBulk: StaticBulk<Item = V, Array<V> = [V; M]>>,

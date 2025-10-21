@@ -266,7 +266,7 @@ where
         })
     }
 }
-impl<I, T, const N: usize, const M: usize> StaticBulk for ArrayChunks<I, N>
+unsafe impl<I, T, const N: usize, const M: usize> StaticBulk for ArrayChunks<I, N>
 where
     I: StaticBulk<Item = T, Array<T> = [T; M]>,
     [(); M/N]:

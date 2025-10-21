@@ -191,7 +191,7 @@ where
         bulk.rev().take(m).try_for_each(f)
     }
 }
-impl<T, A, const N: usize, const M: usize> StaticBulk for Skip<T, [A; N]>
+unsafe impl<T, A, const N: usize, const M: usize> StaticBulk for Skip<T, [A; N]>
 where
     T: StaticBulk<Item = A, Array<A> = [A; M]>,
     [A; M.saturating_sub(N)]:

@@ -140,8 +140,7 @@ where
         })
     }
 }
-
-impl<I, F> StaticBulk for Mutate<I, F>
+unsafe impl<I, F> StaticBulk for Mutate<I, F>
 where
     I: StaticBulk,
     F: FnMut(&mut I::Item)

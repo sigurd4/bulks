@@ -179,7 +179,7 @@ where
         self.into_iter().rev().try_for_each(f)
     }
 }
-impl<A, B, const N: usize, const M: usize> StaticBulk for Zip<A, B>
+unsafe impl<A, B, const N: usize, const M: usize> StaticBulk for Zip<A, B>
 where
     A: StaticBulk<Array<<A as IntoIterator>::Item> = [<A as IntoIterator>::Item; N]>,
     B: StaticBulk<Array<<B as IntoIterator>::Item> = [<B as IntoIterator>::Item; M]>,

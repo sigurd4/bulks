@@ -161,7 +161,7 @@ where
         self.try_for_each(f)
     }
 }
-impl<A, const N: usize> StaticBulk for RepeatN<A, [A; N]>
+unsafe impl<A, const N: usize> StaticBulk for RepeatN<A, [A; N]>
 where
     A: Clone
 {

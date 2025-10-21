@@ -132,7 +132,7 @@ where
         })
     }
 }
-impl<I, T, const N: usize> StaticBulk for Intersperse<I>
+unsafe impl<I, T, const N: usize> StaticBulk for Intersperse<I>
 where
     I: StaticBulk<Item = T, Array<T> = [T; N]>,
     T: Clone,

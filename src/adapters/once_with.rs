@@ -125,7 +125,7 @@ where
         self.try_for_each(f)
     }
 }
-impl<F, A> StaticBulk for OnceWith<F>
+unsafe impl<F, A> StaticBulk for OnceWith<F>
 where
     F: FnOnce() -> A
 {
