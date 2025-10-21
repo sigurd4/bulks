@@ -64,6 +64,16 @@ where
         let Self { bulk, separator: _ } = self;
         bulk.is_empty()
     }
+
+    fn first(self) -> Option<Self::Item>
+    where
+        Self: Sized
+    {
+        let Self { bulk, separator } = self;
+        let _ = separator;
+        bulk.first()
+    }
+
     fn for_each<F>(self, f: F)
     where
         Self: Sized,

@@ -28,6 +28,11 @@ where
             bulk
         }
     }
+
+    const fn chunk() -> usize
+    {
+        <<<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<<I::Item as IntoIterator>::Item> as AsArray>::LENGTH
+    }
 }
 
 impl<I> IntoIterator for Flatten<I>
@@ -55,13 +60,30 @@ where
     fn len(&self) -> usize
     {
         let Self { bulk } = self;
-        bulk.len()*<<<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<<I::Item as IntoIterator>::Item> as AsArray>::LENGTH
+        bulk.len()*Self::chunk()
     }
     fn is_empty(&self) -> bool
     {
         let Self { bulk } = self;
-        <<<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<<I::Item as IntoIterator>::Item> as AsArray>::LENGTH == 0 || bulk.is_empty()
+        Self::chunk() == 0 || bulk.is_empty()
     }
+
+    fn first(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        const fn into_first<T>(x: T) -> Option<T::Item>
+        where
+            T: ~const IntoBulk<Item: ~const Destruct>
+        {
+            x.into_bulk().first()
+        }
+
+        let Self { bulk } = self;
+        bulk.first().and_then(into_first)
+    }
+
     fn for_each<F>(self, f: F)
     where
         Self: Sized,

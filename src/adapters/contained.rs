@@ -1,6 +1,7 @@
 use core::usize;
 
 use crate::util::InfiniteIterator;
+use crate::util::LengthSpec;
 use crate::Bulk;
 use crate::DoubleEndedBulk;
 use crate::IntoBulk;
@@ -81,6 +82,26 @@ where
     default fn is_empty(&self) -> bool
     {
         Bulk::len(self) == 0
+    }
+
+    fn first(mut self) -> Option<Self::Item>
+    where
+        Self: Sized
+    {
+        self.iter.next()
+    }
+    fn last(self) -> Option<Self::Item>
+    where
+        Self: Sized
+    {
+        self.iter.last()
+    }
+    fn nth<L>(mut self, n: L) -> Option<Self::Item>
+    where
+        Self: Sized,
+        L: LengthSpec
+    {
+        self.iter.nth(n.len_metadata())
     }
     
     #[inline]

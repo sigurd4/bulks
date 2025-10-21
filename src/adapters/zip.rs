@@ -128,6 +128,19 @@ where
         let Self { a, b } = self;
         a.is_empty() || b.is_empty()
     }
+
+    fn first(self) -> Option<Self::Item>
+    where
+        Self: Sized
+    {
+        let Self { a, b } = self;
+        match (a.first(), b.first())
+        {
+            (Some(a), Some(b)) => Some((a, b)),
+            _ => None
+        }
+    }
+
     fn for_each<F>(self, f: F)
     where
         Self: Sized,

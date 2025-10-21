@@ -116,12 +116,21 @@ where
         let Self { bulk, f: _ } = self;
         bulk.len()
     }
-
     fn is_empty(&self) -> bool
     {
         let Self { bulk, f: _ } = self;
         bulk.is_empty()
     }
+
+    fn first(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        let Self { bulk, mut f } = self;
+        bulk.first().map(&mut f)
+    }
+
     fn for_each<FF>(self, f: FF)
     where
         Self: Sized,

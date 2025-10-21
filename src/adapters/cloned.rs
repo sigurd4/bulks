@@ -1,6 +1,6 @@
 use core::marker::Destruct;
 
-use crate::{Bulk, DoubleEndedBulk, StaticBulk};
+use crate::{util::LengthSpec, Bulk, DoubleEndedBulk, StaticBulk};
 
 /// A bulk that clones the elements of an underlying bulk.
 ///
@@ -69,6 +69,32 @@ where
     {
         let Self { bulk } = self;
         bulk.is_empty()
+    }
+
+    fn first(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        let Self { bulk } = self;
+        bulk.first().map(Clone::clone)
+    }
+    fn last(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        let Self { bulk } = self;
+        bulk.last().map(Clone::clone)
+    }
+    fn nth<L>(self, n: L) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        L: ~const LengthSpec
+    {
+        let Self { bulk } = self;
+        bulk.nth(n).map(Clone::clone)
     }
     
     fn for_each<F>(self, f: F)

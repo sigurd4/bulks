@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{util, Bulk, Guard, IntoBulk, StaticBulk, DoubleEndedBulk};
+use crate::{util::{self, LengthSpec}, Bulk, Guard, IntoBulk, StaticBulk, DoubleEndedBulk};
 
 pub mod array
 {
@@ -41,6 +41,9 @@ macro_rules! impl_bulk {
 
             fn collect_array($self_collect_array:ident) -> _
             $collect_array:block
+
+            $(fn nth($self_nth:ident, $n_nth:ident) -> _
+            $nth:block)?
         }
     ) => {
         impl<$($a,)? $t, const $n: usize> IntoIterator for array::$bulk<$($a,)? $t, $n>
@@ -74,6 +77,21 @@ macro_rules! impl_bulk {
             {
                 $n
             }
+
+            fn first(self) -> Option<Self::Item>
+            where
+                Self::Item: ~const Destruct,
+                Self: Sized
+            {
+                self.nth([(); 0])
+            }
+            
+            $(fn nth<L>($self_nth, $n_nth: L) -> Option<Self::Item>
+            where
+                Self::Item: ~const Destruct,
+                Self: Sized,
+                L: ~const LengthSpec
+            $nth)?
 
             #[inline]
             fn collect_array($self_collect_array) -> <Self as StaticBulk>::Array<Self::Item>
@@ -245,6 +263,12 @@ impl_bulk!(
             let Self {array} = self;
             array.each_ref()
         }
+
+        fn nth(self, n) -> _
+        {
+            let Self {array} = self;
+            array.get(n.len_metadata())
+        }
     }
 );
 impl_bulk!(
@@ -300,6 +324,12 @@ impl_bulk!(
         {
             let Self {array} = self;
             array.each_mut()
+        }
+
+        fn nth(self, n) -> _
+        {
+            let Self {array} = self;
+            array.get_mut(n.len_metadata())
         }
     }
 );

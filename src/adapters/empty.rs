@@ -1,6 +1,6 @@
 use core::{fmt, marker::{Destruct, PhantomData}};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, StaticBulk};
+use crate::{util::LengthSpec, Bulk, DoubleEndedBulk, IntoBulk, StaticBulk};
 
 /// Creates a bulk that yields nothing.
 /// 
@@ -67,6 +67,30 @@ impl<T> const Bulk for Empty<T>
     {
         true
     }
+
+    fn first(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        None
+    }
+    fn last(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        None
+    }
+    fn nth<L>(self, _n: L) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        L: ~const LengthSpec
+    {
+        None
+    }
+
     fn for_each<F>(self, f: F)
     where
         Self: Sized,

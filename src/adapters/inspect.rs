@@ -75,6 +75,15 @@ where
         bulk.is_empty()
     }
 
+    fn first(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        let Self { bulk, f: mut inspect } = self;
+        bulk.first().inspect(&mut inspect)
+    }
+
     fn for_each<FF>(self, f: FF)
     where
         Self: Sized,

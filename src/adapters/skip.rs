@@ -24,7 +24,7 @@ where
 {
     pub(crate) const fn new(bulk: T, n: N::LengthSpec) -> Skip<T, N>
     {
-        Self { bulk, n: n.len_metadata() }
+        Self { bulk, n: n.into_metadata() }
     }
 }
 impl<T, N> IntoIterator for Skip<T, N>

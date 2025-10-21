@@ -74,7 +74,7 @@ where
 {
     RepeatNWith {
         repeater,
-        n: n.len_metadata()
+        n: n.into_metadata()
     }
 }
 
@@ -129,6 +129,7 @@ where
         let Self { repeater: _, n } = self;
         N::len_metadata(*n)
     }
+
     fn for_each<F>(self, mut f: F)
     where
         Self: Sized,

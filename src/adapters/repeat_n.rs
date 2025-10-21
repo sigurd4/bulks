@@ -47,7 +47,7 @@ where
 {
     RepeatN {
         element,
-        n: n.len_metadata()
+        n: n.into_metadata()
     }
 }
 

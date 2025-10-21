@@ -1,6 +1,7 @@
 use core::{marker::Destruct, ops::Try};
 
 use array_trait::AsArray;
+use currying::Curry;
 
 use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk};
 
@@ -34,6 +35,11 @@ where
             map
         }
     }
+
+    const fn chunk() -> usize
+    {
+        <<<U as IntoBulk>::IntoBulk as StaticBulk>::Array<U::Item> as AsArray>::LENGTH
+    }
 }
 
 impl<I, U, F> IntoIterator for FlatMap<I, U, F>
@@ -65,13 +71,31 @@ where
     fn len(&self) -> usize
     {
         let Self { bulk, map: _ } = self;
-        bulk.len()*<<U::IntoBulk as StaticBulk>::Array<U::Item> as AsArray>::LENGTH
+        bulk.len()*Self::chunk()
     }
     fn is_empty(&self) -> bool
     {
         let Self { bulk, map: _ } = self;
-        <<U::IntoBulk as StaticBulk>::Array<U::Item> as AsArray>::LENGTH == 0 || bulk.is_empty()
+        Self::chunk() == 0 || bulk.is_empty()
     }
+
+    fn first(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        const fn into_first<F, T, U>(f: F, x: T) -> Option<U::Item>
+        where
+            F: ~const FnOnce(T) -> U,
+            U: ~const IntoBulk<Item: ~const Destruct>
+        {
+            f(x).into_bulk().first()
+        }
+
+        let Self { bulk, mut map } = self;
+        bulk.first().and_then(into_first.curry(&mut map))
+    }
+    
     fn for_each<FF>(self, f: FF)
     where
         Self: Sized,

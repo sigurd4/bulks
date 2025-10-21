@@ -31,19 +31,24 @@ impl<T, const N: usize> const Length for [T; N]
     }
 }
 
-pub const trait LengthSpec: Sized
+pub const trait LengthSpec: Copy
 {
     type Length<T>: const Length<Elem = T, LengthSpec = Self> + Pointee<Metadata = Self::Metadata> + ?Sized;
-    type Metadata: Sized;
+    type Metadata: Copy;
     
-    fn len_metadata(self) -> Self::Metadata;
+    fn into_metadata(self) -> Self::Metadata;
+    fn len_metadata(self) -> usize;
 }
 impl const LengthSpec for usize
 {
     type Length<T> = [T];
     type Metadata = usize;
 
-    fn len_metadata(self) -> Self::Metadata
+    fn into_metadata(self) -> Self::Metadata
+    {
+        self
+    }
+    fn len_metadata(self) -> usize
     {
         self
     }
@@ -53,8 +58,12 @@ impl<const N: usize> const LengthSpec for [(); N]
     type Length<T> = [T; N];
     type Metadata = ();
 
-    fn len_metadata(self) -> Self::Metadata
+    fn into_metadata(self) -> Self::Metadata
     {
         
+    }
+    fn len_metadata(self) -> usize
+    {
+        N
     }
 }

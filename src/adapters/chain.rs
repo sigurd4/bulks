@@ -89,7 +89,7 @@ where
 }
 impl<A, B, T> const Bulk for Chain<A, B>
 where
-    A: ~const Bulk<Item = T>,
+    A: ~const Bulk<Item = T> + ~const Destruct,
     B: ~const Bulk<Item = T> + ~const Destruct
 {
     fn len(&self) -> usize
@@ -101,6 +101,18 @@ where
     {
         let Self { a, b } = self;
         a.is_empty() && b.is_empty()
+    }
+    fn first(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        let Self { a, b } = self;
+        match a.first()
+        {
+            Some(first) => Some(first),
+            None => b.first()
+        }
     }
     
     fn for_each<F>(self, mut f: F)

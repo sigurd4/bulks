@@ -39,7 +39,7 @@ where
 {
     pub(crate) const fn new(bulk: T, n: N::LengthSpec) -> Take<T, N>
     {
-        Self { bulk, n: n.len_metadata() }
+        Self { bulk, n: n.into_metadata() }
     }
 }
 impl<T, N> IntoIterator for Take<T, N>

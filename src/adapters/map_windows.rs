@@ -72,6 +72,7 @@ where
         let Self { bulk, f: _ } = self;
         bulk.len() > N - 1
     }
+
     fn for_each<FF>(self, f: FF)
     where
         Self: Sized,

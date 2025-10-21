@@ -1,4 +1,4 @@
-use core::{marker::Destruct, mem::MaybeUninit, ops::{Residual, Try}};
+use core::{marker::Destruct, mem::MaybeUninit, ops::{ControlFlow, FromResidual, Residual, Try}};
 
 use array_trait::AsSlice;
 
@@ -57,6 +57,97 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     fn is_empty(&self) -> bool
     {
         self.len() == 0
+    }
+
+    /// Returns the first value, and discards the rest of the bulk.
+    /// 
+    /// Returns [`None`] if the bulk is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// let bulk = a.bulk();
+    /// 
+    /// let a1 = bulk.first();
+    /// assert_eq!(a1, Some(1));
+    /// ```
+    fn first(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        const fn break_on_first<T>(x: T) -> ControlFlow<T>
+        {
+            ControlFlow::Break(x)
+        }
+
+        match self.try_for_each(break_on_first)
+        {
+            ControlFlow::Break(first) => Some(first),
+            ControlFlow::Continue(()) => None
+        }
+    }
+
+    /// Returns the last value, and discards the rest of the bulk.
+    /// 
+    /// Returns [`None`] if the bulk is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// let bulk = a.bulk();
+    /// 
+    /// let a1 = bulk.last();
+    /// assert_eq!(a1, Some(3));
+    /// ```
+    fn last(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        const fn store<T>(_: T, x: T) -> T
+        where
+            T: ~const Destruct
+        {
+            x
+        }
+
+        self.reduce(store)
+    }
+
+    /// Returns the `n`-th value, and discards the rest of the bulk.
+    /// 
+    /// Returns [`None`] if index `n` is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// let bulk = a.bulk();
+    /// 
+    /// // The bulk is consumed, so it must be cloned each time. Don't actually do this.
+    /// let a1 = bulk.clone().first();
+    /// let a2 = bulk.clone().nth(2);
+    /// let a3 = bulk.clone().nth(3);
+    /// let a4 = bulk.clone().nth(4);
+    /// 
+    /// assert_eq!(a1, Some(1));
+    /// assert_eq!(a2, Some(2));
+    /// assert_eq!(a3, Some(3));
+    /// assert_eq!(a4, None);
+    /// ```
+    fn nth<L>(self, n: L) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        L: ~const LengthSpec
+    {
+        self.skip(n).first()
     }
 
     /// Calls a closure on each element of a bulk.
@@ -118,6 +209,223 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
         Self::Item: ~const Destruct,
         F: ~const FnMut(Self::Item) -> R + ~const Destruct,
         R: ~const Try<Output = (), Residual: ~const Destruct>;
+
+    /// TODO
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        B: ~const Destruct,
+        F: ~const FnMut(B, Self::Item) -> B + ~const Destruct
+    {
+        struct Closure<'a, B, F>
+        {
+            z: &'a mut Option<B>,
+            f: F
+        }
+        impl<'a, B, F, T> const FnOnce<(T,)> for Closure<'a, B, F>
+        where
+            B: ~const Destruct,
+            F: ~const FnOnce(B, T) -> B,
+        {
+            type Output = ();
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                let Self { z, f } = self;
+                let zz = unsafe {z.take().unwrap_unchecked()};
+                let _ = z.insert((f)(zz, x));
+            }
+        }
+        impl<'a, B, F, T> const FnMut<(T,)> for Closure<'a, B, F>
+        where
+            B: ~const Destruct,
+            F: ~const FnMut(B, T) -> B,
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                let Self { z, f } = self;
+                let zz = unsafe {z.take().unwrap_unchecked()};
+                let _ = z.insert((f)(zz, x));
+            }
+        }
+
+        let mut z = Some(init);
+        self.for_each(Closure {
+            z: &mut z,
+            f
+        });
+
+        unsafe {
+            z.unwrap_unchecked()
+        }
+    }
+
+    /// TODO
+    fn try_fold<B, F, R>(self, init: B, f: F) -> R
+    where
+        B: ~const Destruct,
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(B, Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = B, Residual: ~const Destruct>
+    {
+        struct Closure<'a, B, F>
+        {
+            z: &'a mut Option<B>,
+            f: F
+        }
+        impl<'a, B, F, T, R> const FnOnce<(T,)> for Closure<'a, B, F>
+        where
+            B: ~const Destruct,
+            F: ~const FnOnce(B, T) -> R,
+            R: ~const Try<Output = B, Residual: ~const Destruct>
+        {
+            type Output = ControlFlow<R::Residual, ()>;
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                let Self { z, f } = self;
+                let zz = unsafe {z.take().unwrap_unchecked()};
+                let _ = z.insert(f(zz, x).branch()?);
+                ControlFlow::Continue(())
+            }
+        }
+        impl<'a, B, F, T, R> const FnMut<(T,)> for Closure<'a, B, F>
+        where
+            B: ~const Destruct,
+            F: ~const FnMut(B, T) -> R,
+            R: ~const Try<Output = B, Residual: ~const Destruct>
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                let Self { z, f } = self;
+                let zz = unsafe {z.take().unwrap_unchecked()};
+                let _ = z.insert(f(zz, x).branch()?);
+                ControlFlow::Continue(())
+            }
+        }
+
+        let mut z = Some(init);
+        match self.try_for_each(Closure {
+            z: &mut z,
+            f
+        })
+        {
+            ControlFlow::Break(residual) => R::from_residual(residual),
+            ControlFlow::Continue(()) => R::from_output(unsafe {
+                z.unwrap_unchecked()
+            })
+        }
+    }
+
+    /// TODO
+    fn reduce<F>(self, f: F) -> Option<Self::Item>
+    where 
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(Self::Item, Self::Item) -> Self::Item + ~const Destruct
+    {
+        struct Closure<F>
+        {
+            f: F
+        }
+        impl<F, T> const FnOnce<(Option<T>, T)> for Closure<F>
+        where
+            F: ~const FnOnce(T, T) -> T + ~const Destruct
+        {
+            type Output = Option<T>;
+
+            extern "rust-call" fn call_once(self, (z, x): (Option<T>, T)) -> Self::Output
+            {
+                let Self { f } = self;
+
+                match z
+                {
+                    Some(z) => Some(f(z, x)),
+                    None => Some(x)
+                }
+            }
+        }
+        impl<F, T> const FnMut<(Option<T>, T)> for Closure<F>
+        where
+            F: ~const FnMut(T, T) -> T
+        {
+            extern "rust-call" fn call_mut(&mut self, (z, x): (Option<T>, T)) -> Self::Output
+            {
+                let Self { f } = self;
+
+                match z
+                {
+                    Some(z) => Some(f(z, x)),
+                    None => Some(x)
+                }
+            }
+        }
+
+        self.fold(None, Closure {
+            f
+        })
+    }
+
+    /// TODO
+    fn try_reduce<F, R>(self, f: F) -> <R::Residual as Residual<Option<R::Output>>>::TryType
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(Self::Item, Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = Self::Item, Residual: Residual<Option<Self::Item>, TryType: ~const Try> + ~const Destruct>
+    {
+        struct Closure<F>
+        {
+            f: F
+        }
+        impl<F, T, R> const FnOnce<(Option<T>, T)> for Closure<F>
+        where
+            F: ~const FnOnce(T, T) -> R + ~const Destruct,
+            R: ~const Try<Output = T, Residual: ~const Destruct>
+        {
+            type Output = ControlFlow<R::Residual, Option<T>>;
+
+            extern "rust-call" fn call_once(self, (z, x): (Option<T>, T)) -> Self::Output
+            {
+                let Self { f } = self;
+
+                ControlFlow::Continue(Some(
+                    match z
+                    {
+                        Some(z) => f(z, x).branch()?,
+                        None => x
+                    }
+                ))
+            }
+        }
+        impl<F, T, R> const FnMut<(Option<T>, T)> for Closure<F>
+        where
+            F: ~const FnMut(T, T) -> R,
+            R: ~const Try<Output = T, Residual: ~const Destruct>
+        {
+            extern "rust-call" fn call_mut(&mut self, (z, x): (Option<T>, T)) -> Self::Output
+            {
+                let Self { f } = self;
+
+                ControlFlow::Continue(Some(
+                    match z
+                    {
+                        Some(z) => f(z, x).branch()?,
+                        None => x
+                    }
+                ))
+            }
+        }
+
+        match self.try_fold(None, Closure {
+            f
+        })
+        {
+            ControlFlow::Break(residual) => FromResidual::from_residual(residual),
+            ControlFlow::Continue(output) => Try::from_output(output)
+        }
+    }
     
     /// Creates a bulk starting at the same point, but stepping by
     /// the given amount at each iteration.
@@ -1249,5 +1557,32 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
         Self: Sized,
     {
         ArrayChunks::new(self)
+    }
+}
+
+#[cfg(test)]
+mod test
+{
+    use crate::*;
+
+    #[test]
+    fn test_reduce()
+    {
+        let a = [1, 5, -3, 7, 9, 3, -1, 3];
+
+        let sum = a.into_bulk().reduce(|a, b| a + b).unwrap_or(0);
+        let product = a.into_bulk().reduce(|a, b| a*b).unwrap_or(1);
+        let min = a.into_bulk().reduce(|a, b| a.min(b)).unwrap();
+        let max = a.into_bulk().reduce(|a, b| a.max(b)).unwrap();
+        let mean = sum as f32/a.len() as f32;
+        let variance = a.into_bulk().map(|a| a as f32 - mean).map(|a| a*a).reduce(|a, b| a + b).unwrap_or(0.0).sqrt();
+
+        println!("sum = {sum}");
+        println!("product = {product}");
+        println!("min = {min}");
+        println!("max = {max}");
+
+        println!("mean = {mean}");
+        println!("variance = {variance}");
     }
 }

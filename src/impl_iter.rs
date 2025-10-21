@@ -1,4 +1,4 @@
-use crate::{util::Same, Bulk, IntoBulk};
+use crate::{util::{LengthSpec, Same}, Bulk, IntoBulk};
 
 pub mod iter
 {
@@ -71,6 +71,21 @@ where
         R: core::ops::Try<Output = ()>
     {
         self.inner.try_for_each(f)
+    }
+
+    fn first(mut self) -> Option<Self::Item>
+    where
+        Self: Sized
+    {
+        self.inner.next()
+    }
+    
+    fn nth<L>(mut self, n: L) -> Option<Self::Item>
+    where
+        Self: Sized,
+        L: LengthSpec
+    {
+        self.inner.nth(n.len_metadata())
     }
 }
 

@@ -30,7 +30,10 @@
 #![feature(control_flow_into_value)]
 #![feature(string_into_chars)]
 #![feature(new_range_api)]
+#![feature(const_option_ops)]
 #![feature(step_trait)]
+#![feature(mem_copy_fn)]
+#![feature(const_closures)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
 

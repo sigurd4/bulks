@@ -26,7 +26,7 @@ where
     where
         N: ~const Length<Elem = T::Item>
     {
-        let step = step.len_metadata();
+        let step = step.into_metadata();
         assert!(N::len_metadata(step) != 0);
         Self { bulk, step }
     }

@@ -51,6 +51,22 @@ impl<T> const Bulk for Once<T>
     {
         false
     }
+
+    fn first(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        Some(self.0)
+    }
+    fn last(self) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+        Self: Sized
+    {
+        Some(self.0)
+    }
+
     fn for_each<FF>(self, mut f: FF)
     where
         Self: Sized,
