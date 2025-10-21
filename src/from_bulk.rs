@@ -23,7 +23,7 @@ use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBul
 /// ```
 /// use bulks::*;
 /// 
-/// let five_fives = std::iter::repeat(5).take::<5>();
+/// let five_fives = bulks::repeat_n(5, [(); 5]);
 ///
 /// let v = <[_; _]>::from_bulk(five_fives);
 ///
@@ -35,11 +35,11 @@ use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBul
 /// ```
 /// use bulks::*;
 /// 
-/// let five_fives = std::iter::repeat(5).take::<5>();
+/// let five_fives = bulks::repeat_n(5, [(); 5]);
 ///
 /// let v: [i32; _] = five_fives.collect();
 ///
-/// assert_eq!(v, vec![5, 5, 5, 5, 5]);
+/// assert_eq!(v, [5, 5, 5, 5, 5]);
 /// ```
 ///
 /// Using [`FromBulk::from_bulk()`] as a more readable alternative to
@@ -48,8 +48,8 @@ use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBul
 /// ```
 /// use bulks::*;
 /// 
-/// let first = (0..10).collect::<[_; _]>();
-/// let second = <[_; _]>::from_bulk(0..10);
+/// let first = (0..10).into_bulk().collect::<Vec<_>>();
+/// let second = <Vec<_>>::from_bulk(0..10);
 ///
 /// assert_eq!(first, second);
 /// ```
@@ -57,6 +57,8 @@ use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBul
 /// Implementing `FromBulk` for your type:
 ///
 /// ```
+/// use bulks::*;
+/// 
 /// // A sample collection, that's just a wrapper over Vec<T>
 /// #[derive(Debug)]
 /// struct MyCollection(Vec<i32>);
@@ -77,13 +79,17 @@ use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBul
 /// }
 ///
 /// // and we'll implement FromIterator
-/// impl FromBulk<i32> for MyCollection
+/// impl<B> FromBulk<i32, B, [i32]> for MyCollection
+/// where
+///     B: Bulk<Item = i32>
 /// {
-///     fn from_bulk<I: IntoBulk<Item = i32>>(iter: I) -> Self
+///     fn from_bulk<I>(bulk: I) -> Self
+///     where
+///         I: IntoBulk<Item = i32, IntoBulk = B>
 ///     {
 ///         let mut c = MyCollection::new();
 ///
-///         for i in iter {
+///         for i in bulk {
 ///             c.add(i);
 ///         }
 ///
@@ -161,7 +167,7 @@ where
     /// ```
     /// use bulks::*;
     /// 
-    /// let five_fives = std::iter::repeat(5).take::<5>();
+    /// let five_fives = bulks::repeat_n(5, [(); 5]);
     ///
     /// let v = <[_; _]>::from_bulk(five_fives);
     ///

@@ -43,6 +43,25 @@ where
     }
 }
 
+/// Converts the arguments to bulks and zips them.
+///
+/// See the documentation of [`Bulk::zip`](crate::Bulk::zip) for more.
+pub const fn rzip<A, B>(a: A, b: B) -> Zip<
+    <A::IntoContained as IntoBulk>::IntoBulk,
+    B::IntoBulk,
+>
+where
+    A: ~const IntoContainedBy<B>,
+    B: ~const IntoBulk
+{
+    unsafe {
+        Zip::new(
+            a.into_contained().into_bulk(),
+            b.into_contained().into_bulk()
+        )
+    }
+}
+
 /// A bulk that operates on two other bulks simultaneously.
 ///
 /// This `struct` is created by [`zip`] or [`Bulk::zip`].
@@ -155,7 +174,6 @@ where
 {
     type Array<U> = [U; N.min(M)];
 }
-// TODO: Specialize
 
 impl<A, B> fmt::Debug for Zip<A, B>
 where
@@ -181,5 +199,23 @@ mod test
         let bulk = a.into_bulk().zip(b).map(|(a, b)| a + b);
         let c = bulk.collect::<[_; _], [_; _]>();
         println!("{c:?}")
+    }
+
+    #[test]
+    fn long()
+    {
+        let a = [1, 2, 3];
+        let b = [2, 3, 4];
+        
+        let zipped = a.into_bulk()
+            .map(|x| x * 2)
+            .skip([(); 1])
+            .zip(b.into_bulk()
+                .map(|x| x * 2)
+                .skip([(); 1])
+            );
+        
+        let c = zipped.collect::<[_; _]>();
+        assert_eq!(c, [(4, 6), (6, 8)]);
     }
 }

@@ -26,9 +26,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// use bulks::*;
     /// 
     /// // a finite range knows exactly how many times it will iterate
-    /// let mut range = 0..5;
+    /// let mut range = (0..5).into_bulk();
     ///
-    /// let len = Bulk::len(range);
+    /// let len = range.len();
     /// 
     /// assert_eq!(len, 5);
     /// ```
@@ -105,12 +105,12 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// let mut x0 = 0;
     /// let res = a.into_bulk()
     ///     .try_for_each(|x| {
-    ///         let x = u32::parse(x)?;
+    ///         let x = x.parse::<u32>().map_err(|_| x)?;
     ///         assert_eq!(x, x0 + 1);
     ///         x0 = x;
     ///         Ok(())
     ///     });
-    /// assert_eq!(res, "wrong")
+    /// assert_eq!(res, Err("wrong"))
     /// ```
     fn try_for_each<F, R>(self, f: F) -> R
     where
@@ -131,15 +131,20 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// # Examples
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
     /// let a = [0, 1, 2, 3, 4, 5];
     /// 
-    /// let mut bulk = a.into_bulk().step_by::<2>();
-    /// 
-    /// let b = bulk.collect();
+    /// let mut bulk = a.into_bulk().step_by([(); 2]);
+    /// let a_even = bulk.collect::<[_; _]>();
     ///
-    /// assert_eq!(b, [0, 2, 4]);
+    /// assert_eq!(a_even, [0, 2, 4]);
+    /// 
+    /// let mut bulk = a.into_bulk().skip([(); 1]).step_by([(); 2]);
+    /// let a_odd = bulk.collect::<[_; _]>();
+    /// 
+    /// assert_eq!(a_odd, [1, 3, 5]);
     /// ```
     #[inline]
     #[track_caller]
@@ -210,24 +215,26 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Basic usage:
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
-    /// let s1 = b"abc".into_bulk();
-    /// let s2 = b"def".into_bulk();
+    /// let s1 = b"abc".into_bulk().copied();
+    /// let s2 = b"def".into_bulk().copied();
     ///
     /// let mut bulk = s1.zip(s2);
     /// 
-    /// let s = bulk.collect();
+    /// let s = bulk.collect::<[_; _]>();
     /// 
     /// assert_eq!(s, [(b'a', b'd'), (b'b', b'e'), (b'c', b'f')]);
     /// ```
     ///
-    /// Since the argument to [`zip()`](LimitToBulk::zip) uses [`IntoBulk`], we can pass
+    /// Since the argument to [`zip()`](Bulk::zip) uses [`IntoBulk`], we can pass
     /// anything that can be converted into a [`Bulk`], not just a
     /// [`Bulk`] itself. For example, arrays (`[T]`) implement
-    /// [`IntoBulk`], and so can be passed to [`zip()`](LimitToBulk::zip) directly:
+    /// [`IntoBulk`], and so can be passed to [`zip()`](Bulk::zip) directly:
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
     /// let a1 = [1, 2, 3];
@@ -235,7 +242,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     ///
     /// let mut bulk = a1.into_bulk().zip(a2);
     ///
-    /// let a = bulk.collect();
+    /// let a = bulk.collect::<[_; _]>();
     /// assert_eq!(a, [(1, 4), (2, 5), (3, 6)]);
     /// ```
     ///
@@ -246,53 +253,57 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// ```
     /// use bulks::*;
     /// 
-    /// let enumerate: [_; _] = "foo".bulk().enumerate().collect();
+    /// let enumerate: [_; _] = (*b"foo").into_bulk().enumerate().collect();
     ///
-    /// let zipper: [_; _] = (0..).zip("foo".bulk()).collect();
-    ///
-    /// assert_eq!((0, 'f'), enumerate[0]);
-    /// assert_eq!((0, 'f'), zipper[0]);
-    ///
-    /// assert_eq!((1, 'o'), enumerate[1]);
-    /// assert_eq!((1, 'o'), zipper[1]);
-    ///
-    /// assert_eq!((2, 'o'), enumerate[2]);
-    /// assert_eq!((2, 'o'), zipper[2]);
+    /// let zipper: Vec<_> = bulks::rzip(0.., *b"foo").collect();
+    /// 
+    /// assert_eq!((0, b'f'), enumerate[0]);
+    /// assert_eq!((0, b'f'), zipper[0]);
+    /// 
+    /// assert_eq!((1, b'o'), enumerate[1]);
+    /// assert_eq!((1, b'o'), zipper[1]);
+    /// 
+    /// assert_eq!((2, b'o'), enumerate[2]);
+    /// assert_eq!((2, b'o'), zipper[2]);
     /// ```
     ///
     /// It can be more readable to use [`bulks::zip`](crate::zip):
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     ///
     /// let a = [1, 2, 3];
     /// let b = [2, 3, 4];
     ///
     /// let mut zipped = bulks::zip(
-    ///     a.into_bulk().map(|x| x * 2).skip::<1>(),
-    ///     b.into_bulk().map(|x| x * 2).skip::<1>(),
+    ///     a.into_bulk().map(|x| x * 2).skip([(); 1]),
+    ///     b.into_bulk().map(|x| x * 2).skip([(); 1]),
     /// );
     /// 
-    /// let c = zipped.collect();
-    /// assert_eq!(c, [(1, 2), (2, 3), (3, 4)]);
+    /// let c = zipped.collect::<[_; _]>();
+    /// assert_eq!(c, [(4, 6), (6, 8)]);
     /// ```
     ///
     /// compared to:
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// # use bulks::*;
     /// #
     /// # let a = [1, 2, 3];
     /// # let b = [2, 3, 4];
     /// #
-    /// let mut zipped = a
-    ///     .into_bulk()
+    /// let mut zipped = a.into_bulk()
     ///     .map(|x| x * 2)
-    ///     .skip::<1>()
-    ///     .zip(b.into_bulk().map(|x| x * 2).skip::<1>());
+    ///     .skip([(); 1])
+    ///     .zip(b.into_bulk()
+    ///         .map(|x| x * 2)
+    ///         .skip([(); 1])
+    ///     );
     /// #
-    /// # let c = zipped.collect();
-    /// # assert_eq!(c, [(2, 3), (3, 4)]);
+    /// # let c = zipped.collect::<[_; _]>();
+    /// # assert_eq!(c, [(4, 6), (6, 8)]);
     /// ```
     #[inline]
     #[track_caller]
@@ -317,9 +328,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Basic usage:
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
-    /// let mut a = [0, 1, 2].into_bulk().intersperse(100).collect();
+    /// let mut a = [0, 1, 2].into_bulk().intersperse(100).collect::<[_; _]>();
     /// 
     /// assert_eq!(a, [0, 100, 1, 100, 2]);
     /// ```
@@ -360,13 +372,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Basic usage:
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     ///
     /// #[derive(PartialEq, Debug)]
     /// struct NotClone(usize);
     ///
     /// let v = [NotClone(0), NotClone(1), NotClone(2)];
-    /// let u = v.into_bulk().intersperse_with(|| NotClone(99)).collect();
+    /// let u = v.into_bulk().intersperse_with(|| NotClone(99)).collect::<[_; _]>();
     ///
     /// assert_eq!(u, [NotClone(0), NotClone(99), NotClone(1), NotClone(99), NotClone(2)]);
     /// ```
@@ -413,7 +426,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// 
     /// let a = [1, 2, 3];
     ///
-    /// let mut b = a.bulk().map(|x| 2 * x).collect();
+    /// let mut b = a.bulk().map(|x| 2 * x).collect::<[_; _]>();
     ///
     /// assert_eq!(b, [2, 4, 6]);
     /// ```
@@ -425,12 +438,13 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// use bulks::*;
     /// 
     /// // don't do this:
-    /// Bulk::map(0..5, |x| println!("{x}"));
+    /// (0..5).into_bulk().map(|x| println!("{x}"));
     ///
     /// // it won't even execute, as it is lazy. Rust will warn you about this.
     ///
     /// // Instead, use a for-loop:
-    /// for x in 0..5 {
+    /// for x in (0..5).into_bulk()
+    /// {
     ///     println!("{x}");
     /// }
     /// ```
@@ -497,11 +511,16 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// # Examples
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
+    /// use bulks::*;
+    /// 
     /// let a = [1, 2, 3];
     ///
-    /// let b = a.into_bulk().skip::<2>().collect();
+    /// let b = a.into_bulk().skip([(); 2]).collect::<[_; _]>();
+    /// let c = a.into_bulk().skip(2).collect::<Vec<_>>();
     ///
     /// assert_eq!(b, [3]);
+    /// assert_eq!(c, [3]);
     /// ```
     #[inline]
     #[track_caller]
@@ -516,7 +535,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Creates a bulk for the first `n` elements, or fewer
     /// if the underlying bulk/iterator is shorter.
     ///
-    /// [`take(n)`](LimitToBulk::take) yields elements until `n` elements are yielded or the end of the
+    /// [`take(n)`](Bulk::take) yields elements until `n` elements are yielded or the end of the
     /// bulk is reached (whichever happens first).
     /// The returned bulk is a prefix of length `n` if the original bulk/iterator
     /// contains at least `n` elements, otherwise it contains all of the
@@ -527,11 +546,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Basic usage:
     ///
     /// ```
-    /// use bulk::*;
+    /// use bulks::*;
     /// 
     /// let a = [1, 2, 3];
     ///
-    /// let b = a.into_bulk().take::<2>().collect();
+    /// let b = a.into_bulk().take([(); 3]).collect::<Vec<_>>();
     ///
     /// assert_eq!(b, [1, 2]);
     /// ```
@@ -539,19 +558,20 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// `take()` is often used with an infinite iterator, to make it finite:
     ///
     /// ```
-    /// let a = (0..).take::<3>().collect();
+    /// let a = (0..).take(3).collect::<Vec<_>>();
     ///
     /// assert_eq!(a, [0, 1, 2])
     /// ```
     ///
     /// If less than `n` elements are available,
-    /// [`take`](LimitToBulk::take) will limit itself to the size of the underlying bulk/iterator:
+    /// [`take`](Bulk::take) will limit itself to the size of the underlying bulk/iterator:
     ///
     /// ```
-    /// use bulk::*;
+    /// # #![feature(generic_const_exprs)]
+    /// use bulks::*;
     /// 
     /// let v = [1, 2];
-    /// let b = v.into_bulk().take::<5>().collect();
+    /// let b = v.into_bulk().take([(); 5]).collect::<[_; _]>();
     /// 
     /// assert_eq!(b, [1, 2])
     /// ```
@@ -581,7 +601,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// # Examples
     ///
     /// ```
-    /// use bulk::*;
+    /// use bulks::*;
     /// 
     /// let words = ["alpha", "beta", "gamma"];
     ///
@@ -614,7 +634,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Basic usage:
     ///
     /// ```
-    /// use bulk::*;
+    /// use bulks::*;
     /// 
     /// let data = [[1, 2, 3], [4, 5, 6]];
     /// let flattened: [_; _] = data.into_bulk().flatten().collect();
@@ -624,7 +644,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Mapping and then flattening:
     ///
     /// ```
-    /// use bulk::*;
+    /// use bulks::*;
     /// 
     /// let words = ["alpha", "beta", "gamma"];
     ///
@@ -639,7 +659,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// in this case since it conveys intent more clearly:
     ///
     /// ```
-    /// use bulk::*;
+    /// use bulks::*;
     /// 
     /// let words = ["alpha", "beta", "gamma"];
     ///
@@ -652,7 +672,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Flattening only removes one level of nesting at a time:
     ///
     /// ```
-    /// use bulk::*;
+    /// # #![feature(generic_const_exprs)]
+    /// use bulks::*;
     /// 
     /// let d3 = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
     ///
@@ -687,13 +708,15 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// arguments `&['a', 'b']`, `&['b', 'c']` and `&['c', 'd']` respectively.
     ///
     /// ```
-    /// use bulk::*;
+    /// # #![feature(generic_const_exprs)]
+    /// use bulks::*;
     ///
-    /// let strings = "abcd".chars()
+    /// let strings = b"abcd".bulk()
+    ///     .map(|&c| char::from(c))
     ///     .map_windows(|[x, y]| format!("{}+{}", x, y))
-    ///     .collect::<Vec<String>>();
+    ///     .collect::<[_; _]>();
     ///
-    /// assert_eq!(strings, vec!["a+b", "b+c", "c+d"]);
+    /// assert_eq!(strings, ["a+b", "b+c", "c+d"]);
     /// ```
     ///
     /// Note that the const parameter `N` is usually inferred by the
@@ -708,7 +731,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Panics if `N` is zero.
     ///
     /// ```should_panic
-    /// use bulk::*;
+    /// use bulks::*;
     ///
     /// let bulk = [0].into_bulk().map_windows(|&[]| ());
     /// ```
@@ -718,9 +741,12 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Building the sums of neighboring numbers.
     ///
     /// ```
-    /// use bulk::*;
+    /// # #![feature(generic_const_exprs)]
+    /// use bulks::*;
     ///
-    /// let w = [1, 3, 8, 1].bulk().map_windows(|&[a, b]| a + b).collect();
+    /// let w = [1, 3, 8, 1].bulk()
+    ///     .map_windows(|&[a, b]| a + b)
+    ///     .collect::<[_; _]>();
     /// 
     /// assert_eq!(w, [1 + 3, 3 + 8, 8 + 1]);
     /// ```
@@ -729,22 +755,26 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// just copy the array and get a bulk of the windows.
     ///
     /// ```
-    /// use bulk::*;
+    /// # #![feature(generic_const_exprs)]
+    /// use bulks::*;
     ///
-    /// let w = "ferris".bulk().map_windows(|w: &[_; 3]| *w).collect();
+    /// let w = b"ferris".bulk()
+    ///     .map_windows(|w: &[_; 3]| w.bulk().copied().copied().collect::<[_; _]>())
+    ///     .collect::<[_; _]>();
     /// 
-    /// assert_eq!(w, [['f', 'e', 'r'], ['e', 'r', 'r'], ['r', 'r', 'i'], ['r', 'i', 's']]);
+    /// assert_eq!(w, [[b'f', b'e', b'r'], [b'e', b'r', b'r'], [b'r', b'r', b'i'], [b'r', b'i', b's']]);
     /// ```
     ///
     /// You can also use this function to check the sortedness of a bulk.
     /// For the simple case, rather use [`Bulk::is_sorted`].
     ///
     /// ```
-    /// use bulk::*;
+    /// # #![feature(generic_const_exprs)]
+    /// use bulks::*;
     ///
     /// let w = [0.5, 1.0, 3.5, 3.0, 8.5, 8.5, f32::NAN].bulk()
     ///     .map_windows(|[a, b]| a <= b)
-    ///     .collect();
+    ///     .collect::<[_; _]>();
     /// 
     /// assert_eq!(w, [true, true, false, true, true, false]);
     /// ```
@@ -772,7 +802,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Basic usage:
     ///
     /// ```
-    /// use bulk::*;
+    /// use bulks::*;
     /// 
     /// let a = [1, 4, 2, 3];
     ///
@@ -850,14 +880,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self, IntoIter: ExactSizeIterat
     /// Basic usage:
     ///
     /// ```
-    /// use bulk::*;
+    /// use bulks::*;
     /// 
     /// let a = [1, 4, 2, 3];
     ///
     /// // this iterator sequence is complex.
     /// let b = a.into_bulk()
     ///     .mutate(|x| *x += 1)
-    ///     .collect();
+    ///     .collect::<[_; _]>();
     ///
     /// assert_eq!(b, [2, 5, 3, 4]);
     /// ```

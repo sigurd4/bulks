@@ -29,6 +29,8 @@
 #![feature(const_precise_live_drops)]
 #![feature(control_flow_into_value)]
 #![feature(string_into_chars)]
+#![feature(new_range_api)]
+#![feature(step_trait)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
 

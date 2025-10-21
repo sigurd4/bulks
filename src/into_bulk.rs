@@ -13,7 +13,7 @@ pub const trait AsBulk
     /// 
     /// let v = [1, 2, 3];
     /// let bulk = v.bulk();
-    /// let u = bulk.collect();
+    /// let u = bulk.collect::<[_; _]>();
     ///
     /// assert_eq!(u, [&1, &2, &3]);
     /// ```
@@ -35,9 +35,11 @@ pub const trait AsBulk
     /// 
     /// let mut v = [1, 2, 3];
     /// let bulk = v.bulk_mut();
-    /// let u = bulk.mutate(|v| *v += 1).collect();
+    /// let u = bulk.map(|v| core::mem::replace(v, *v + 1))
+    ///     .collect::<[_; _]>();
     ///
-    /// assert_eq!(u, [&2, &3, &4]);
+    /// assert_eq!(v, [2, 3, 4]);
+    /// assert_eq!(u, [1, 2, 3]);
     /// ```
     fn bulk_mut<'a>(&'a mut self) -> <&'a mut Self as IntoBulk>::IntoBulk
     where
@@ -70,7 +72,7 @@ pub const trait IntoBulk: IntoIterator<IntoIter: ExactSizeIterator>
     /// 
     /// let v = [1, 2, 3];
     /// let mut bulk = v.into_bulk();
-    /// let u = bulk.collect();
+    /// let u = bulk.collect::<[_; _]>();
     ///
     /// assert_eq!(u, [1, 2, 3]);
     /// ```

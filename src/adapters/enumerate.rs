@@ -184,4 +184,21 @@ mod test
             assert_eq!(i, a.to_string().parse().unwrap())
         }
     }
+
+    #[test]
+    fn zipped()
+    {
+        let enumerate: [_; _] = (*b"foo").into_bulk().enumerate().collect();
+        
+        let zipper: Vec<_> = crate::rzip(0.., *b"foo").collect();
+        
+        assert_eq!((0, b'f'), enumerate[0]);
+        assert_eq!((0, b'f'), zipper[0]);
+        
+        assert_eq!((1, b'o'), enumerate[1]);
+        assert_eq!((1, b'o'), zipper[1]);
+        
+        assert_eq!((2, b'o'), enumerate[2]);
+        assert_eq!((2, b'o'), zipper[2]);
+    }
 }
