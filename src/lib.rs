@@ -35,6 +35,8 @@
 #![feature(iterator_try_collect)]
 #![feature(doc_notable_trait)]
 #![feature(mem_copy_fn)]
+#![feature(array_into_iter_constructors)]
+#![feature(decl_macro)]
 #![feature(const_closures)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
@@ -66,6 +68,9 @@
 //! Instead, its function is based on the [`for_each`](Bulk::for_each) and [`try_for_each`](Bulk::try_for_each) methods.
 //!
 //! ```
+//! # #![feature(try_trait_v2)]
+//! use core::ops::Try;
+//! 
 //! trait Bulk: IntoIterator
 //! {
 //!     fn len(&self) -> usize;
@@ -119,6 +124,9 @@
 //! Your bulk needs a corresponding iterator that it can be converted to, which must be an [`ExactSizeIterator`].
 //!
 //! ```
+//! # #![feature(try_trait_v2)]
+//! use core::ops::Try;
+//! 
 //! use bulks::*;
 //! 
 //! /// An iterator which counts from one to `N`
@@ -204,7 +212,7 @@
 //!         N
 //!     }
 //! 
-//!     fn for_each<F>(self, f: F)
+//!     fn for_each<F>(self, mut f: F)
 //!     where
 //!         Self: Sized,
 //!         F: FnMut(Self::Item)
@@ -215,7 +223,7 @@
 //!         }
 //!     }
 //! 
-//!     fn try_for_each<F, R>(self, f: F) -> R
+//!     fn try_for_each<F, R>(self, mut f: F) -> R
 //!     where
 //!         Self: Sized,
 //!         F: FnMut(Self::Item) -> R,
@@ -237,7 +245,7 @@
 //! }
 //!
 //! // And now we can use it!
-//! let counter = Counter::<5>::new();
+//! let counter = Counter::<5>;
 //! let result: [_; _] = counter.collect();
 //! 
 //! assert_eq!(result, [1, 2, 3, 4, 5]);
@@ -262,6 +270,8 @@
 //! ```
 //! # #![allow(unused_must_use)]
 //! # #![allow(map_unit_fn)]
+//! use bulks::*;
+//! 
 //! let a = [1, 2, 3, 4, 5];
 //! a.bulk().map(|x| println!("{x}"));
 //! ```
@@ -278,11 +288,13 @@
 //! `for` loop or call the [`for_each`](Bulk::for_each) method:
 //!
 //! ```
+//! use bulks::*;
+//! 
 //! let a = [1, 2, 3, 4, 5];
 //!
 //! a.bulk().for_each(|x| println!("{x}"));
 //! // or
-//! for x in &v
+//! for x in &a
 //! {
 //!     println!("{x}");
 //! }
@@ -292,6 +304,8 @@
 //! method to produce a new collection.
 //! 
 //! ```
+//! use bulks::*;
+//! 
 //! let a = [1, 2, 3, 4, 5];
 //! 
 //! let b: [_; _] = a.into_bulk().collect();

@@ -140,3 +140,25 @@ impl<T, const N: usize, const REV: bool> Extend<T> for ArrayBuffer<T, N, REV>
         self.push(item);
     }
 }
+
+impl<T, const N: usize, const REV: bool> IntoIterator for ArrayBuffer<T, N, REV>
+{
+    type Item = T;
+    type IntoIter = core::array::IntoIter<T, N>;
+
+    fn into_iter(self) -> Self::IntoIter
+    {
+        let Self { data, len } = self;
+        let initialized = if !REV
+        {
+            0..len
+        }
+        else
+        {
+            (N - len)..N
+        };
+        unsafe {
+            core::array::IntoIter::new_unchecked(data, initialized)
+        }
+    }
+}

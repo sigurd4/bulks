@@ -11,11 +11,11 @@ use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBul
 /// ```
 /// use bulks::*;
 /// 
-/// let five_fives = bulks::repeat_n(Ok(5), [(); 5]);
+/// let five_fives = bulks::repeat_n(Some(5), [(); 5]);
 ///
 /// let v = <[_; _]>::try_from_bulk(five_fives);
 ///
-/// assert_eq!(v, Ok([5, 5, 5, 5, 5]));
+/// assert_eq!(v, Some([5, 5, 5, 5, 5]));
 /// ```
 ///
 /// Using [`Bulk::try_collect()`] to implicitly use `TryFromBulk`:
@@ -23,11 +23,11 @@ use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBul
 /// ```
 /// use bulks::*;
 /// 
-/// let five_fives = bulks::repeat_n(Ok(5), [(); 5]);
+/// let five_fives = bulks::repeat_n(Some(5), [(); 5]);
 ///
-/// let v: [i32; _] = five_fives.try_collect();
+/// let v: Option<[_; _]> = five_fives.try_collect();
 ///
-/// assert_eq!(v, Ok([5, 5, 5, 5, 5]));
+/// assert_eq!(v, Some([5, 5, 5, 5, 5]));
 /// ```
 #[rustc_on_unimplemented(
     on(
@@ -84,11 +84,11 @@ where
     /// ```
     /// use bulks::*;
     /// 
-    /// let five_fives = bulks::repeat_n(Ok(5), [(); 5]);
+    /// let five_fives = bulks::repeat_n(Some(5), [(); 5]);
     ///
     /// let v = <[_; _]>::try_from_bulk(five_fives);
     ///
-    /// assert_eq!(v, Ok([5, 5, 5, 5, 5]));
+    /// assert_eq!(v, Some([5, 5, 5, 5, 5]));
     /// ```
     fn try_from_bulk<I>(bulk: I) -> <<B::Item as Try>::Residual as Residual<Self>>::TryType
     where

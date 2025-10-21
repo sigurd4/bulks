@@ -1,8 +1,6 @@
-use core::{marker::Destruct, mem::MaybeUninit, ops::{ControlFlow, FromResidual, Residual, Try}};
+use core::{marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}};
 
-use array_trait::AsSlice;
-
-use crate::{util::{CollectLength, Length, LengthSpec}, ArrayChunks, Chain, Cloned, Copied, DoubleEndedBulk, Enumerate, FlatMap, Flatten, FromBulk, Guard, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, TryFromBulk, Zip};
+use crate::{util::{self, CollectLength, Length, LengthSpec}, ArrayChunks, Chain, Cloned, Copied, DoubleEndedBulk, Enumerate, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, TryFromBulk, Zip};
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -82,12 +80,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # Examples
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [1, 2, 3];
     ///
     /// let bulk = a.bulk();
     /// 
     /// let a1 = bulk.first();
-    /// assert_eq!(a1, Some(1));
+    /// assert_eq!(a1, Some(&1));
     /// ```
     fn first(self) -> Option<Self::Item>
     where
@@ -113,12 +113,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # Examples
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [1, 2, 3];
     ///
     /// let bulk = a.bulk();
     /// 
     /// let a1 = bulk.last();
-    /// assert_eq!(a1, Some(3));
+    /// assert_eq!(a1, Some(&3));
     /// ```
     fn last(self) -> Option<Self::Item>
     where
@@ -142,6 +144,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # Examples
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [1, 2, 3];
     ///
     /// let bulk = a.bulk();
@@ -152,9 +156,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let a3 = bulk.clone().nth(3);
     /// let a4 = bulk.clone().nth(4);
     /// 
-    /// assert_eq!(a1, Some(1));
-    /// assert_eq!(a2, Some(2));
-    /// assert_eq!(a3, Some(3));
+    /// assert_eq!(a1, Some(&1));
+    /// assert_eq!(a2, Some(&2));
+    /// assert_eq!(a3, Some(&3));
     /// assert_eq!(a4, None);
     /// ```
     fn nth<L>(self, n: L) -> Option<Self::Item>
@@ -266,6 +270,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Basic usage:
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [1, 2, 3];
     ///
     /// // the sum of all of the elements of the array
@@ -290,6 +296,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// and continuing with each element from the front until the back:
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let numbers = [1, 2, 3, 4, 5];
     ///
     /// let zero = "0".to_string();
@@ -307,6 +315,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let numbers = [1, 2, 3, 4, 5];
     ///
     /// let mut result = 0;
@@ -588,32 +598,37 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Basic usage:
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
-    /// let s1 = b"abc".into_bulk();
-    /// let s2 = b"def".into_bulk();
+    /// let s1 = b"abc";
+    /// let s2 = b"def";
     ///
-    /// let mut bulk = s1.chain(s2);
+    /// let mut bulk = s1.into_bulk()
+    ///     .chain(s2)
+    ///     .copied();
     /// 
-    /// let s = bulk.collect();
+    /// let s = bulk.collect::<[_; _]>();
     /// 
-    /// assert_eq!(s, b"abcdef");
+    /// assert_eq!(s, *b"abcdef");
     /// ```
     ///
     /// Since the argument to [`chain()`](Bulk::chain) uses [`IntoBulk`], we can pass
     /// anything that can be converted into a [`Bulk`], not just a
-    /// [`Bulk`] itself. For example, arrays (`[T]`) implement
+    /// [`Bulk`] itself. For example, arrays (`[T; _]`) implement
     /// [`IntoBulk`], and so can be passed to [`chain()`](Bulk::chain) directly:
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
     /// let a1 = [1, 2, 3];
     /// let a2 = [4, 5, 6];
     ///
-    /// let mut bulk = a1.into_bulk().chain(a2);
+    /// let mut bulk = a1.into_bulk()
+    ///     .chain(a2);
     /// 
-    /// let a = bulk.collect();
+    /// let a = bulk.collect::<[_; _]>();
     /// 
     /// assert_eq!(a, [1, 2, 3, 4, 5, 6]);
     /// ```
@@ -906,9 +921,13 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # Examples
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = ['a', 'b', 'c'];
     ///
-    /// let b = a.into_bulk().enumerate().collect();
+    /// let b = a.into_bulk()
+    ///     .enumerate()
+    ///     .collect_array();
     ///
     /// assert_eq!(b, [(0, 'a'), (1, 'b'), (2, 'c')]);
     /// ```
@@ -1024,12 +1043,12 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// use bulks::*;
     /// 
-    /// let words = ["alpha", "beta", "gamma"];
+    /// let words = [b"alpha", b"beta ", b"gamma"];
     ///
-    /// let merged: String = words.bulk()
-    ///                           .flat_map(|s| s.chars())
-    ///                           .collect();
-    /// assert_eq!(merged, "alphabetagamma");
+    /// let merged: String = words.into_bulk()
+    ///     .flat_map(|&s| s.into_bulk().map(|b| char::from(b)))
+    ///     .collect();
+    /// assert_eq!(merged, "alphabeta gamma");
     /// ```
     #[inline]
     #[track_caller]
@@ -1055,6 +1074,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Basic usage:
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
     /// let data = [[1, 2, 3], [4, 5, 6]];
@@ -1065,29 +1085,31 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Mapping and then flattening:
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
-    /// let words = ["alpha", "beta", "gamma"];
+    /// let words = [b"alpha", b"beta ", b"gamma"];
     ///
-    /// let merged: String = words.bulk()
-    ///                           .map(|s| s.chars())
-    ///                           .flatten()
-    ///                           .collect();
-    /// assert_eq!(merged, "alphabetagamma");
+    /// let merged: String = words.into_bulk()
+    ///     .map(|&s| s.into_bulk().map(|b| char::from(b)))
+    ///     .flatten()
+    ///     .collect();
+    /// assert_eq!(merged, "alphabeta gamma");
     /// ```
     ///
     /// You can also rewrite this in terms of [`flat_map()`](Bulk::flat_map), which is preferable
     /// in this case since it conveys intent more clearly:
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
-    /// let words = ["alpha", "beta", "gamma"];
+    /// let words = [b"alpha", b"beta ", b"gamma"];
     ///
-    /// let merged: String = words.iter()
-    ///                           .flat_map(|s| s.chars())
-    ///                           .collect();
-    /// assert_eq!(merged, "alphabetagamma");
+    /// let merged: String = words.into_bulk()
+    ///     .flat_map(|&s| s.into_bulk().map(|b| char::from(b)))
+    ///     .collect();
+    /// assert_eq!(merged, "alphabeta gamma");
     /// ```
     ///
     /// Flattening only removes one level of nesting at a time:
@@ -1230,8 +1252,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// // this iterator sequence is complex.
     /// let sum = a.bulk()
     ///     .cloned()
-    ///     .filter(|x| x % 2 == 0)
-    ///     .fold(0, |sum, i| sum + i);
+    ///     .map(|x| if x % 2 == 0 {Some(x)} else {None})
+    ///     .fold(0, |sum, i| sum + i.unwrap_or(0));
     ///
     /// println!("{sum}");
     ///
@@ -1239,9 +1261,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let sum = a.bulk()
     ///     .cloned()
     ///     .inspect(|x| println!("about to filter: {x}"))
-    ///     .filter(|x| x % 2 == 0)
-    ///     .inspect(|x| println!("made it through filter: {x}"))
-    ///     .fold(0, |sum, i| sum + i);
+    ///     .map(|x| if x % 2 == 0 {Some(x)} else {None})
+    ///     .inspect(|x| if let Some(x) = x {println!("made it through filter: {x}")})
+    ///     .fold(0, |sum, i| sum + i.unwrap_or(0));
     ///
     /// println!("{sum}");
     /// ```
@@ -1334,6 +1356,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Basic usage:
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [1, 2, 3];
     ///
     /// let doubled: [i32; 3] = a.bulk()
@@ -1348,6 +1372,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use std::collections::VecDeque;
+    /// 
+    /// use bulks::*;
     ///
     /// let a = [1, 2, 3];
     ///
@@ -1363,9 +1389,13 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Using the 'turbofish' instead of annotating `doubled`:
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [1, 2, 3];
     ///
-    /// let doubled = a.bulk().map(|x| x * 2).collect::<[i32; 3]>();
+    /// let doubled = a.bulk()
+    ///     .map(|x| x * 2)
+    ///     .collect::<[i32; 3]>();
     ///
     /// assert_eq!(doubled, [2, 4, 6]);
     /// ```
@@ -1374,9 +1404,13 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// still use a partial type hint, `_`, with the turbofish:
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [1, 2, 3];
     ///
-    /// let doubled = a.bulk().map(|x| x * 2).collect::<[_; _]>();
+    /// let doubled = a.bulk()
+    ///     .map(|x| x * 2)
+    ///     .collect::<[_; _]>();
     ///
     /// assert_eq!(doubled, [2, 4, 6]);
     /// ```
@@ -1384,9 +1418,12 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Using `collect()` to make a [`String`](std::string::String):
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let chars = ['g', 'd', 'k', 'k', 'n'];
     ///
     /// let hello: String = chars.bulk()
+    ///     .copied()
     ///     .map(|x| x as u8)
     ///     .map(|x| (x + 1) as char)
     ///     .collect();
@@ -1398,6 +1435,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// see if any of them failed:
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let results = [Ok(1), Err("nope"), Ok(3), Err("bad")];
     ///
     /// let result: Result<[_; _], &str> = results.into_bulk().collect();
@@ -1446,7 +1485,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// use bulks::*;
     /// 
-    /// let u = vec![Some(1), Some(2), Some(3)];
+    /// let u = [Some(1), Some(2), Some(3)];
     /// let v = u.into_bulk().try_collect::<[i32; _]>();
     /// assert_eq!(v, Some([1, 2, 3]));
     /// ```
@@ -1455,7 +1494,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// use bulks::*;
     /// 
-    /// let u = vec![Some(1), Some(2), None, Some(3)];
+    /// let u = [Some(1), Some(2), None, Some(3)];
     /// let v = u.into_bulk().try_collect::<[i32; _]>();
     /// assert_eq!(v, None);
     /// ```
@@ -1468,7 +1507,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let v = u.into_bulk().try_collect::<[i32; _]>();
     /// assert_eq!(v, Ok([1, 2, 3]));
     ///
-    /// let u = vec![Ok(1), Ok(2), Err(()), Ok(3)];
+    /// let u = [Ok(1), Ok(2), Err(()), Ok(3)];
     /// let v = u.into_bulk().try_collect::<[i32; _]>();
     /// assert_eq!(v, Err(()));
     /// ```
@@ -1477,6 +1516,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// doesn't implement [`FromBulk`].
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
+    /// use bulks::*;
+    /// 
     /// use core::ops::ControlFlow::{Break, Continue};
     ///
     /// let u = [Continue(1), Continue(2), Break(3), Continue(4), Continue(5)];
@@ -1513,6 +1555,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Basic usage:
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [1, 2, 3];
     ///
     /// let doubled = a.bulk()
@@ -1525,6 +1569,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Alternatively, [`collect()`](Bulk::collect) can be used, but this requires us to specify the return type.
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [1, 2, 3];
     ///
     /// let doubled: [i32; 3] = a.bulk()
@@ -1538,46 +1584,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     where
         Self: StaticBulk
     {
-        let mut array = MaybeUninit::<Self::Array<Self::Item>>::uninit();
-        let array_mut = unsafe {
-            array.as_mut_ptr().cast::<Self::Array<MaybeUninit<Self::Item>>>().as_mut().unwrap().as_mut_slice()
-        };
-        let mut guard = Guard { array_mut, initialized: 0..0 };
-
-        struct Closure<'a, 'b, T>
-        {
-            guard: &'a mut Guard<'b, T>
-        }
-
-        impl<'a, 'b, T> const FnOnce<(T,)> for Closure<'a, 'b, T>
-        {
-            type Output = ();
-
-            extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
-            {
-                self.call_mut(args)
-            }
-        }
-        impl<'a, 'b, T> const FnMut<(T,)> for Closure<'a, 'b, T>
-        {
-            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
-            {
-                unsafe {
-                    self.guard.push_back_unchecked(x);
-                }
-            }
-        }
-
-        let pusher = Closure {
-            guard: &mut guard
-        };
-
-        self.for_each(pusher);
-        
-        core::mem::forget(guard);
-        unsafe {
-            MaybeUninit::assume_init(array)
-        }
+        util::collect_array_with!(|f| self.for_each(f); for Self)
     }
 
     /// Fallibly transforms a statically sized bulk into an array, short circuiting if
@@ -1606,7 +1613,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// use bulks::*;
     /// 
-    /// let u = vec![Some(1), Some(2), Some(3)];
+    /// let u = [Some(1), Some(2), Some(3)];
     /// let v = u.into_bulk().try_collect_array();
     /// assert_eq!(v, Some([1, 2, 3]));
     /// ```
@@ -1615,7 +1622,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// use bulks::*;
     /// 
-    /// let u = vec![Some(1), Some(2), None, Some(3)];
+    /// let u = [Some(1), Some(2), None, Some(3)];
     /// let v = u.into_bulk().try_collect_array();
     /// assert_eq!(v, None);
     /// ```
@@ -1624,7 +1631,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// use bulks::*;
     /// 
-    /// let u = vec![Some(1), Some(2), Some(3)];
+    /// let u = [Some(1), Some(2), Some(3)];
     /// let v: Option<[i32; 3]> = u.into_bulk().try_collect();
     /// assert_eq!(v, Some([1, 2, 3]));
     /// ```
@@ -1637,7 +1644,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let v = u.into_bulk().try_collect_array();
     /// assert_eq!(v, Ok([1, 2, 3]));
     ///
-    /// let u = vec![Ok(1), Ok(2), Err(()), Ok(3)];
+    /// let u = [Ok(1), Ok(2), Err(()), Ok(3)];
     /// let v = u.into_bulk().try_collect_array();
     /// assert_eq!(v, Err(()));
     /// ```
@@ -1646,7 +1653,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// doesn't implement [`FromBulk`].
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use core::ops::ControlFlow::{Break, Continue};
+    /// 
+    /// use bulks::*;
     ///
     /// let u = [Continue(1), Continue(2), Break(3), Continue(4), Continue(5)];
     /// 
@@ -1663,56 +1673,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     where
         Self: StaticBulk<Item: ~const Destruct + ~const Try<Residual: Residual<(), TryType: ~const Try> + Residual<Self::Array<<Self::Item as Try>::Output>, TryType: ~const Try> + ~const Destruct, Output: ~const Destruct>> + ~const Bulk
     {
-        let mut array = MaybeUninit::<Self::Array<<Self::Item as Try>::Output>>::uninit();
-        let array_mut = unsafe {
-            array.as_mut_ptr().cast::<Self::Array<MaybeUninit<<Self::Item as Try>::Output>>>().as_mut().unwrap().as_mut_slice()
-        };
-        let mut guard = Guard { array_mut, initialized: 0..0 };
-
-        struct Closure<'a, 'b, T>
-        where
-            T: Try<Residual: Residual<()>>
-        {
-            guard: &'a mut Guard<'b, <T as Try>::Output>
-        }
-
-        impl<'a, 'b, T> const FnOnce<(T,)> for Closure<'a, 'b, T>
-        where
-            T: ~const Try<Residual: Residual<(), TryType: ~const Try>>
-        {
-            type Output = <<T as Try>::Residual as Residual<()>>::TryType;
-
-            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
-            {
-                unsafe {
-                    self.guard.push_back_unchecked(x?);
-                }
-                Try::from_output(())
-            }
-        }
-        impl<'a, 'b, T> const FnMut<(T,)> for Closure<'a, 'b, T>
-        where
-            T: ~const Try<Residual: Residual<(), TryType: ~const Try>>
-        {
-            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
-            {
-                unsafe {
-                    self.guard.push_back_unchecked(x?);
-                }
-                Try::from_output(())
-            }
-        }
-
-        let pusher = Closure {
-            guard: &mut guard
-        };
-
-        self.try_for_each(pusher)?;
-        
-        core::mem::forget(guard);
-        unsafe {
-            Try::from_output(MaybeUninit::assume_init(array))
-        }
+        Try::from_output(util::try_collect_array_with!(|pusher| self.try_for_each(pusher)?; for Self))
     }
 
     /// Reverses a bulks's direction.
