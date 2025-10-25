@@ -9,22 +9,23 @@ use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, I
 /// # Examples
 ///
 /// ```
-/// use bulks::zip;
+/// # #![feature(generic_const_exprs)]
+/// use bulks::*;
 ///
 /// let xs = [1, 2, 3];
 /// let ys = [4, 5, 6];
 ///
-/// let bulk = zip(xs, ys);
+/// let bulk = bulks::zip(xs, ys);
 ///
-/// let s = bulk.collect();
+/// let s = bulk.collect::<[_; _]>();
 /// assert_eq!(s, [(1, 4), (2, 5), (3, 6)]);
 ///
 /// // Nested zips are also possible:
 /// let zs = [7, 8, 9];
 ///
-/// let bulk = zip(zip(xs, ys), zs);
+/// let bulk = bulks::zip(bulks::zip(xs, ys), zs);
 ///
-/// let s = bulk.collect();
+/// let s = bulk.collect::<[_; _]>();
 /// assert_eq!(s, [((1, 4), 7), ((2, 5), 8), ((3, 6), 9)]);
 /// ```
 pub const fn zip<A, B>(a: A, b: B) -> Zip<
@@ -209,13 +210,15 @@ mod test
     {
         let a = [1, 3, 5];
         let b = [2, 4, 6];
-        let bulk = a.into_bulk().zip(b).map(|(a, b)| a + b);
+        let bulk = a.into_bulk()
+            .zip(b)
+            .map(|(a, b)| a + b);
         let c = bulk.collect::<[_; _], [_; _]>();
         println!("{c:?}")
     }
 
     #[test]
-    fn long()
+    fn ugly()
     {
         let a = [1, 2, 3];
         let b = [2, 3, 4];

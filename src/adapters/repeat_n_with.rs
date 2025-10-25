@@ -62,7 +62,7 @@ use crate::{util::{Length, LengthSpec}, Bulk, DoubleEndedBulk, StaticBulk};
 /// struct Expensive;
 ///
 /// // a particular value forever:
-/// let mut things = bulks::repeat_n_with(|| Expensive, 4).collect::<[_; _]>();
+/// let mut things = bulks::repeat_n_with(|| Expensive, [(); 4]).collect::<[_; _]>();
 ///
 /// assert_eq!(things, [Expensive, Expensive, Expensive, Expensive])
 /// ```

@@ -1795,11 +1795,13 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// use bulks::*;
     ///
-    /// let bulk = "lorem".bulk().array_chunks();
+    /// let bulk = b"lorem".bulk()
+    ///     .copied()
+    ///     .array_chunks();
     /// let (c, r) = bulk.collect_with_remainder();
     /// 
-    /// assert_eq!(c, [['l', 'o'], ['r', 'e']]);
-    /// assert_eq!(r, ['m']);
+    /// assert_eq!(c, [[b'l', b'o'], [b'r', b'e']]);
+    /// assert_eq!(r, [b'm']);
     /// ```
     ///
     /// ```
