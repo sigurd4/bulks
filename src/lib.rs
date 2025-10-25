@@ -28,7 +28,6 @@
 #![feature(const_drop_in_place)]
 #![feature(const_precise_live_drops)]
 #![feature(control_flow_into_value)]
-#![feature(string_into_chars)]
 #![feature(new_range_api)]
 #![feature(const_option_ops)]
 #![feature(step_trait)]
