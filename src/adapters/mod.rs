@@ -1,4 +1,7 @@
 moddef::moddef!(
+    mod {
+        array_chunks_with_remainder
+    },
     flat(pub) mod {
         array_chunks,
         chain,

@@ -14,8 +14,7 @@ use crate::{util::{Length, LengthSpec}, Bulk, DoubleEndedBulk, StaticBulk};
 /// use bulks::*;
 ///
 /// // four of the number four:
-/// let four_fours = bulks::repeat_n(4, 4)
-///     .collect_array();
+/// let four_fours = bulks::repeat_n(4, [(); 4]).collect::<[_; _]>();
 /// 
 /// assert_eq!(four_fours, [4, 4, 4, 4]);
 /// ```
@@ -23,19 +22,21 @@ use crate::{util::{Length, LengthSpec}, Bulk, DoubleEndedBulk, StaticBulk};
 /// For non-`Copy` types,
 ///
 /// ```
-/// use std::iter;
+/// use bulks::*;
 ///
 /// let v: Vec<i32> = Vec::with_capacity(123);
-/// let mut reps = iter::repeat_n(v, 5).collect();
+/// let mut bulk = bulks::repeat_n(v, [(); 5]);
+/// 
+/// let (first_four, last) = bulk.split_at([(); 4])
 ///
-/// for cloned in &reps[0..4] {
+/// for cloned in first_four {
 ///     // It starts by cloning things
 ///     assert_eq!(cloned.len(), 0);
 ///     assert_eq!(cloned.capacity(), 0);
 /// }
 ///
 /// // ... but the last item is the original one
-/// let last = it.last().unwrap();
+/// let [last] = last.collect();
 /// assert_eq!(last.len(), 0);
 /// assert_eq!(last.capacity(), 123);
 /// ```

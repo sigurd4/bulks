@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, StaticBulk};
+use crate::{util::LengthSpec, Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, SplitBulk, StaticBulk};
 
 /// Converts the arguments to bulks and zips them.
 ///
@@ -187,6 +187,29 @@ where
     [(); N.min(M)]:
 {
     type Array<U> = [U; N.min(M)];
+}
+impl<A, B, L> const SplitBulk<L> for Zip<A, B>
+where
+    A: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
+    B: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
+    L: LengthSpec
+{
+    type Left = Zip<A::Left, B::Left>;
+    type Right = Zip<A::Right, B::Right>;
+
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { a, b } = self;
+        let (a_left, a_right) = a.split_at(n);
+        let (b_left, b_right) = b.split_at(n);
+        
+        (
+            a_left.zip(b_left),
+            a_right.zip(b_right)
+        )
+    }
 }
 
 impl<A, B> fmt::Debug for Zip<A, B>

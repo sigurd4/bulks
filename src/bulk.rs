@@ -1793,12 +1793,15 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Basic usage:
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     ///
     /// let bulk = b"lorem".bulk()
     ///     .copied()
     ///     .array_chunks();
-    /// let (c, r) = bulk.collect_with_remainder();
+    /// 
+    /// let (c, r) = bulk.collect_with_remainder::<[_; _]>();
+    /// let r = r.collect::<Vec<_>>();
     /// 
     /// assert_eq!(c, [[b'l', b'o'], [b'r', b'e']]);
     /// assert_eq!(r, [b'm']);
