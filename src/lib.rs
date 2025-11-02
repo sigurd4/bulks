@@ -28,7 +28,6 @@
 #![feature(const_drop_in_place)]
 #![feature(const_precise_live_drops)]
 #![feature(control_flow_into_value)]
-#![feature(string_into_chars)]
 #![feature(new_range_api)]
 #![feature(const_option_ops)]
 #![feature(step_trait)]
@@ -37,6 +36,10 @@
 #![feature(mem_copy_fn)]
 #![feature(array_into_iter_constructors)]
 #![feature(decl_macro)]
+#![feature(ptr_as_ref_unchecked)]
+#![feature(iter_next_chunk)]
+#![feature(iter_advance_by)]
+#![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(const_closures)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
@@ -322,6 +325,7 @@ moddef::moddef!(
         double_ended_bulk,
         from_bulk,
         into_bulk,
+        split_bulk,
         static_bulk,
         try_from_bulk
     },

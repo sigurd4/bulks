@@ -198,7 +198,7 @@ mod test
         let c = b.into_bulk()
             .enumerate()
             .inspect(|&(i, a)| assert_eq!(i, a))
-            .map(|(_, a)| a.to_string().into_chars().next())
+            .map(|(_, a)| a.to_string().chars().next())
             .try_collect_array()
             .unwrap();
 

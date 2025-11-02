@@ -9,4 +9,4 @@ alloc = []
 [dependencies]
 moddef = "0.3.0"
 currying = {version = "0.4.0", default-features = false, features = ["8"]}
-array_trait = {version = "1.1.2", default-features = false}
+array_trait = {version = "1.1.4", default-features = false}

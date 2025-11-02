@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, StaticBulk};
+use crate::{util::LengthSpec, Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, SplitBulk, StaticBulk};
 
 /// Converts the arguments to bulks and zips them.
 ///
@@ -9,22 +9,26 @@ use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, I
 /// # Examples
 ///
 /// ```
-/// use bulks::zip;
+/// # #![feature(generic_const_exprs)]
+/// use bulks::*;
 ///
 /// let xs = [1, 2, 3];
 /// let ys = [4, 5, 6];
 ///
-/// let bulk = zip(xs, ys);
+/// let bulk = bulks::zip(xs, ys);
 ///
-/// let s = bulk.collect();
+/// let s = bulk.collect::<[_; _]>();
 /// assert_eq!(s, [(1, 4), (2, 5), (3, 6)]);
 ///
 /// // Nested zips are also possible:
 /// let zs = [7, 8, 9];
 ///
-/// let bulk = zip(zip(xs, ys), zs);
+/// let bulk = bulks::zip(
+///     bulks::zip(xs, ys),
+///     zs
+/// );
 ///
-/// let s = bulk.collect();
+/// let s = bulk.collect::<[_; _]>();
 /// assert_eq!(s, [((1, 4), 7), ((2, 5), 8), ((3, 6), 9)]);
 /// ```
 pub const fn zip<A, B>(a: A, b: B) -> Zip<
@@ -186,6 +190,29 @@ where
     [(); N.min(M)]:
 {
     type Array<U> = [U; N.min(M)];
+}
+impl<A, B, L> const SplitBulk<L> for Zip<A, B>
+where
+    A: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
+    B: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
+    L: LengthSpec
+{
+    type Left = Zip<A::Left, B::Left>;
+    type Right = Zip<A::Right, B::Right>;
+
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { a, b } = self;
+        let (a_left, a_right) = a.split_at(n);
+        let (b_left, b_right) = b.split_at(n);
+        
+        (
+            a_left.zip(b_left),
+            a_right.zip(b_right)
+        )
+    }
 }
 
 impl<A, B> fmt::Debug for Zip<A, B>

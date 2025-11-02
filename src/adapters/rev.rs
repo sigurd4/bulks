@@ -34,9 +34,13 @@ where
     /// ```rust
     /// use bulks::*;
     ///
-    /// let s = "foobar";
-    /// let mut s2 = s.bulk().rev().into_inner().collect();
-    /// assert_eq!(s2, "foobar");
+    /// let s = b"foobar";
+    /// let mut s2 = s.bulk()
+    ///     .copied()
+    ///     .rev()
+    ///     .into_inner()
+    ///     .collect::<[_; _]>();
+    /// assert_eq!(&s2, b"foobar");
     /// ```
     pub const fn into_inner(self) -> I
     {

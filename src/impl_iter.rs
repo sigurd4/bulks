@@ -10,6 +10,18 @@ pub mod iter
     }
 }
 
+impl<T, A, I> iter::Bulk<T>
+where
+    T: IntoIterator<Item = A, IntoIter = I>,
+    I: ExactSizeIterator<Item = A>
+{
+    pub const fn by_ref(&mut self) -> &mut T::IntoIter
+    {
+        let Self { inner } = self;
+        inner
+    }
+}
+
 impl<T, A, I> IntoIterator for iter::Bulk<T>
 where
     T: IntoIterator<Item = A, IntoIter = I>,

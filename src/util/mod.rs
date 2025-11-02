@@ -1,4 +1,4 @@
-use core::mem::MaybeUninit;
+use core::mem::{ManuallyDrop, MaybeUninit};
 
 use crate::Guard;
 
@@ -13,6 +13,46 @@ moddef::moddef!(
         mutator,
     }
 );
+
+pub(crate) const fn split_array_ref<T, const N: usize, const M: usize>(array: &[T; N]) -> (&[T; N.min(M)], &[T; N.saturating_sub(M)])
+{
+    let ptr = array.as_ptr();
+    unsafe {
+        (ptr.cast::<[_; _]>().as_ref_unchecked(), ptr.add(N.min(M)).cast::<[_; _]>().as_ref_unchecked())
+    }
+}
+pub(crate) const fn split_array_mut<T, const N: usize, const M: usize>(array: &mut [T; N]) -> (&mut [T; N.min(M)], &mut [T; N.saturating_sub(M)])
+{
+    let ptr = array.as_mut_ptr();
+    unsafe {
+        (ptr.cast::<[_; _]>().as_mut_unchecked(), ptr.add(N.min(M)).cast::<[_; _]>().as_mut_unchecked())
+    }
+}
+pub(crate) const fn split_array<T, const N: usize, const M: usize>(array: [T; N]) -> ([T; N.min(M)], [T; N.saturating_sub(M)])
+{
+    #[repr(C)]
+    struct Pair<L, R>
+    {
+        left: L,
+        right: R
+    }
+    #[repr(C)]
+    union Split<T, L, R>
+    {
+        concat: ManuallyDrop<T>,
+        split: ManuallyDrop<Pair<L, R>>
+    }
+
+    let Pair { left, right } = unsafe {
+        ManuallyDrop::into_inner(
+            Split {
+                concat: ManuallyDrop::new(array)
+            }.split
+        )
+    };
+
+    (left, right)
+}
 
 pub(crate) const fn new_init_array<T, const N: usize>(array: [T; N]) -> [MaybeUninit<T>; N]
 {
