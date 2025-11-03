@@ -1,6 +1,6 @@
 use core::{fmt, marker::{Destruct, PhantomData}};
 
-use crate::{util::LengthSpec, Bulk, DoubleEndedBulk, IntoBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk, util::LengthSpec};
 
 /// Creates a bulk that yields nothing.
 /// 
@@ -29,6 +29,14 @@ pub const fn empty<T>() -> Empty<T>
 /// This `struct` is created by the [`empty()`] function. See its documentation for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 pub struct Empty<T>(PhantomData<T>);
+
+impl<T> const Clone for Empty<T>
+{
+    fn clone(&self) -> Self
+    {
+        Self(PhantomData)
+    }
+}
 
 impl<T> fmt::Debug for Empty<T>
 {
@@ -130,6 +138,20 @@ impl<T> const DoubleEndedBulk for Empty<T>
 unsafe impl<T> StaticBulk for Empty<T>
 {
     type Array<U> = [U; 0];
+}
+impl<T, L> const SplitBulk<L> for Empty<T>
+where
+    L: LengthSpec
+{
+    type Left = Self;
+    type Right = Self;
+
+    fn saturating_split_at(self, _n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        (self.clone(), self)
+    }
 }
 
 pub const trait EmptyBulk: ~const DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 0]>

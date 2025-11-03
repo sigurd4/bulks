@@ -188,14 +188,14 @@ where
     type Left = Chain<A::Left, B::Left>;
     type Right = Chain<A::Right, B::Right>;
 
-    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn saturating_split_at(self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
         let Self { a, b } = self;
         let m = n.len_sub(D::from_metadata(a.len().same().unwrap_or_default()));
-        let (a_left, a_right) = a.split_at(n);
-        let (b_left, b_right) = b.split_at(m);
+        let (a_left, a_right) = a.saturating_split_at(n);
+        let (b_left, b_right) = b.saturating_split_at(m);
         (
             a_left.chain(b_left),
             a_right.chain(b_right)
@@ -215,7 +215,7 @@ mod test
             let a = [1, 2, 3];
             let b = [4, 5, 6];
             
-            let (a, b) = a.into_bulk().chain(b).split_at([(); 4]);
+            let (a, b) = a.into_bulk().chain(b).saturating_split_at([(); 4]);
             (a.collect_array(), b.collect_array())
         };
 

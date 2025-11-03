@@ -197,13 +197,13 @@ where
     type Left = Zip<A::Left, B::Left>;
     type Right = Zip<A::Right, B::Right>;
 
-    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn saturating_split_at(self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
         let Self { a, b } = self;
-        let (a_left, a_right) = a.split_at(n);
-        let (b_left, b_right) = b.split_at(n);
+        let (a_left, a_right) = a.saturating_split_at(n);
+        let (b_left, b_right) = b.saturating_split_at(n);
         
         (
             a_left.zip(b_left),

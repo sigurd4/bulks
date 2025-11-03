@@ -233,11 +233,11 @@ where
     type Left = ArrayChunks<<I as SplitBulk<<L as LengthMul<N>>::LengthMul>>::Left, N>;
     type Right = ArrayChunks<<I as SplitBulk<<L as LengthMul<N>>::LengthMul>>::Right, N>;
 
-    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn saturating_split_at(self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let (left, right) = self.bulk.split_at(n.len_mul());
+        let (left, right) = self.bulk.saturating_split_at(n.len_mul());
         (
             left.array_chunks(),
             right.array_chunks()
@@ -269,7 +269,7 @@ mod test
         println!("{c:?}");
 
         let a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let (a, b) = a.into_bulk().array_chunks::<4>().split_at(1);
+        let (a, b) = a.into_bulk().array_chunks::<4>().saturating_split_at(1);
         let (a, r) = a.collect_with_remainder::<Vec<_>>();
         assert!(r.is_empty());
 

@@ -1,6 +1,6 @@
 use core::marker::Destruct;
 
-use crate::{util::LengthSpec, Bulk, DoubleEndedBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::LengthSpec};
 
 /// A bulk that clones the elements of an underlying bulk.
 ///
@@ -154,6 +154,26 @@ where
     T: Clone + 'a
 {
     type Array<U> = [U; N];
+}
+impl<'a, I, T, L> const SplitBulk<L> for Cloned<I>
+where
+    I: ~const SplitBulk<L, Item = &'a T, Left: ~const Bulk, Right: ~const Bulk>,
+    T: ~const Clone + 'a,
+    L: LengthSpec
+{
+    type Left = Cloned<I::Left>;
+    type Right = Cloned<I::Right>;
+
+    fn saturating_split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let (left, right) = self.bulk.saturating_split_at(n);
+        (
+            left.cloned(),
+            right.cloned()
+        )
+    }
 }
 
 struct Closure<F>

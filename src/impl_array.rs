@@ -151,7 +151,7 @@ macro_rules! impl_bulk {
             default type Right = <<$array as IntoIterator>::IntoIter as IntoBulk>::IntoBulk;
 
             #[track_caller]
-            default fn split_at($self_split_at_dyn, $n_split_at_dyn: L) -> (Self::Left, Self::Right)
+            default fn saturating_split_at($self_split_at_dyn, $n_split_at_dyn: L) -> (Self::Left, Self::Right)
             where
                 Self: Sized
             $split_at_dyn
@@ -165,7 +165,7 @@ macro_rules! impl_bulk {
             type Right = array::$bulk<$($a,)? T, {N.saturating_sub(M)}>;
 
             #[track_caller]
-            fn split_at(self, _n: [(); M]) -> (Self::Left, Self::Right)
+            fn saturating_split_at(self, _n: [(); M]) -> (Self::Left, Self::Right)
             where
                 Self: Sized
             {
