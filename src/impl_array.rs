@@ -266,12 +266,12 @@ impl_bulk!(
             let n = n.len_metadata();
             let Self {array} = self;
             let array = MaybeUninit::new(array).transpose();
-            let mut right = array.into_iter();
-            let mut left = unsafe {
-                core::ptr::read(&right)
+            let mut left = array.into_iter();
+            let mut right = unsafe {
+                core::ptr::read(&left)
             };
-            let _ = right.advance_back_by(N.saturating_sub(n));
-            let _ = left.advance_by(N.min(n));
+            let _ = left.advance_back_by(N.saturating_sub(n));
+            let _ = right.advance_by(N.min(n));
             let (left, right): (Self::IntoIter, Self::IntoIter) = unsafe {
                 core::intrinsics::transmute_unchecked((left, right))
             };

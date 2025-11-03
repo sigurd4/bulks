@@ -108,7 +108,7 @@ impl<T, const N: usize, const REV: bool> ArrayBuffer<T, N, REV>
 
     pub const fn as_mut_array(&mut self) -> Option<&mut [T; N]>
     {
-        if self.len >= N
+        if self.is_full()
         {
             return Some(unsafe {self.data.assume_init_mut().as_mut_array().unwrap_unchecked()})
         }
@@ -117,11 +117,21 @@ impl<T, const N: usize, const REV: bool> ArrayBuffer<T, N, REV>
 
     pub const fn as_array(&self) -> Option<&[T; N]>
     {
-        if self.len >= N
+        if self.is_full()
         {
             return Some(unsafe {self.data.assume_init_ref().as_array().unwrap_unchecked()})
         }
         None
+    }
+
+    pub const fn len(&self) -> usize
+    {
+        assert!(self.len <= N);
+        self.len
+    }
+    pub const fn is_full(&self) -> bool
+    {
+        self.len() == N
     }
 }
 

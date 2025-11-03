@@ -158,12 +158,12 @@ where
     I: Bulk
 {
     type Item = <ArrayChunks<I, N> as IntoIterator>::Item;
-    type IntoIter = <ArrayChunks<I, N> as IntoIterator>::IntoIter;
+    type IntoIter = iter::ArrayChunksWithRemainder<'a, <I as IntoIterator>::IntoIter, N, REV>;
 
     fn into_iter(self) -> Self::IntoIter
     {
-        let Self { bulk, remainder: _ } = self;
-        bulk.into_iter()
+        let Self { bulk, remainder } = self;
+        iter::ArrayChunksWithRemainder::new(bulk.into_iter(), remainder)
     }
 }
 impl<'a, I, const N: usize, const REV: bool> const Bulk for ArrayChunksWithRemainder<'a, I, N, REV>
@@ -203,4 +203,73 @@ where
     ArrayChunks<I, N>: StaticBulk
 {
     type Array<U> = <ArrayChunks<I, N> as StaticBulk>::Array<U>;
+}
+
+mod iter
+{
+    use crate::util::ArrayBuffer;
+
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    pub struct ArrayChunksWithRemainder<'a, I, const N: usize, const REV: bool>
+    where
+        I: Iterator
+    {
+        iter: Option<core::iter::ArrayChunks<I, N>>,
+        remainder: &'a mut ArrayBuffer<I::Item, N, REV>
+    }
+    
+    impl<'a, I, const N: usize, const REV: bool> ArrayChunksWithRemainder<'a, I, N, REV>
+    where
+        I: Iterator
+    {
+        pub(super) fn new(iter: core::iter::ArrayChunks<I, N>, remainder: &'a mut ArrayBuffer<I::Item, N, REV>) -> Self
+        {
+            Self {
+                iter: Some(iter),
+                remainder
+            }
+        }
+    }
+    
+    impl<'a, I, const N: usize, const REV: bool> Iterator for ArrayChunksWithRemainder<'a, I, N, REV>
+    where
+        I: Iterator
+    {
+        type Item = [I::Item; N];
+
+        fn next(&mut self) -> Option<Self::Item>
+        {
+            self.iter.as_mut().and_then(|iter| iter.next())
+        }
+    }
+
+    impl<'a, I, const N: usize, const REV: bool> ExactSizeIterator for ArrayChunksWithRemainder<'a, I, N, REV>
+    where
+        I: ExactSizeIterator
+    {
+        fn len(&self) -> usize
+        {
+            self.iter.as_ref().map(|iter| iter.len()).unwrap_or(0)
+        }
+        fn is_empty(&self) -> bool
+        {
+            self.iter.as_ref().is_none_or(|iter| iter.is_empty())
+        }
+    }
+
+    impl<'a, I, const N: usize, const REV: bool> Drop for ArrayChunksWithRemainder<'a, I, N, REV>
+    where
+        I: Iterator
+    {
+        fn drop(&mut self)
+        {
+            if let Some(mut iter) = self.iter.take().and_then(|iter| iter.into_remainder())
+            {
+                while !self.remainder.is_full() && let Some(value) = iter.next()
+                {
+                    self.remainder.push(value);
+                }
+            }
+        }
+    }
 }

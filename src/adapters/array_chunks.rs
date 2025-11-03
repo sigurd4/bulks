@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::{Residual, Try}};
 
-use crate::{adapters::array_chunks_with_remainder::ArrayChunksWithRemainder, util::{ArrayBuffer, CollectLength, Length}, Bulk, DoubleEndedBulk, FromBulk, IntoBulk, Rev, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, FromBulk, IntoBulk, Rev, SplitBulk, StaticBulk, adapters::array_chunks_with_remainder::ArrayChunksWithRemainder, util::{ArrayBuffer, CollectLength, Length, LengthMul, LengthSpec}};
 
 /// A bulk over `N` elements of the bulk at a time.
 ///
@@ -94,7 +94,6 @@ where
         )
     }
 }
-
 
 impl<I, const N: usize> Rev<ArrayChunks<I, N>>
 where
@@ -226,6 +225,25 @@ where
 {
     type Array<U> = [U; M/N];
 }
+impl<I, const N: usize, L> const SplitBulk<L> for ArrayChunks<I, N>
+where
+    I: ~const SplitBulk<<L as LengthMul<N>>::LengthMul, Left: ~const Bulk, Right: ~const Bulk>,
+    L: ~const LengthSpec
+{
+    type Left = ArrayChunks<<I as SplitBulk<<L as LengthMul<N>>::LengthMul>>::Left, N>;
+    type Right = ArrayChunks<<I as SplitBulk<<L as LengthMul<N>>::LengthMul>>::Right, N>;
+
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let (left, right) = self.bulk.split_at(n.len_mul());
+        (
+            left.array_chunks(),
+            right.array_chunks()
+        )
+    }
+}
 
 #[cfg(test)]
 mod test
@@ -250,10 +268,15 @@ mod test
 
         println!("{c:?}");
 
-        let a = [1, 2, 3, 4, 5, 6];
-        let (b, r) = a.into_bulk().array_chunks::<4>().collect_with_remainder::<[_; _]>();
+        let a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let (a, b) = a.into_bulk().array_chunks::<4>().split_at(1);
+        let (a, r) = a.collect_with_remainder::<Vec<_>>();
+        assert!(r.is_empty());
+
+        let (b, r) = b.collect_with_remainder::<Vec<_>>();
         let r = r.collect::<Vec<_>>();
 
+        println!("a = {a:?}");
         println!("b = {b:?}");
         println!("r = {r:?}");
     }

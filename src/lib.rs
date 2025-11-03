@@ -40,6 +40,7 @@
 #![feature(iter_next_chunk)]
 #![feature(iter_advance_by)]
 #![feature(maybe_uninit_uninit_array_transpose)]
+#![feature(const_result_trait_fn)]
 #![feature(const_closures)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
