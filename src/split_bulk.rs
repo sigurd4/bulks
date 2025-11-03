@@ -8,7 +8,7 @@ where
     type Right: Bulk<Item = Self::Item>;
 
     #[track_caller]
-    fn saturating_split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized;
 }

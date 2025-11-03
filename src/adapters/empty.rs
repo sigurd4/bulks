@@ -146,7 +146,7 @@ where
     type Left = Self;
     type Right = Self;
 
-    fn saturating_split_at(self, _n: L) -> (Self::Left, Self::Right)
+    fn split_at(self, _n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
