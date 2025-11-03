@@ -1,6 +1,6 @@
 use core::marker::Destruct;
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk, StaticBulk, util::{BulkLength, Length, LengthSpec, LengthSub, Same}};
 
 
 /// A bulk that links two bulks together, in a chain.
@@ -177,6 +177,31 @@ where
 {
     type Array<U> = [U; N + M];
 }
+impl<A, B, T, L, R, D> const SplitBulk<L> for Chain<A, B>
+where
+    A: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk> + ~const Bulk + ~const Destruct + BulkLength<Length: Length<LengthSpec = D>>,
+    B: ~const SplitBulk<R, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
+    L: ~const LengthSub<D, LengthSub = R>,
+    R: LengthSpec,
+    D: ~const LengthSpec<Metadata: ~const Destruct>
+{
+    type Left = Chain<A::Left, B::Left>;
+    type Right = Chain<A::Right, B::Right>;
+
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { a, b } = self;
+        let m = n.len_sub(D::from_metadata(a.len().same().unwrap_or_default()));
+        let (a_left, a_right) = a.split_at(n);
+        let (b_left, b_right) = b.split_at(m);
+        (
+            a_left.chain(b_left),
+            a_right.chain(b_right)
+        )
+    }
+}
 
 #[cfg(test)]
 mod test
@@ -186,13 +211,14 @@ mod test
     #[test]
     fn it_works()
     {
-        let c = const {
+        let (a, b) = const {
             let a = [1, 2, 3];
             let b = [4, 5, 6];
             
-            a.into_bulk().chain(b).collect_array()
+            let (a, b) = a.into_bulk().chain(b).split_at([(); 4]);
+            (a.collect_array(), b.collect_array())
         };
 
-        println!("{c:?}")
+        println!("{a:?} {b:?}")
     }
 }

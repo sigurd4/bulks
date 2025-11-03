@@ -36,7 +36,7 @@ impl<T, const N: usize> const Length for [T; N]
 pub const trait LengthSpec: Copy + const Destruct
 {
     type Length<T>: const Length<Elem = T, LengthSpec = Self> + Pointee<Metadata = Self::Metadata> + ?Sized;
-    type Metadata: Copy;
+    type Metadata: Copy + const Default;
     
     fn from_metadata(n: Self::Metadata) -> Self;
     fn into_metadata(self) -> Self::Metadata;
@@ -76,6 +76,38 @@ impl<const N: usize> const LengthSpec for [(); N]
     fn len_metadata(self) -> usize
     {
         N
+    }
+}
+
+pub const trait LengthSub<R>: LengthSpec
+where
+    R: LengthSpec
+{
+    type LengthSub: LengthSpec;
+
+    fn len_sub(self, other: R) -> Self::LengthSub;
+}
+impl<L, R> const LengthSub<R> for L
+where
+    L: ~const LengthSpec,
+    R: ~const LengthSpec
+{
+    default type LengthSub = usize;
+
+    default fn len_sub(self, other: R) -> Self::LengthSub
+    {
+        (self.len_metadata() - other.len_metadata()).same().ok().unwrap()
+    }
+}
+impl<const M: usize, const N: usize> const LengthSub<[(); N]> for [(); M]
+where
+    [(); M.saturating_sub(N)]:
+{
+    type LengthSub = [(); M.saturating_sub(N)];
+
+    fn len_sub(self, _: [(); N]) -> Self::LengthSub
+    {
+        [(); M.saturating_sub(N)]
     }
 }
 
