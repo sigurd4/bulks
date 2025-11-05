@@ -2,9 +2,14 @@
 name = "bulks"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+keywords = ["array", "util", "iterators", "collect", "iterate"]
+categories = ["rust-patterns", "no-std::no-alloc"]
+description = "Amazing bulks! They are like iterators, but in bulk, and therefore support collection into arrays."
+repository = "https://github.com/sigurd4/bulks"
 
 [features]
-alloc = []
+alloc = ["array_trait/alloc"]
 
 [dependencies]
 moddef = "0.3.0"
