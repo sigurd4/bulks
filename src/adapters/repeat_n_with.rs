@@ -165,7 +165,7 @@ where
 }
 impl<A, G, N> const DoubleEndedBulk for RepeatNWith<G, N>
 where
-    G: ~const FnMut() -> A + ~const Destruct,
+    G: ~const FnMut() -> A + Fn() -> A + ~const Destruct,
     N: ~const Length<Elem = A> + ?Sized,
     Self::IntoIter: DoubleEndedIterator
 {

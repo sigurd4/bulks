@@ -1,6 +1,6 @@
 use core::{fmt, marker::Destruct, ops::Try};
 
-use crate::{Bulk, DoubleEndedBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::LengthSpec};
 
 /// A bulk that calls a function with a reference to each element before
 /// yielding it.
@@ -112,7 +112,7 @@ where
 impl<I, F> const DoubleEndedBulk for Inspect<I, F>
 where
     I: ~const DoubleEndedBulk,
-    F: ~const FnMut(&I::Item) + ~const Destruct
+    F: ~const FnMut(&I::Item) + Fn(&I::Item) + ~const Destruct
 {
     fn rev_for_each<FF>(self, f: FF)
     where
@@ -139,13 +139,33 @@ where
         })
     }
 }
-
 unsafe impl<I, F> StaticBulk for Inspect<I, F>
 where
     I: StaticBulk,
     F: FnMut(&I::Item)
 {
     type Array<U> = I::Array<U>;
+}
+impl<I, F, L> const SplitBulk<L> for Inspect<I, F>
+where
+    I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
+    F: Fn(&I::Item) + ~const Clone,
+    L: LengthSpec
+{
+    type Left = Inspect<I::Left, F>;
+    type Right = Inspect<I::Right, F>;
+
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { bulk, f } = self;
+        let (left, right) = bulk.split_at(n);
+        (
+            left.inspect(f.clone()),
+            right.inspect(f)
+        )
+    }
 }
 
 struct Closure<F, FF>

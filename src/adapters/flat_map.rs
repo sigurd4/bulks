@@ -186,7 +186,7 @@ where
 impl<I, U, F> const DoubleEndedBulk for FlatMap<I, U, F>
 where
     I: ~const DoubleEndedBulk<Item: ~const Destruct>,
-    F: ~const FnMut(I::Item) -> U + ~const Destruct,
+    F: ~const FnMut(I::Item) -> U + Fn(I::Item) -> U + ~const Destruct,
     U: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk>,
     Self::IntoIter: DoubleEndedIterator
 {

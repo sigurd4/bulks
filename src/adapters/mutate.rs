@@ -111,7 +111,7 @@ where
 impl<I, F> const DoubleEndedBulk for Mutate<I, F>
 where
     I: ~const DoubleEndedBulk,
-    F: ~const FnMut(&mut I::Item) + ~const Destruct
+    F: ~const FnMut(&mut I::Item) + Fn(&mut I::Item) + ~const Destruct
 {
     fn rev_for_each<FF>(self, f: FF)
     where
