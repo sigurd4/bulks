@@ -1,5 +1,8 @@
 use core::ops::RangeFrom;
 
+/// # Safety
+/// 
+/// Iterator must yield an infinite amount of elements
 pub unsafe trait InfiniteIterator: Iterator
 {
 

@@ -44,6 +44,7 @@
 #![feature(const_closures)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
+#![allow(clippy::map_clone)] // Temporary, because Option::cloned is not const
 
 //! Composable bulk-iteration.
 //! 

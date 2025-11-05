@@ -1709,6 +1709,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///     .try_collect_array();
     /// assert_eq!(v, Continue([1, 2, 4, 5]));
     /// ```
+    #[allow(clippy::type_complexity)]
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
     fn try_collect_array(self) -> <<Self::Item as Try>::Residual as Residual<Self::Array<<Self::Item as Try>::Output>>>::TryType
     where

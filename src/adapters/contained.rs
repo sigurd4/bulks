@@ -1,5 +1,3 @@
-use core::usize;
-
 use crate::util::InfiniteIterator;
 use crate::util::LengthSpec;
 use crate::Bulk;
@@ -257,6 +255,11 @@ mod private
         }
     }
 
+    /// # Safety
+    /// 
+    /// Assumes that the possibly infinite iterator is contained by another exact length iterator.
+    /// 
+    /// This is ok to use with adapters such as zip and take.
     pub unsafe trait ContainedIntoIter: IntoIterator<IntoIter: ExactSizeIterator>
     {
         type ContainedIntoIter: Iterator<Item = Self::Item>;

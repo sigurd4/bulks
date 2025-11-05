@@ -34,7 +34,7 @@ where
     
     fn into_iter(self) -> Self::IntoIter
     {
-        self.inner.into_iter()
+        self.inner
     }
 }
 

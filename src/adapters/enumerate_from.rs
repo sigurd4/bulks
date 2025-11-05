@@ -75,11 +75,8 @@ where
     {
         let Self { bulk, initial_count } = self;
         let len = bulk.len();
-        match bulk.last()
-        {
-            Some(last) => Some((U::forward(initial_count, len - 1), last)),
-            None => None
-        }
+        bulk.last()
+            .map(|last| (U::forward(initial_count, len - 1), last))
     }
     fn nth<L>(self, n: L) -> Option<Self::Item>
     where
@@ -87,11 +84,8 @@ where
         L: LengthSpec
     {
         let Self { bulk, initial_count } = self;
-        match bulk.nth(n)
-        {
-            Some(last) => Some((U::forward(initial_count, n.len_metadata()), last)),
-            None => None
-        }
+        bulk.nth(n)
+            .map(|nth| (U::forward(initial_count, n.len_metadata()), nth))
     }
 
     fn for_each<F>(self, f: F)

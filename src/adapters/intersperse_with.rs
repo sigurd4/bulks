@@ -179,7 +179,7 @@ struct Closure<F, G>
 }
 impl<F, G, T> const FnOnce<(T,)> for Closure<F, G>
 where
-    F: ~const FnMut(T) -> () + ~const FnOnce(T) -> (),
+    F: ~const FnMut(T) + ~const FnOnce(T),
     G: ~const FnOnce() -> T + ~const Destruct
 {
     type Output = ();
@@ -196,7 +196,7 @@ where
 }
 impl<F, G, T> const FnMut<(T,)> for Closure<F, G>
 where
-    F: ~const FnMut(T) -> (),
+    F: ~const FnMut(T),
     G: ~const FnMut() -> T
 {
     extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
