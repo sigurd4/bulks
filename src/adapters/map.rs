@@ -1,6 +1,6 @@
 use core::{fmt, marker::Destruct};
 
-use crate::{Bulk, DoubleEndedBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::LengthSpec};
 
 /// A bulk that maps the values of `bulk` with `f`.
 ///
@@ -190,6 +190,27 @@ where
     F: FnMut<(I::Item,)>
 {
     type Array<U> = I::Array<U>;
+}
+impl<I, F, L> const SplitBulk<L> for Map<I, F>
+where
+    I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
+    F: Fn<(I::Item,)> + ~const Clone,
+    L: LengthSpec
+{
+    type Left = Map<I::Left, F>;
+    type Right = Map<I::Right, F>;
+
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { bulk, f } = self;
+        let (left, right) = bulk.split_at(n);
+        (
+            left.map(f.clone()),
+            right.map(f)
+        )
+    }
 }
 
 struct Closure<M, F>
