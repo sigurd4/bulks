@@ -214,32 +214,3 @@ where
         [(); M.saturating_mul(N)]
     }
 }
-
-pub const trait LengthDiv<const N: usize>: LengthSpec
-{
-    type LengthDiv: LengthSpec;
-
-    fn len_div(self) -> Self::LengthDiv;
-}
-impl<L, const N: usize> const LengthDiv<N> for L
-where
-    L: ~const LengthSpec
-{
-    default type LengthDiv = usize;
-
-    default fn len_div(self) -> Self::LengthDiv
-    {
-        (self.len_metadata()/N).same().ok().unwrap()
-    }
-}
-impl<const M: usize, const N: usize> const LengthDiv<N> for [(); M]
-where
-    [(); M/N]:
-{
-    type LengthDiv = [(); M/N];
-
-    fn len_div(self) -> Self::LengthDiv
-    {
-        [(); M/N]
-    }
-}
