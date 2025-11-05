@@ -1,6 +1,6 @@
-use core::marker::Destruct;
+use core::{marker::Destruct, ptr::Pointee};
 
-use crate::{Bulk, DoubleEndedBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{BulkLength, Length, LengthSpec, LengthSub}};
 
 
 /// A double-ended bulk with the direction inverted.
@@ -132,4 +132,47 @@ where
     I: StaticBulk + DoubleEndedBulk
 {
     type Array<U> = I::Array<U>;
+}
+impl<I, N, L, R> const SplitBulk<L> for Rev<I>
+where
+    I: ~const SplitBulk<R, Left: ~const Bulk + DoubleEndedBulk, Right: ~const Bulk + DoubleEndedBulk> + ~const Bulk + DoubleEndedBulk + BulkLength<Length: Length<LengthSpec = N> + Pointee<Metadata = N::Metadata>>,
+    N: ~const LengthSpec + ~const LengthSub<L, LengthSub = R>,
+    L: LengthSpec,
+    R: LengthSpec
+{
+    type Left = Rev<I::Right>;
+    type Right = Rev<I::Left>;
+
+    fn split_at(self, m: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { bulk } = self;
+        let n = N::or_len_metadata(bulk.len());
+        let (left, right) = bulk.split_at(n.len_sub(m));
+        (
+            right.rev(),
+            left.rev()
+        )
+    }
+}
+
+#[cfg(test)]
+mod test
+{
+    use crate::*;
+
+    #[test]
+    fn it_works()
+    {
+        let a = [1, 2, 3, 4, 5, 6];
+        let (a, b) = a.into_bulk()
+            .rev()
+            .split_at([(); 2]);
+        let a = a.collect_array();
+        let b = b.collect_array();
+
+        println!("a = {a:?}");
+        println!("b = {b:?}");
+    }
 }

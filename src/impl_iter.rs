@@ -1,4 +1,6 @@
-use crate::{util::{LengthSpec, Same}, Bulk, IntoBulk};
+use core::ops::Try;
+
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, util::{LengthSpec, Same}};
 
 pub mod iter
 {
@@ -98,6 +100,27 @@ where
         L: LengthSpec
     {
         self.inner.nth(n.len_metadata())
+    }
+}
+impl<T, A, I> DoubleEndedBulk for iter::Bulk<T>
+where
+    T: IntoIterator<Item = A, IntoIter = I>,
+    I: ExactSizeIterator<Item = A> + DoubleEndedIterator
+{
+    fn rev_for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: FnMut(Self::Item)
+    {
+        self.inner.rev().for_each(f);
+    }
+    fn try_rev_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> R,
+        R: Try<Output = ()>
+    {
+        self.inner.rev().try_for_each(f)
     }
 }
 
