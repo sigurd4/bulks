@@ -11,6 +11,7 @@ moddef::moddef!(
         infinite_iterator,
         length,
         mutator,
+        stepper
     }
 );
 

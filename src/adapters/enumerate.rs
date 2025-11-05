@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{util::LengthSpec, Bulk, DoubleEndedBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, EnumerateFrom, SplitBulk, StaticBulk, util::LengthSpec};
 
 /// A bulk that yields the element's index and the element.
 ///
@@ -169,6 +169,27 @@ where
     I: StaticBulk<Item = T, Array<T> = [T; N]>
 {
     type Array<U> = [U; N];
+}
+impl<I, T, L> const SplitBulk<L> for Enumerate<I>
+where
+    I: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
+    L: LengthSpec
+{
+    type Left = Enumerate<I::Left>;
+    type Right = EnumerateFrom<I::Right, usize>;
+
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { bulk } = self;
+        let (left, right) = bulk.split_at(n);
+        let following_count = left.len();
+        (
+            left.enumerate(),
+            right.enumerate_from(following_count)
+        )
+    }
 }
 
 struct Closure<F, const REV: bool>

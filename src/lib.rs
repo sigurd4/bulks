@@ -317,6 +317,13 @@
 //! assert_eq!(a, b);
 //! ```
 
+/*
+# MISSING FEATURES:
+- collect_into (requires `Extend` to become a const-trait)
+- try_collect
+- const enumerate_with
+*/
+
 moddef::moddef!(
     flat(pub) mod {
         adapters,

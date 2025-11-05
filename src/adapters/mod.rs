@@ -8,6 +8,7 @@ moddef::moddef!(
         cloned,
         copied,
         empty,
+        enumerate_from,
         enumerate,
         flat_map,
         flatten,

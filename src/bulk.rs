@@ -1,6 +1,6 @@
-use core::{marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}};
+use core::{marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}, range::Step};
 
-use crate::{util::{self, CollectLength, Length, LengthSpec}, ArrayChunks, Chain, Cloned, Copied, DoubleEndedBulk, Enumerate, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, TryFromBulk, Zip};
+use crate::{ArrayChunks, Chain, Cloned, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, TryFromBulk, Zip, util::{self, CollectLength, Length, LengthSpec}};
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -904,8 +904,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Similar to [`Iterator::enumerate`].
     ///
     /// [`enumerate()`](Bulk::enumerate) keeps its count as a [`usize`]. If you want to count by a
-    /// different sized integer, the [`zip`](Bulk::zip) function provides similar
-    /// functionality.
+    /// different sized integer, use [`enumerate_from`](Bulk::enumerate_from) instead.
     ///
     /// # Overflow Behavior
     ///
@@ -938,6 +937,48 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         Self: Sized
     {
         Enumerate::new(self)
+    }
+
+    /// Creates a bulk which gives the current index counting from a given initial index together with its values.
+    ///
+    /// The bulk returned yields pairs `(i, val)`, where `i` is the
+    /// current index of iteration and `val` is its corresponding value.
+    /// 
+    /// This is similar to [`Bulk::enumerate`], except here a different type and initial value for counting can be used.
+    /// For counting an [`usize`] from 0 and up, [`Bulk::enumerate`] is a better alternative.
+    ///
+    /// # Overflow Behavior
+    ///
+    /// The method does no guarding against overflows, so enumerating more elements than supported values of `U`
+    /// either produces the wrong result or panics. If
+    /// overflow checks are enabled, a panic will happen depending how [`Step::forward`] is implemented for `U`.
+    ///
+    /// # Panics
+    ///
+    /// The returned bulk might panic if the to-be-returned index would
+    /// overflow.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let a = ['a', 'b', 'c'];
+    ///
+    /// let b = a.into_bulk()
+    ///     .enumerate_from(&mut 1)
+    ///     .collect_array();
+    ///
+    /// assert_eq!(b, [(1, 'a'), (2, 'b'), (3, 'c')]);
+    /// ```
+    #[inline]
+    #[track_caller]
+    fn enumerate_from<U>(self, initial_count: U) -> EnumerateFrom<Self, U>
+    where
+        Self: Sized,
+        U: Step + Copy
+    {
+        EnumerateFrom::new(self, initial_count)
     }
 
     /// Creates a bulk that skips the first `n` elements.
@@ -990,7 +1031,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// 
     /// let a = [1, 2, 3];
     ///
-    /// let b = a.into_bulk().take([(); 3]).collect::<Vec<_>>();
+    /// let b = a.into_bulk().take([(); 2]).collect::<Vec<_>>();
     ///
     /// assert_eq!(b, [1, 2]);
     /// ```
@@ -1853,9 +1894,3 @@ mod test
         println!("variance = {variance}");
     }
 }
-
-/*
-# MISSING FEATURES:
-- collect_into (requires `Extend` to become a const-trait)
-- try_collect
-*/

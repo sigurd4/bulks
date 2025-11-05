@@ -29,7 +29,8 @@ use crate::{util::{Length, LengthSpec}, Bulk, DoubleEndedBulk, StaticBulk};
 /// 
 /// let (first_four, last) = bulk.split_at([(); 4])
 ///
-/// for cloned in first_four {
+/// for cloned in first_four
+/// {
 ///     // It starts by cloning things
 ///     assert_eq!(cloned.len(), 0);
 ///     assert_eq!(cloned.capacity(), 0);
@@ -204,5 +205,28 @@ mod test
         let a = crate::repeat_n_with(|| {i += 1; i}, [(); _])
             .collect_array();
         assert_eq!(a, [1, 2, 3, 4])
+    }
+
+    #[test]
+    fn doctest()
+    {
+        use crate::*;
+
+        let v: Vec<i32> = Vec::with_capacity(123);
+        let mut bulk = crate::repeat_n(v, [(); 5]);
+
+        let (first_four, last) = bulk.split_at([(); 4]);
+
+        for cloned in first_four
+        {
+            // It starts by cloning things
+            assert_eq!(cloned.len(), 0);
+            assert_eq!(cloned.capacity(), 0);
+        }
+
+        // ... but the last item is the original one
+        let [last] = last.collect();
+        assert_eq!(last.len(), 0);
+        assert_eq!(last.capacity(), 123);
     }
 }
