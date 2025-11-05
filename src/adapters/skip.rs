@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
-use crate::{util::{Length, LengthSpec}, Bulk, DoubleEndedBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{Length, LengthAdd, LengthSpec, LengthSub}};
 
 /// A bulk that skips over `n` elements of `bulk`.
 ///
@@ -198,6 +198,32 @@ where
 {
     type Array<U> = [U; M.saturating_sub(N)];
 }
+impl<T, N, NN, M, L, R> const SplitBulk<M> for Skip<T, N>
+where
+    T: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
+    N: Length<Elem = T::Item, LengthSpec = NN> + ?Sized,
+    NN: ~const LengthSpec<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N> + ~const LengthAdd<M, LengthAdd = L> + ~const LengthSub<L, LengthSub = R>,
+    M: LengthSpec,
+    L: LengthSpec,
+    R: ~const LengthSpec
+{
+    type Left = Skip<T::Left, N>;
+    type Right = Skip<T::Right, R::Length<T::Item>>;
+
+    fn split_at(self, m: M) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { bulk, n } = self;
+        let n = NN::from_metadata(n);
+        let l = n.len_add(m);
+        let (left, right) = bulk.split_at(l);
+        (
+            left.skip(n),
+            right.skip(n.len_sub(l))
+        )
+    }
+}
 
 #[cfg(test)]
 mod test
@@ -207,9 +233,14 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = [1, 2, 3, 4, 5];
-        let b = a.into_bulk().skip([(); 2]).collect::<[_; _]>();
+        let a = [1, 2, 3, 4, 5, 6, 7];
+        let (a, b) = a.into_bulk()
+            .skip([(); 2])
+            .split_at([(); 2]);
+        let a = a.collect_array();
+        let b = b.collect_array();
 
-        println!("{b:?}")
+        println!("a = {a:?}");
+        println!("b = {b:?}");
     }
 }

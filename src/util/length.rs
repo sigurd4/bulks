@@ -119,6 +119,38 @@ where
     }
 }
 
+pub const trait LengthAdd<R>: LengthSpec
+where
+    R: LengthSpec
+{
+    type LengthAdd: LengthSpec;
+
+    fn len_add(self, other: R) -> Self::LengthAdd;
+}
+impl<L, R> const LengthAdd<R> for L
+where
+    L: ~const LengthSpec,
+    R: ~const LengthSpec
+{
+    default type LengthAdd = usize;
+
+    default fn len_add(self, other: R) -> Self::LengthAdd
+    {
+        self.len_metadata().saturating_add(other.len_metadata()).same().ok().unwrap()
+    }
+}
+impl<const M: usize, const N: usize> const LengthAdd<[(); N]> for [(); M]
+where
+    [(); M.saturating_add(N)]:
+{
+    type LengthAdd = [(); M.saturating_add(N)];
+
+    fn len_add(self, _: [(); N]) -> Self::LengthAdd
+    {
+        [(); M.saturating_add(N)]
+    }
+}
+
 pub const trait LengthSub<R>: LengthSpec
 where
     R: LengthSpec
@@ -136,7 +168,7 @@ where
 
     default fn len_sub(self, other: R) -> Self::LengthSub
     {
-        (self.len_metadata() - other.len_metadata()).same().ok().unwrap()
+        self.len_metadata().saturating_sub(other.len_metadata()).same().ok().unwrap()
     }
 }
 impl<const M: usize, const N: usize> const LengthSub<[(); N]> for [(); M]
