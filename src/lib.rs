@@ -50,6 +50,26 @@
 //!
 //! This crate adds [`Bulk`]s, which are similar to iterators, except they are stricter. They can only be wholly consumed, where every value is operated on in bulk. This,
 //! unlike with classic [`Iterator`]s, makes them fully compatible with arrays!
+//! 
+//! # Example
+//! 
+//! ```
+//! use bulks::*;
+//! 
+//! let a = [1, 2, 3];
+//! 
+//! let f = |x| (x - 1) as usize;
+//! 
+//! let b = a.bulk()
+//!     .copied()
+//!     .map(f)
+//!     .enumerate()
+//!     .collect::<[_; _]>();
+//! 
+//! assert_eq!(b, [(0, 0), (1, 1), (2, 2)]);
+//! 
+//! b.into_bulk().for_each(|(i, x)| assert_eq!(i, x));
+//! ```
 //!
 //! # Constraints
 //!
@@ -353,8 +373,16 @@ mod tests
     {
         let a = [1, 2, 3];
 
-        let vec = a.into_bulk().zip(0..).collect::<Vec<_>>();
+        let f = |x| (x - 1) as usize;
 
-        println!("{vec:?}")
+        let b = a.bulk()
+            .copied()
+            .map(f)
+            .enumerate()
+            .collect::<[_; _]>();
+
+        assert_eq!(b, [(0, 0), (1, 1), (2, 2)]);
+
+        b.into_bulk().for_each(|(i, x)| assert_eq!(i, x));
     }
 }

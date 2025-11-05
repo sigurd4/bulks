@@ -20,3 +20,23 @@ Their constrained nature means fewer iterator-like operations are possible, but 
 Operations that preserves the length of the data like `map`, `zip`, `enumerate`, `rev` and `inspect` are possible. Some other length-modifying operations are also possible with `Bulk`s as long as the length is modified in a predetermined way, like with `flat_map`, `flatten`, `intersperse`, `array_chunks` and `map_windows`.
 
 Any `Bulk` that was created from an array can be collected back into an array, given that the operations done on it makes the length predetermined at compile-time. Bulks can also be used with other structures, allowing generic implementations that will work on arrays as well as other iterables.
+
+# Example
+
+```rust
+use bulks::*;
+
+let a = [1, 2, 3];
+
+let f = |x| (x - 1) as usize;
+
+let b = a.bulk()
+    .copied()
+    .map(f)
+    .enumerate()
+    .collect::<[_; _]>();
+
+assert_eq!(b, [(0, 0), (1, 1), (2, 2)]);
+
+b.into_bulk().for_each(|(i, x)| assert_eq!(i, x));
+```
