@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{Bulk, DoubleEndedBulk, IntoContained, StaticBulk};
+use crate::{Bulk, Chain, DoubleEndedBulk, Flatten, IntoBulk, IntoContained, Once, SplitBulk, StaticBulk, util::LengthSpec};
 
 /// A bulk adapter that places a separator between all elements.
 ///
@@ -139,6 +139,44 @@ where
     [(); N + N.saturating_sub(1)]:
 {
     type Array<U> = [U; N + N.saturating_sub(1)];
+}
+impl<I, T, L> const SplitBulk<L> for Intersperse<I>
+where
+    I: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
+    T: ~const Clone + ~const Destruct,
+    Option<Once<T>>: ~const IntoBulk<Item = Once<T>>,
+    L: ~const LengthSpec
+{
+    type Left = Chain<Intersperse<I::Left>, Flatten<<Option<Once<T>> as IntoBulk>::IntoBulk>>;
+    type Right = Chain<Flatten<<Option<Once<T>> as IntoBulk>::IntoBulk>, Intersperse<I::Right>>;
+
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { bulk, separator } = self;
+        let n = n.len_metadata();
+        let m = n.div_ceil(2);
+        let (left, right) = bulk.split_at(m);
+        let g = crate::once(separator.clone());
+        let (left_g, right_g) = if n % 2 == 1
+        {
+            (Some(g), None)
+        }
+        else
+        {
+            (None, Some(g))
+        };
+        (
+            left.intersperse(separator.clone())
+                .chain(left_g.into_bulk()
+                    .flatten()
+                ),
+            right_g.into_bulk()
+                .flatten()
+                .chain(right.intersperse(separator))
+        )
+    }
 }
 
 struct Closure<F, T>

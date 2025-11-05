@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{Bulk, DoubleEndedBulk, IntoContained, StaticBulk};
+use crate::{Bulk, Chain, DoubleEndedBulk, Flatten, IntoBulk, IntoContained, OnceWith, SplitBulk, StaticBulk, util::LengthSpec};
 
 /// A bulk adapter that places a separator between all elements.
 ///
@@ -106,7 +106,7 @@ where
 impl<I, G, T> const DoubleEndedBulk for IntersperseWith<I, G>
 where
     I: ~const DoubleEndedBulk<Item = T>,
-    G: ~const FnMut() -> T + ~const Destruct,
+    G: ~const FnMut() -> T + Fn() -> T + ~const Destruct,
     Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<F>(self, f: F)
@@ -143,6 +143,44 @@ where
     [(); N + N.saturating_sub(1)]:
 {
     type Array<U> = [U; N + N.saturating_sub(1)];
+}
+impl<I, G, T, L> const SplitBulk<L> for IntersperseWith<I, G>
+where
+    I: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
+    G: ~const FnMut() -> T + ~const FnOnce() -> T + Fn() -> T + ~const Clone + ~const Destruct,
+    Option<OnceWith<G>>: ~const IntoBulk<Item = OnceWith<G>>,
+    L: ~const LengthSpec
+{
+    type Left = Chain<IntersperseWith<I::Left, G>, Flatten<<Option<OnceWith<G>> as IntoBulk>::IntoBulk>>;
+    type Right = Chain<Flatten<<Option<OnceWith<G>> as IntoBulk>::IntoBulk>, IntersperseWith<I::Right, G>>;
+
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { bulk, separator } = self;
+        let n = n.len_metadata();
+        let m = n.div_ceil(2);
+        let (left, right) = bulk.split_at(m);
+        let g = crate::once_with(separator.clone());
+        let (left_g, right_g) = if n % 2 == 1
+        {
+            (Some(g), None)
+        }
+        else
+        {
+            (None, Some(g))
+        };
+        (
+            left.intersperse_with(separator.clone())
+                .chain(left_g.into_bulk()
+                    .flatten()
+                ),
+            right_g.into_bulk()
+                .flatten()
+                .chain(right.intersperse_with(separator))
+        )
+    }
 }
 
 struct Closure<F, G>
