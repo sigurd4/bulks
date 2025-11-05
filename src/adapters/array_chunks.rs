@@ -227,17 +227,17 @@ where
 }
 impl<I, const N: usize, L> const SplitBulk<L> for ArrayChunks<I, N>
 where
-    I: ~const SplitBulk<<L as LengthMul<N>>::LengthMul, Left: ~const Bulk, Right: ~const Bulk>,
+    I: ~const SplitBulk<<L as LengthMul<[(); N]>>::LengthMul, Left: ~const Bulk, Right: ~const Bulk>,
     L: ~const LengthSpec
 {
-    type Left = ArrayChunks<<I as SplitBulk<<L as LengthMul<N>>::LengthMul>>::Left, N>;
-    type Right = ArrayChunks<<I as SplitBulk<<L as LengthMul<N>>::LengthMul>>::Right, N>;
+    type Left = ArrayChunks<<I as SplitBulk<<L as LengthMul<[(); N]>>::LengthMul>>::Left, N>;
+    type Right = ArrayChunks<<I as SplitBulk<<L as LengthMul<[(); N]>>::LengthMul>>::Right, N>;
 
     fn split_at(self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let (left, right) = self.bulk.split_at(n.len_mul());
+        let (left, right) = self.bulk.split_at(n.len_mul([(); N]));
         (
             left.array_chunks(),
             right.array_chunks()

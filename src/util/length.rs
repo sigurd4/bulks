@@ -183,32 +183,35 @@ where
     }
 }
 
-pub const trait LengthMul<const N: usize>: LengthSpec
+pub const trait LengthMul<R>: LengthSpec
+where
+    R: LengthSpec
 {
     type LengthMul: LengthSpec;
 
-    fn len_mul(self) -> Self::LengthMul;
+    fn len_mul(self, other: R) -> Self::LengthMul;
 }
-impl<L, const N: usize> const LengthMul<N> for L
+impl<L, R> const LengthMul<R> for L
 where
-    L: ~const LengthSpec
+    L: ~const LengthSpec,
+    R: ~const LengthSpec
 {
     default type LengthMul = usize;
 
-    default fn len_mul(self) -> Self::LengthMul
+    default fn len_mul(self, other: R) -> Self::LengthMul
     {
-        (self.len_metadata()*N).same().ok().unwrap()
+        self.len_metadata().saturating_mul(other.len_metadata()).same().ok().unwrap()
     }
 }
-impl<const M: usize, const N: usize> const LengthMul<N> for [(); M]
+impl<const M: usize, const N: usize> const LengthMul<[(); N]> for [(); M]
 where
-    [(); M*N]:
+    [(); M.saturating_mul(N)]:
 {
-    type LengthMul = [(); M*N];
+    type LengthMul = [(); M.saturating_mul(N)];
 
-    fn len_mul(self) -> Self::LengthMul
+    fn len_mul(self, _: [(); N]) -> Self::LengthMul
     {
-        [(); M*N]
+        [(); M.saturating_mul(N)]
     }
 }
 

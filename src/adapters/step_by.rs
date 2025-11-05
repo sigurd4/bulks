@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
-use crate::{util::{Length, LengthSpec}, Bulk, StaticBulk};
+use crate::{Bulk, SplitBulk, StaticBulk, util::{Length, LengthMul, LengthSpec}};
 
 /// A bulk that steps by a custom amount.
 ///
@@ -172,6 +172,30 @@ where
     [A; M.div_ceil(N)]:
 {
     type Array<U> = [U; M.div_ceil(N)];
+}
+impl<T, N, NN, M, L> const SplitBulk<M> for StepBy<T, N>
+where
+    T: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
+    N: Length<Elem = T::Item, LengthSpec = NN> + ?Sized,
+    NN: ~const LengthSpec<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N> + ~const LengthMul<M, LengthMul = L>,
+    M: LengthSpec,
+    L: LengthSpec
+{
+    type Left = StepBy<T::Left, N>;
+    type Right = StepBy<T::Right, N>;
+
+    fn split_at(self, m: M) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { bulk, step } = self;
+        let n = NN::from_metadata(step);
+        let (left, right) = bulk.split_at(n.len_mul(m));
+        (
+            left.step_by(n),
+            right.step_by(n)
+        )
+    }
 }
 
 #[cfg(test)]
