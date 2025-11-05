@@ -111,7 +111,7 @@ where
 impl<I, F> const DoubleEndedBulk for Mutate<I, F>
 where
     I: ~const DoubleEndedBulk,
-    F: ~const FnMut(&mut I::Item) + Fn(&mut I::Item) + ~const Destruct
+    F: ~const FnMut(&mut I::Item) + ~const Destruct
 {
     fn rev_for_each<FF>(self, f: FF)
     where
@@ -150,7 +150,7 @@ where
 impl<I, F, L> const SplitBulk<L> for Mutate<I, F>
 where
     I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
-    F: Fn(&mut I::Item) + ~const Clone,
+    F: FnMut(&mut I::Item) + ~const Clone,
     L: LengthSpec
 {
     type Left = Mutate<I::Left, F>;

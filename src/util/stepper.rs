@@ -37,11 +37,11 @@ where
         let i = self.i;
         if REV
         {
-            self.i = U::forward(i, 1);
+            self.i = U::backward(i, 1);
         }
         else
         {
-            self.i = U::backward(i, 1);
+            self.i = U::forward(i, 1);
         }
         (i, x)
     }

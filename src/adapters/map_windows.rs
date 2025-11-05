@@ -102,7 +102,7 @@ where
 impl<I: Bulk, F, U, const N: usize> const DoubleEndedBulk for MapWindows<I, F, N>
 where
     I: ~const DoubleEndedBulk<Item: ~const Destruct>,
-    F: ~const FnMut(&[I::Item; N]) -> U + Fn(&[I::Item; N]) -> U + ~const Destruct,
+    F: ~const FnMut(&[I::Item; N]) -> U + ~const Destruct,
     Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<FF>(self, f: FF)

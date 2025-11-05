@@ -125,7 +125,7 @@ where
 }
 impl<A, G, N> const DoubleEndedBulk for RepeatNWith<G, N>
 where
-    G: ~const FnMut() -> A + Fn() -> A + ~const Destruct,
+    G: ~const FnMut() -> A + ~const Destruct,
     N: ~const Length<Elem = A> + ?Sized,
     Self::IntoIter: DoubleEndedIterator
 {
@@ -155,7 +155,7 @@ where
 impl<A, G, N, M, L, R> const SplitBulk<M> for RepeatNWith<G, N>
 where
     N: Length<Elem = A, LengthSpec: ~const LengthMin<M, LengthMin = L> + ~const LengthSub<M, LengthSub = R>>,
-    G: Fn() -> A + ~const Clone,
+    G: FnMut() -> A + ~const Clone,
     M: LengthSpec,
     L: ~const LengthSpec,
     R: ~const LengthSpec

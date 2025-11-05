@@ -112,7 +112,7 @@ where
 impl<I, F> const DoubleEndedBulk for Inspect<I, F>
 where
     I: ~const DoubleEndedBulk,
-    F: ~const FnMut(&I::Item) + Fn(&I::Item) + ~const Destruct
+    F: ~const FnMut(&I::Item) + ~const Destruct
 {
     fn rev_for_each<FF>(self, f: FF)
     where
@@ -149,7 +149,7 @@ where
 impl<I, F, L> const SplitBulk<L> for Inspect<I, F>
 where
     I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
-    F: Fn(&I::Item) + ~const Clone,
+    F: FnMut(&I::Item) + ~const Clone,
     L: LengthSpec
 {
     type Left = Inspect<I::Left, F>;

@@ -15,7 +15,7 @@ use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk, util::Length
 ///
 /// let mut nope = bulks::empty::<i32>();
 ///
-/// let nothing = nope.collect();
+/// let nothing = nope.collect::<[_; _]>();
 /// 
 /// assert_eq!(nothing, []);
 /// ```

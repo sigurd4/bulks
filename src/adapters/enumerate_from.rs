@@ -222,10 +222,10 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = ['0', '1', '2', '3', '4', '5', '6', '7'];
+        let a = ['1', '2', '3', '4', '5', '6', '7', '8'];
         
         for (i, a) in a.into_bulk()
-            .enumerate()
+            .enumerate_from(1)
         {
             assert_eq!(i, a.to_string().parse().unwrap())
         }
@@ -234,17 +234,17 @@ mod test
     #[test]
     fn zipped()
     {
-        let enumerate: [_; _] = (*b"foo").into_bulk().enumerate().collect();
+        let enumerate: [_; _] = (*b"foo").into_bulk().enumerate_from(1).collect();
         
-        let zipper: Vec<_> = crate::rzip(0.., *b"foo").collect();
+        let zipper: Vec<_> = crate::rzip(1.., *b"foo").collect();
         
-        assert_eq!((0, b'f'), enumerate[0]);
-        assert_eq!((0, b'f'), zipper[0]);
+        assert_eq!((1, b'f'), enumerate[0]);
+        assert_eq!((1, b'f'), zipper[0]);
         
-        assert_eq!((1, b'o'), enumerate[1]);
-        assert_eq!((1, b'o'), zipper[1]);
+        assert_eq!((2, b'o'), enumerate[1]);
+        assert_eq!((2, b'o'), zipper[1]);
         
-        assert_eq!((2, b'o'), enumerate[2]);
-        assert_eq!((2, b'o'), zipper[2]);
+        assert_eq!((3, b'o'), enumerate[2]);
+        assert_eq!((3, b'o'), zipper[2]);
     }
 }

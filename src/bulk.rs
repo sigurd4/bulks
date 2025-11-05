@@ -152,9 +152,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// 
     /// // The bulk is consumed, so it must be cloned each time. Don't actually do this.
     /// let a1 = bulk.clone().first();
-    /// let a2 = bulk.clone().nth(2);
-    /// let a3 = bulk.clone().nth(3);
-    /// let a4 = bulk.clone().nth(4);
+    /// let a2 = bulk.clone().nth(1);
+    /// let a3 = bulk.clone().nth(2);
+    /// let a4 = bulk.clone().nth(3);
     /// 
     /// assert_eq!(a1, Some(&1));
     /// assert_eq!(a2, Some(&2));
@@ -966,7 +966,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let a = ['a', 'b', 'c'];
     ///
     /// let b = a.into_bulk()
-    ///     .enumerate_from(&mut 1)
+    ///     .enumerate_from(1)
     ///     .collect_array();
     ///
     /// assert_eq!(b, [(1, 'a'), (2, 'b'), (3, 'c')]);
@@ -1872,7 +1872,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 mod test
 {
     use crate::*;
-
+    
     #[test]
     fn test_reduce()
     {

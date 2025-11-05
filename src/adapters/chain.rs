@@ -11,13 +11,14 @@ use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk, StaticBul
 /// # Examples
 ///
 /// ```
-/// use bulks::{*, array::Bulk};
+/// # #![feature(generic_const_exprs)]
+/// use bulks::*;
 ///
 /// let a1 = [1, 2, 3];
 /// let a2 = [4, 5, 6];
-/// let bulk: Chain<Bulk<'_, _, _>, Bulk<'_, _, _>> = a1.bulk().chain(a2.bulk());
+/// let bulk = a1.into_bulk().chain(a2.into_bulk());
 /// 
-/// let a = bulk.collect();
+/// let a = bulk.collect::<[_; _]>();
 /// 
 /// assert_eq!(a, [1, 2, 3, 4, 5, 6]);
 /// ```
@@ -49,6 +50,7 @@ where
 /// # Examples
 ///
 /// ```
+/// # #![feature(generic_const_exprs)]
 /// use bulks::*;
 ///
 /// let a = [1, 2, 3];
@@ -56,7 +58,7 @@ where
 ///
 /// let mut bulk = bulks::chain(a, b);
 ///
-/// let c = bulk.collect();
+/// let c = bulk.collect::<[_; _]>();
 /// 
 /// assert_eq!(c, [1, 2, 3, 4, 5, 6]);
 /// ```

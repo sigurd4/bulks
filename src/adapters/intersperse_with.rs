@@ -106,7 +106,7 @@ where
 impl<I, G, T> const DoubleEndedBulk for IntersperseWith<I, G>
 where
     I: ~const DoubleEndedBulk<Item = T>,
-    G: ~const FnMut() -> T + Fn() -> T + ~const Destruct,
+    G: ~const FnMut() -> T + ~const Destruct,
     Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<F>(self, f: F)
@@ -147,7 +147,7 @@ where
 impl<I, G, T, L> const SplitBulk<L> for IntersperseWith<I, G>
 where
     I: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
-    G: ~const FnMut() -> T + ~const FnOnce() -> T + Fn() -> T + ~const Clone + ~const Destruct,
+    G: ~const FnMut() -> T + ~const FnOnce() -> T + ~const Clone + ~const Destruct,
     OnceWith<G>: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
     L: ~const LengthSpec
 {
