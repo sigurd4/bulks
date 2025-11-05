@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::{ControlFlow, Try}, ptr::Pointee};
 
-use crate::{util::{Length, LengthSpec}, Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk};
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk, StaticBulk, util::{Length, LengthSpec, LengthSub}};
 
 /// Creates a bulk that only delivers the first `n` iterations of `iterable`.
 #[allow(invalid_type_param_default)]
@@ -225,6 +225,30 @@ where
     [A; N.min(M)]:
 {
     type Array<U> = [U; N.min(M)];
+}
+impl<T, N, NN, M, R> const SplitBulk<M> for Take<T, N>
+where
+    T: ~const SplitBulk<M, Left: ~const Bulk, Right: ~const Bulk>,
+    N: Length<Elem = T::Item, LengthSpec = NN> + ?Sized,
+    NN: ~const LengthSpec<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N> + ~const LengthSub<M, LengthSub = R>,
+    M: LengthSpec,
+    R: LengthSpec
+{
+    type Left = Take<T::Left, N>;
+    type Right = Take<T::Right, R::Length<T::Item>>;
+
+    fn split_at(self, m: M) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { bulk, n } = self;
+        let n = NN::from_metadata(n);
+        let (left, right) = bulk.split_at(m);
+        (
+            left.take(n),
+            right.take(n.len_sub(m))
+        )
+    }
 }
 
 #[cfg(test)]
