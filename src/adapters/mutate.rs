@@ -1,6 +1,6 @@
 use core::{fmt, marker::Destruct, ops::Try};
 
-use crate::{util::Mutator, Bulk, DoubleEndedBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{LengthSpec, Mutator}};
 
 /// A bulk that calls a function with a mutable reference to each element before
 /// yielding it.
@@ -146,6 +146,27 @@ where
     F: FnMut(&mut I::Item)
 {
     type Array<U> = I::Array<U>;
+}
+impl<I, F, L> const SplitBulk<L> for Mutate<I, F>
+where
+    I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
+    F: Fn(&mut I::Item) + ~const Clone,
+    L: LengthSpec
+{
+    type Left = Mutate<I::Left, F>;
+    type Right = Mutate<I::Right, F>;
+
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { bulk, f } = self;
+        let (left, right) = bulk.split_at(n);
+        (
+            left.mutate(f.clone()),
+            right.mutate(f)
+        )
+    }
 }
 
 struct Closure<F, FF>
