@@ -28,15 +28,12 @@ use bulks::*;
 
 let a = [1, 2, 3];
 
-let f = |x| (x - 1) as usize;
-
 let b = a.bulk()
     .copied()
-    .map(f)
+    .map(|x| (x - 1) as usize)
     .enumerate()
+    .inspect(|(i, x)| assert_eq!(i, x))
     .collect::<[_; _]>();
 
 assert_eq!(b, [(0, 0), (1, 1), (2, 2)]);
-
-b.into_bulk().for_each(|(i, x)| assert_eq!(i, x));
 ```
