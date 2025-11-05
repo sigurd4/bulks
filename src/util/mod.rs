@@ -11,7 +11,9 @@ moddef::moddef!(
         infinite_iterator,
         length,
         mutator,
-        stepper
+        stepper,
+        take_one,
+        yield_once
     }
 );
 

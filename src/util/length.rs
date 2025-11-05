@@ -78,6 +78,37 @@ impl<const N: usize> const LengthSpec for [(); N]
         N
     }
 }
+pub const trait LengthMin<R>: LengthSpec
+where
+    R: LengthSpec
+{
+    type LengthMin: LengthSpec;
+
+    fn len_min(self, other: R) -> Self::LengthMin;
+}
+impl<L, R> const LengthMin<R> for L
+where
+    L: ~const LengthSpec,
+    R: ~const LengthSpec
+{
+    default type LengthMin = usize;
+
+    default fn len_min(self, other: R) -> Self::LengthMin
+    {
+        self.len_metadata().min(other.len_metadata()).same().ok().unwrap()
+    }
+}
+impl<const M: usize, const N: usize> const LengthMin<[(); N]> for [(); M]
+where
+    [(); M.min(N)]:
+{
+    type LengthMin = [(); M.min(N)];
+
+    fn len_min(self, _: [(); N]) -> Self::LengthMin
+    {
+        [(); M.min(N)]
+    }
+}
 
 pub const trait LengthSub<R>: LengthSpec
 where

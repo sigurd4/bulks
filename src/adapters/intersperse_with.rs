@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{Bulk, Chain, DoubleEndedBulk, Flatten, IntoBulk, IntoContained, OnceWith, SplitBulk, StaticBulk, util::LengthSpec};
+use crate::{Bulk, Chain, DoubleEndedBulk, IntoContained, OnceWith, SplitBulk, StaticBulk, util::LengthSpec};
 
 /// A bulk adapter that places a separator between all elements.
 ///
@@ -148,11 +148,11 @@ impl<I, G, T, L> const SplitBulk<L> for IntersperseWith<I, G>
 where
     I: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
     G: ~const FnMut() -> T + ~const FnOnce() -> T + Fn() -> T + ~const Clone + ~const Destruct,
-    Option<OnceWith<G>>: ~const IntoBulk<Item = OnceWith<G>>,
+    OnceWith<G>: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
     L: ~const LengthSpec
 {
-    type Left = Chain<IntersperseWith<I::Left, G>, Flatten<<Option<OnceWith<G>> as IntoBulk>::IntoBulk>>;
-    type Right = Chain<Flatten<<Option<OnceWith<G>> as IntoBulk>::IntoBulk>, IntersperseWith<I::Right, G>>;
+    type Left = Chain<IntersperseWith<I::Left, G>, <OnceWith<G> as SplitBulk<usize>>::Left>;
+    type Right = Chain<<OnceWith<G> as SplitBulk<usize>>::Right, IntersperseWith<I::Right, G>>;
 
     fn split_at(self, n: L) -> (Self::Left, Self::Right)
     where
@@ -163,22 +163,10 @@ where
         let m = n.div_ceil(2);
         let (left, right) = bulk.split_at(m);
         let g = crate::once_with(separator.clone());
-        let (left_g, right_g) = if n % 2 == 1
-        {
-            (Some(g), None)
-        }
-        else
-        {
-            (None, Some(g))
-        };
+        let (left_g, right_g) = g.split_at(n % 2);
         (
-            left.intersperse_with(separator.clone())
-                .chain(left_g.into_bulk()
-                    .flatten()
-                ),
-            right_g.into_bulk()
-                .flatten()
-                .chain(right.intersperse_with(separator))
+            left.intersperse_with(separator.clone()).chain(left_g),
+            right_g.chain(right.intersperse_with(separator))
         )
     }
 }

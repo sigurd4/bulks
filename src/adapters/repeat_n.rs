@@ -1,6 +1,6 @@
 use core::{fmt, marker::Destruct, ptr::Pointee};
 
-use crate::{util::{Length, LengthSpec}, Bulk, DoubleEndedBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, StaticBulk, util::{Length, LengthMin, LengthSpec, LengthSub, YieldOnce}};
 
 /// Creates a new bulk that repeats a single element a given number of times.
 ///
@@ -14,8 +14,7 @@ use crate::{util::{Length, LengthSpec}, Bulk, DoubleEndedBulk, StaticBulk};
 /// use bulks::*;
 ///
 /// // four of the number four:
-/// let four_fours = bulks::repeat_n(4, 4)
-///     .collect_array();
+/// let four_fours = bulks::repeat_n(4, [(); 4]).collect::<[_; _]>();
 /// 
 /// assert_eq!(four_fours, [4, 4, 4, 4]);
 /// ```
@@ -23,19 +22,23 @@ use crate::{util::{Length, LengthSpec}, Bulk, DoubleEndedBulk, StaticBulk};
 /// For non-`Copy` types,
 ///
 /// ```
-/// use std::iter;
+/// # #![feature(generic_const_exprs)]
+/// use bulks::*;
 ///
 /// let v: Vec<i32> = Vec::with_capacity(123);
-/// let mut reps = iter::repeat_n(v, 5).collect();
+/// let mut bulk = bulks::repeat_n(v, [(); 5]);
+/// 
+/// let (first_four, last) = bulk.split_at([(); 4]);
 ///
-/// for cloned in &reps[0..4] {
+/// for cloned in first_four
+/// {
 ///     // It starts by cloning things
 ///     assert_eq!(cloned.len(), 0);
 ///     assert_eq!(cloned.capacity(), 0);
 /// }
 ///
 /// // ... but the last item is the original one
-/// let last = it.last().unwrap();
+/// let [last] = last.collect();
 /// assert_eq!(last.len(), 0);
 /// assert_eq!(last.capacity(), 123);
 /// ```
@@ -167,6 +170,41 @@ where
 {
     type Array<U> = [U; N];
 }
+impl<A, N, M, L, R> const SplitBulk<M> for RepeatN<A, N>
+where
+    N: Length<Elem = A, LengthSpec: ~const LengthMin<M, LengthMin = L> + ~const LengthSub<M, LengthSub = R>>,
+    A: ~const Clone,
+    M: LengthSpec,
+    L: ~const LengthSpec,
+    R: ~const LengthSpec
+{
+    type Left = RepeatN<A, L::Length<A>>;
+    type Right = RepeatN<A, R::Length<A>>;
+
+    fn split_at(self, m: M) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let Self { element, n } = self;
+        let n = N::LengthSpec::from_metadata(n);
+        (
+            repeat_n(element.clone(), n.len_min(m)),
+            repeat_n(element, n.len_sub(m))
+        )
+    }
+}
+
+impl<A, N> const From<RepeatN<A, N>> for RepeatNWith<YieldOnce<A>, N>
+where
+    A: Clone,
+    N: Length<Elem = A>
+{
+    fn from(value: RepeatN<A, N>) -> Self
+    {
+        let RepeatN { element, n } = value;
+        crate::repeat_n_with(YieldOnce::new(element), <N::LengthSpec as LengthSpec>::from_metadata(n))
+    }
+}
 
 #[cfg(test)]
 mod test
@@ -178,5 +216,28 @@ mod test
     {
         let a = crate::repeat_n(1, [(); _]).collect::<[_; _]>();
         assert_eq!(a, [1, 1, 1, 1])
+    }
+
+    #[test]
+    fn doctest()
+    {
+        use crate::*;
+
+        let v: Vec<i32> = Vec::with_capacity(123);
+        let bulk = crate::repeat_n(v, [(); 5]);
+
+        let (first_four, last) = bulk.split_at([(); 4]);
+
+        for cloned in first_four
+        {
+            // It starts by cloning things
+            assert_eq!(cloned.len(), 0);
+            assert_eq!(cloned.capacity(), 0);
+        }
+
+        // ... but the last item is the original one
+        let [last] = last.collect();
+        assert_eq!(last.len(), 0);
+        assert_eq!(last.capacity(), 123);
     }
 }

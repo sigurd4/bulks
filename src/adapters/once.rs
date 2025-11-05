@@ -1,6 +1,6 @@
 use core::marker::Destruct;
 
-use crate::{Bulk, DoubleEndedBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, OnceWith, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::{LengthSpec, TakeOne, YieldOnce}};
 
 /// Creates a bulk that yields an element exactly once.
 /// 
@@ -107,6 +107,21 @@ unsafe impl<T> StaticBulk for Once<T>
 {
     type Array<U> = [U; 1];
 }
+impl<A, L> const SplitBulk<L> for Once<A>
+where
+    L: LengthSpec,
+    OnceWith<YieldOnce<A>>: ~const SplitBulk<L, Item = A, Left: ~const Bulk, Right: ~const Bulk>
+{
+    type Left = <OnceWith<YieldOnce<A>> as SplitBulk<L>>::Left;
+    type Right = <OnceWith<YieldOnce<A>> as SplitBulk<L>>::Right;
+
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        OnceWith::from(self).split_at(n)
+    }
+}
 
 pub const trait OnceBulk: ~const DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 1]>
 {
@@ -117,6 +132,29 @@ where
     T: ~const DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 1]>
 {
 
+}
+impl<A> const From<Once<A>> for OnceWith<YieldOnce<A>>
+{
+    fn from(value: Once<A>) -> Self
+    {
+        crate::once_with(YieldOnce::new(value.0))
+    }
+}
+impl<A> const From<Once<A>> for RepeatN<A, [A; 1]>
+where
+    A: Clone
+{
+    fn from(value: Once<A>) -> Self
+    {
+        crate::repeat_n(value.0, [(); 1])
+    }
+}
+impl<A> const From<Once<A>> for RepeatNWith<TakeOne<YieldOnce<A>>, [A; 1]>
+{
+    fn from(value: Once<A>) -> Self
+    {
+        crate::repeat_n_with(TakeOne::new(YieldOnce::new(value.0)), [(); 1])
+    }
 }
 
 #[cfg(test)]

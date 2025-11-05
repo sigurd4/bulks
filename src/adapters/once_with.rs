@@ -1,6 +1,6 @@
 use core::{fmt, marker::Destruct};
 
-use crate::{Bulk, DoubleEndedBulk, Once, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, Once, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::{LengthSpec, TakeOne}};
 
 /// Creates a bulk that lazily generates a value exactly once by invoking
 /// the provided closure.
@@ -131,6 +131,23 @@ where
 {
     type Array<U> = [U; 1];
 }
+impl<F, A, L> const SplitBulk<L> for OnceWith<F>
+where
+    F: FnOnce() -> A,
+    L: LengthSpec,
+    RepeatNWith<TakeOne<F>, [A; 1]>: ~const SplitBulk<L, Item = A>
+{
+    type Left = <RepeatNWith<TakeOne<F>, [A; 1]> as SplitBulk<L>>::Left;
+    type Right = <RepeatNWith<TakeOne<F>, [A; 1]> as SplitBulk<L>>::Right;
+
+    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        RepeatNWith::from(self).split_at(n)
+    }
+}
+
 impl<F, A> const From<OnceWith<F>> for Once<A>
 where
     F: ~const FnOnce() -> A
@@ -138,6 +155,34 @@ where
     fn from(value: OnceWith<F>) -> Self
     {
         crate::once(value.0())
+    }
+}
+impl<F, A> const From<OnceWith<F>> for RepeatN<A, [A; 1]>
+where
+    F: ~const FnOnce() -> A,
+    A: Clone
+{
+    fn from(value: OnceWith<F>) -> Self
+    {
+        crate::repeat_n((value.0)(), [(); 1])
+    }
+}
+impl<F, A> const From<OnceWith<F>> for RepeatNWith<F, [A; 1]>
+where
+    F: FnMut() -> A
+{
+    fn from(value: OnceWith<F>) -> Self
+    {
+        crate::repeat_n_with(value.0, [(); 1])
+    }
+}
+impl<F, A> const From<OnceWith<F>> for RepeatNWith<TakeOne<F>, [A; 1]>
+where
+    F: FnOnce() -> A
+{
+    fn from(value: OnceWith<F>) -> Self
+    {
+        crate::repeat_n_with(TakeOne::new(value.0), [(); 1])
     }
 }
 
