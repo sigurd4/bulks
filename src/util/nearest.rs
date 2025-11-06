@@ -1,4 +1,3 @@
-#[cfg(feature = "alloc")]
 use core::ops::Residual;
 use core::ops::Try;
 
