@@ -234,7 +234,7 @@
 //! {
 //!     type MinLength<U> = [U; N];
 //!     type MaxLength<U> = [U; N];
-//! 
+//!
 //!     fn len(&self) -> usize
 //!     {
 //!         N
@@ -380,12 +380,7 @@ mod tests
 
         let f = |x| (x - 1) as usize;
 
-        let b = a.bulk()
-            .copied()
-            .map(f)
-            .enumerate()
-            .inspect(|(i, x)| assert_eq!(i, x))
-            .collect_nearest();
+        let b = a.bulk().copied().map(f).enumerate().inspect(|(i, x)| assert_eq!(i, x)).collect_nearest();
 
         assert_eq!(b, [(0, 0), (1, 1), (2, 2)] as [(usize, usize); _]);
     }
