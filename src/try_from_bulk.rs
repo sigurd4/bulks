@@ -72,7 +72,7 @@ use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBul
 )]
 pub const trait TryFromBulk<A, B, L = <Self as CollectLength<A>>::Length>: Sized
 where
-    B: BulkLength<Item: Try<Output = A, Residual: Residual<Self>>>,
+    B: BulkLength<Item: Try<Output = A, Residual: Residual<Self>>> + ?Sized,
     L: Length<Elem = A> + ?Sized
 {
     /// Fallably creates a value from a bulk.

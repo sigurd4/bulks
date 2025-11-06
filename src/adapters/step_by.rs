@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
-use crate::{Bulk, SplitBulk, StaticBulk, util::{Length, LengthMul, LengthSpec}};
+use crate::{Bulk, SplitBulk, StaticBulk, util::{Length, LengthDivCeil, LengthSatMul, LengthSpec}};
 
 /// A bulk that steps by a custom amount.
 ///
@@ -52,6 +52,9 @@ where
     T: ~const Bulk<Item: ~const Destruct>,
     N: ~const Length<Elem = T::Item> + ?Sized
 {
+    type MinLength<U> = <<<T::MinLength<U> as Length>::LengthSpec as LengthDivCeil<N::LengthSpec>>::LengthDivCeil as LengthSpec>::Length<U>;
+    type MaxLength<U> = <<<T::MaxLength<U> as Length>::LengthSpec as LengthDivCeil<N::LengthSpec>>::LengthDivCeil as LengthSpec>::Length<U>;
+
     fn len(&self) -> usize
     {
         let Self { bulk, step } = self;
@@ -177,7 +180,7 @@ impl<T, N, NN, M, L> const SplitBulk<M> for StepBy<T, N>
 where
     T: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     N: Length<Elem = T::Item, LengthSpec = NN> + ?Sized,
-    NN: ~const LengthSpec<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N> + ~const LengthMul<M, LengthMul = L>,
+    NN: ~const LengthSpec<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N> + ~const LengthSatMul<M, LengthSatMul = L>,
     M: LengthSpec,
     L: LengthSpec
 {
@@ -190,7 +193,7 @@ where
     {
         let Self { bulk, step } = self;
         let n = NN::from_metadata(step);
-        let (left, right) = bulk.split_at(n.len_mul(m));
+        let (left, right) = bulk.split_at(n.len_sat_mul(m));
         (
             left.step_by(n),
             right.step_by(n)

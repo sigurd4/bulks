@@ -170,6 +170,9 @@ impl<'a, I, const N: usize, const REV: bool> const Bulk for ArrayChunksWithRemai
 where
     I: ~const Bulk<Item: ~const Destruct>,
 {
+    type MinLength<U> = <ArrayChunks<I, N> as Bulk>::MinLength<U>;
+    type MaxLength<U> = <ArrayChunks<I, N> as Bulk>::MaxLength<U>;
+    
     #[inline]
     fn len(&self) -> usize
     {

@@ -67,6 +67,9 @@ impl<T> const IntoBulk for core::iter::Empty<T>
 }
 impl<T> const Bulk for Empty<T>
 {
+    type MinLength<U> = [U; 0];
+    type MaxLength<U> = [U; 0];
+
     fn len(&self) -> usize
     {
         0

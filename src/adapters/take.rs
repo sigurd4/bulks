@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::{ControlFlow, Try}, ptr::Pointee};
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk, StaticBulk, util::{Length, LengthSpec, LengthSub}};
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk, StaticBulk, util::{Length, LengthMin, LengthSatSub, LengthSpec}};
 
 /// Creates a bulk that only delivers the first `n` iterations of `iterable`.
 #[allow(invalid_type_param_default)]
@@ -69,6 +69,9 @@ where
     T: ~const Bulk<Item: ~const Destruct>,
     N: ~const Length<Elem = T::Item> + ?Sized
 {
+    type MinLength<U> = <<<T::MinLength<U> as Length>::LengthSpec as LengthMin<N::LengthSpec>>::LengthMin as LengthSpec>::Length<U>;
+    type MaxLength<U> = <<<T::MaxLength<U> as Length>::LengthSpec as LengthMin<N::LengthSpec>>::LengthMin as LengthSpec>::Length<U>;
+
     fn len(&self) -> usize
     {
         let Self { bulk, n } = self;
@@ -222,15 +225,15 @@ where
 unsafe impl<T, A, const N: usize, const M: usize> StaticBulk for Take<T, [A; N]>
 where
     T: StaticBulk<Item = A, Array<A> = [A; M]>,
-    [A; N.min(M)]:
+    [A; M.min(N)]:
 {
-    type Array<U> = [U; N.min(M)];
+    type Array<U> = [U; M.min(N)];
 }
 impl<T, N, NN, M, R> const SplitBulk<M> for Take<T, N>
 where
     T: ~const SplitBulk<M, Left: ~const Bulk, Right: ~const Bulk>,
     N: Length<Elem = T::Item, LengthSpec = NN> + ?Sized,
-    NN: ~const LengthSpec<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N> + ~const LengthSub<M, LengthSub = R>,
+    NN: ~const LengthSpec<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N> + ~const LengthSatSub<M, LengthSatSub = R>,
     M: LengthSpec,
     R: LengthSpec
 {
@@ -246,7 +249,7 @@ where
         let (left, right) = bulk.split_at(m);
         (
             left.take(n),
-            right.take(n.len_sub(m))
+            right.take(n.len_sat_sub(m))
         )
     }
 }

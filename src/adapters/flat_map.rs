@@ -3,7 +3,7 @@ use core::{marker::Destruct, ops::Try};
 use array_trait::AsArray;
 use currying::Curry;
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk, util::{Length, LengthMul, LengthSpec}};
 
 /// A bulk that maps each element to an iterator, and yields the elements
 /// of the produced bulks.
@@ -68,6 +68,9 @@ where
     F: ~const FnMut(I::Item) -> U + ~const Destruct,
     U: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk>
 {
+    type MinLength<V> = <<<I::MinLength<V> as Length>::LengthSpec as LengthMul<<<U::IntoBulk as StaticBulk>::Array<V> as Length>::LengthSpec>>::LengthMul as LengthSpec>::Length<V>;
+    type MaxLength<V> = <<<I::MaxLength<V> as Length>::LengthSpec as LengthMul<<<U::IntoBulk as StaticBulk>::Array<V> as Length>::LengthSpec>>::LengthMul as LengthSpec>::Length<V>;
+
     fn len(&self) -> usize
     {
         let Self { bulk, map: _ } = self;
@@ -277,14 +280,14 @@ where
         })
     }
 }
-unsafe impl<I, U, F, T, V, const N: usize, const M: usize> StaticBulk for FlatMap<I, U, F>
+unsafe impl<I, U, F, T, V, const N: usize> StaticBulk for FlatMap<I, U, F>
 where
-    I: StaticBulk<Item = T, Array<T> = [T; N]>,
+    I: StaticBulk<Item = T>,
     F: FnMut(T) -> U,
-    U: IntoBulk<Item = V, IntoBulk: StaticBulk<Item = V, Array<V> = [V; M]>>,
-    [(); N*M]:
+    U: IntoBulk<Item = V, IntoBulk: StaticBulk<Item = V>>,
+    Self: Bulk<MinLength<Self::Item> = [Self::Item; N], MaxLength<Self::Item> = [Self::Item; N]>
 {
-    type Array<W> = [W; N*M];
+    type Array<W> = [W; N];
 }
 
 #[cfg(test)]

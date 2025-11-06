@@ -1,6 +1,6 @@
 use core::marker::Destruct;
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk, StaticBulk, util::{BulkLength, Length, LengthSpec, LengthSub, Same}};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk, StaticBulk, util::{BulkLength, Length, LengthSatAdd, LengthSatSub, LengthSpec, Same}};
 
 
 /// A bulk that links two bulks together, in a chain.
@@ -94,6 +94,9 @@ where
     A: ~const Bulk<Item = T> + ~const Destruct,
     B: ~const Bulk<Item = T> + ~const Destruct
 {
+    type MinLength<U> = <<<A::MinLength<U> as Length>::LengthSpec as LengthSatAdd<<B::MinLength<U> as Length>::LengthSpec>>::LengthSatAdd as LengthSpec>::Length<U>;
+    type MaxLength<U> = <<<A::MaxLength<U> as Length>::LengthSpec as LengthSatAdd<<B::MaxLength<U> as Length>::LengthSpec>>::LengthSatAdd as LengthSpec>::Length<U>;
+
     fn len(&self) -> usize
     {
         let Self { a, b } = self;
@@ -171,19 +174,19 @@ where
         a.try_rev_for_each(f)
     }
 }
-unsafe impl<A, B, T, const N: usize, const M: usize> StaticBulk for Chain<A, B>
+unsafe impl<A, B, T, const N: usize> StaticBulk for Chain<A, B>
 where
-    A: StaticBulk<Item = T, Array<T> = [T; N]>,
-    B: StaticBulk<Item = T, Array<T> = [T; M]>,
-    [(); N + M]:
+    A: StaticBulk<Item = T>,
+    B: StaticBulk<Item = T>,
+    Self: Bulk<MinLength<Self::Item> = [Self::Item; N], MaxLength<Self::Item> = [Self::Item; N]>
 {
-    type Array<U> = [U; N + M];
+    type Array<U> = [U; N];
 }
 impl<A, B, T, L, R, D> const SplitBulk<L> for Chain<A, B>
 where
     A: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk> + ~const Bulk + ~const Destruct + BulkLength<Length: Length<LengthSpec = D>>,
     B: ~const SplitBulk<R, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
-    L: ~const LengthSub<D, LengthSub = R>,
+    L: ~const LengthSatSub<D, LengthSatSub = R>,
     R: LengthSpec,
     D: ~const LengthSpec<Metadata: ~const Destruct>
 {
@@ -195,7 +198,7 @@ where
         Self: Sized
     {
         let Self { a, b } = self;
-        let m = n.len_sub(D::from_metadata(a.len().same().unwrap_or_default()));
+        let m = n.len_sat_sub(D::from_metadata(a.len().same().unwrap_or_default()));
         let (a_left, a_right) = a.split_at(n);
         let (b_left, b_right) = b.split_at(m);
         (

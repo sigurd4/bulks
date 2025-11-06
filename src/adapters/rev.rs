@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ptr::Pointee};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{BulkLength, Length, LengthSpec, LengthSub}};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{BulkLength, Length, LengthSpec, LengthSatSub}};
 
 
 /// A double-ended bulk with the direction inverted.
@@ -75,6 +75,9 @@ impl<I> const Bulk for Rev<I>
 where
     I: ~const Bulk + ~const DoubleEndedBulk
 {
+    type MinLength<U> = I::MinLength<U>;
+    type MaxLength<U> = I::MaxLength<U>;
+    
     fn len(&self) -> usize
     {
         let Self { bulk } = self;
@@ -136,7 +139,7 @@ where
 impl<I, N, L, R> const SplitBulk<L> for Rev<I>
 where
     I: ~const SplitBulk<R, Left: ~const Bulk + DoubleEndedBulk, Right: ~const Bulk + DoubleEndedBulk> + ~const Bulk + DoubleEndedBulk + BulkLength<Length: Length<LengthSpec = N> + Pointee<Metadata = N::Metadata>>,
-    N: ~const LengthSpec + ~const LengthSub<L, LengthSub = R>,
+    N: ~const LengthSpec + ~const LengthSatSub<L, LengthSatSub = R>,
     L: LengthSpec,
     R: LengthSpec
 {
@@ -149,7 +152,7 @@ where
     {
         let Self { bulk } = self;
         let n = N::or_len_metadata(bulk.len());
-        let (left, right) = bulk.split_at(n.len_sub(m));
+        let (left, right) = bulk.split_at(n.len_sat_sub(m));
         (
             right.rev(),
             left.rev()

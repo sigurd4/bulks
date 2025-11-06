@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{util::LengthSpec, Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, SplitBulk, StaticBulk};
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, SplitBulk, StaticBulk, util::{Length, LengthMin, LengthSpec}};
 
 /// Converts the arguments to bulks and zips them.
 ///
@@ -119,6 +119,9 @@ where
     A: Bulk,
     B: Bulk
 {
+    type MinLength<U> = <<<A::MinLength<U> as Length>::LengthSpec as LengthMin<<B::MinLength<U> as Length>::LengthSpec>>::LengthMin as LengthSpec>::Length<U>;
+    type MaxLength<U> = <<<A::MaxLength<U> as Length>::LengthSpec as LengthMin<<B::MaxLength<U> as Length>::LengthSpec>>::LengthMin as LengthSpec>::Length<U>;
+
     fn len(&self) -> usize
     {
         let Self { a, b } = self;
@@ -180,13 +183,13 @@ where
         self.into_iter().rev().try_for_each(f)
     }
 }
-unsafe impl<A, B, const N: usize, const M: usize> StaticBulk for Zip<A, B>
+unsafe impl<A, B, const N: usize> StaticBulk for Zip<A, B>
 where
-    A: StaticBulk<Array<<A as IntoIterator>::Item> = [<A as IntoIterator>::Item; N]>,
-    B: StaticBulk<Array<<B as IntoIterator>::Item> = [<B as IntoIterator>::Item; M]>,
-    [(); N.min(M)]:
+    A: StaticBulk,
+    B: StaticBulk,
+    Self: Bulk<MinLength<Self::Item> = [Self::Item; N], MaxLength<Self::Item> = [Self::Item; N]>
 {
-    type Array<U> = [U; N.min(M)];
+    type Array<U> = [U; N];
 }
 impl<A, B, L> const SplitBulk<L> for Zip<A, B>
 where

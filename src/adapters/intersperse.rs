@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{Bulk, Chain, DoubleEndedBulk, IntoContained, Once, SplitBulk, StaticBulk, util::LengthSpec};
+use crate::{Bulk, Chain, DoubleEndedBulk, IntoContained, Once, SplitBulk, StaticBulk, util::{Length, LengthInterspersed, LengthSpec}};
 
 /// A bulk adapter that places a separator between all elements.
 ///
@@ -53,6 +53,9 @@ where
     I: ~const Bulk<Item = T>,
     T: ~const Clone + ~const Destruct
 {
+    type MinLength<U> = <<<I::MinLength<U> as Length>::LengthSpec as LengthInterspersed>::LengthInterspersed as LengthSpec>::Length<U>;
+    type MaxLength<U> = <<<I::MaxLength<U> as Length>::LengthSpec as LengthInterspersed>::LengthInterspersed as LengthSpec>::Length<U>;
+
     fn len(&self) -> usize
     {
         let Self { bulk, separator: _ } = self;

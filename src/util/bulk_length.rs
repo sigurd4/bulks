@@ -10,7 +10,7 @@ pub trait BulkLength: Bulk
 }
 impl<T> BulkLength for T
 where
-    Self: Bulk
+    T: Bulk + ?Sized
 {
     default type Length = [Self::Item];
 
@@ -21,7 +21,7 @@ where
 }
 impl<T> BulkLength for T
 where
-    Self: StaticBulk
+    T: StaticBulk + ?Sized
 {
     type Length = <Self as StaticBulk>::Array<Self::Item>;
 

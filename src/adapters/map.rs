@@ -111,6 +111,9 @@ where
     I: ~const Bulk<Item: ~const Destruct>,
     F: ~const FnMut<(I::Item,)> + ~const Destruct
 {
+    type MinLength<U> = I::MinLength<U>;
+    type MaxLength<U> = I::MaxLength<U>;
+    
     fn len(&self) -> usize
     {
         let Self { bulk, f: _ } = self;
@@ -187,7 +190,8 @@ where
 unsafe impl<I, F> StaticBulk for Map<I, F>
 where
     I: StaticBulk,
-    F: FnMut<(I::Item,)>
+    F: FnMut<(I::Item,)>,
+    Self: Bulk<MinLength<Self::Item> = I::Array<Self::Item>, MaxLength<Self::Item> = I::Array<Self::Item>>
 {
     type Array<U> = I::Array<U>;
 }

@@ -63,6 +63,9 @@ where
     I: ~const Bulk,
     F: ~const FnMut(&mut I::Item) + ~const Destruct
 {
+    type MinLength<U> = I::MinLength<U>;
+    type MaxLength<U> = I::MaxLength<U>;
+    
     fn len(&self) -> usize
     {
         self.bulk.len()

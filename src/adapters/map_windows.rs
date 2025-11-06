@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{util::ArrayBuffer, Bulk, DoubleEndedBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, StaticBulk, util::{ArrayBuffer, Length, LengthSpec, LengthWindowed}};
 
 /// A bulk over the mapped windows of another bulk.
 ///
@@ -62,6 +62,9 @@ where
     I: ~const Bulk<Item: ~const Destruct>,
     F: ~const FnMut(&[I::Item; N]) -> U + ~const Destruct
 {
+    type MinLength<V> = <<<I::MinLength<V> as Length>::LengthSpec as LengthWindowed<N>>::LengthWindowed as LengthSpec>::Length<V>;
+    type MaxLength<V> = <<<I::MaxLength<V> as Length>::LengthSpec as LengthWindowed<N>>::LengthWindowed as LengthSpec>::Length<V>;
+
     fn len(&self) -> usize
     {
         let Self { bulk, f: _ } = self;
@@ -133,11 +136,11 @@ where
 }
 unsafe impl<I: Bulk, F, T, U, const N: usize, const M: usize> StaticBulk for MapWindows<I, F, N>
 where
-    I: StaticBulk<Item = T, Array<T> = [T; M]>,
+    I: StaticBulk<Item = T>,
     F: FnMut(&[T; N]) -> U,
-    [(); M.saturating_sub(N - 1)]:
+    Self: Bulk<MinLength<Self::Item> = [Self::Item; M], MaxLength<Self::Item> = [Self::Item; M]>
 {
-    type Array<W> = [W; M.saturating_sub(N - 1)];
+    type Array<W> = [W; M];
 }
 
 struct Closure<F, FF, T, U, const N: usize, const REV: bool>

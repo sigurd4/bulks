@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::AsArray;
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk, util::{Length, LengthSatMul, LengthSpec}};
 
 /// A bulk that flattens one level of nesting in a of things
 /// that can be turned into bulks.
@@ -57,6 +57,9 @@ impl<I> const Bulk for Flatten<I>
 where
     I: ~const Bulk<Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct>
 {
+    type MinLength<V> = <<<I::MinLength<V> as Length>::LengthSpec as LengthSatMul<<<<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<V> as Length>::LengthSpec>>::LengthSatMul as LengthSpec>::Length<V>;
+    type MaxLength<V> = <<<I::MaxLength<V> as Length>::LengthSpec as LengthSatMul<<<<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<V> as Length>::LengthSpec>>::LengthSatMul as LengthSpec>::Length<V>;
+
     fn len(&self) -> usize
     {
         let Self { bulk } = self;
@@ -247,13 +250,13 @@ where
         })
     }
 }
-unsafe impl<I, T, V, const N: usize, const M: usize> StaticBulk for Flatten<I>
+unsafe impl<I, T, V, const N: usize> StaticBulk for Flatten<I>
 where
-    I: StaticBulk<Item = T, Array<T> = [T; N]>,
-    T: IntoBulk<Item = V, IntoBulk: StaticBulk<Item = V, Array<V> = [V; M]>>,
-    [(); N*M]:
+    I: StaticBulk<Item = T>,
+    T: IntoBulk<Item = V, IntoBulk: StaticBulk<Item = V>>,
+    Self: Bulk<MinLength<Self::Item> = [Self::Item; N], MaxLength<Self::Item> = [Self::Item; N]>
 {
-    type Array<W> = [W; N*M];
+    type Array<W> = [W; N];
 }
 
 #[cfg(test)]

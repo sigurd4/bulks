@@ -51,6 +51,9 @@ where
     I: Bulk<Item = T>,
     U: Step + Copy
 {
+    type MinLength<V> = I::MinLength<V>;
+    type MaxLength<V> = I::MaxLength<V>;
+    
     fn len(&self) -> usize
     {
         let Self { bulk, initial_count: _ } = self;
@@ -146,7 +149,7 @@ where
 }
 unsafe impl<I, T, U, const N: usize> StaticBulk for EnumerateFrom<I, U>
 where 
-    I: StaticBulk<Item = T, Array<T> = [T; N]>,
+    I: StaticBulk<Item = T, Array<(U, T)> = [(U, T); N], MinLength<(U, T)> = [(U, T); N], MaxLength<(U, T)> = [(U, T); N]>,
     U: Step + Copy
 {
     type Array<V> = [V; N];

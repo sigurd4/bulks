@@ -41,6 +41,7 @@
 #![feature(iter_advance_by)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(const_result_trait_fn)]
+#![feature(associated_type_defaults)]
 #![feature(const_closures)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
@@ -231,6 +232,9 @@
 //! // Then, we implement `Bulk` for our `Counter`:
 //! impl<const N: usize> Bulk for Counter<N>
 //! {
+//!     type MinLength<U> = [U; N];
+//!     type MaxLength<U> = [U; N];
+//! 
 //!     fn len(&self) -> usize
 //!     {
 //!         N
@@ -344,6 +348,9 @@
 - const enumerate_with
 */
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 moddef::moddef!(
     flat(pub) mod {
         adapters,
@@ -372,9 +379,14 @@ mod tests
 
         let f = |x| (x - 1) as usize;
 
-        let b = a.bulk().copied().map(f).enumerate().inspect(|(i, x)| assert_eq!(i, x)).collect::<[_; _]>();
+        let b = a.bulk()
+            .copied()
+            .map(f)
+            .enumerate()
+            .inspect(|(i, x)| assert_eq!(i, x))
+            .collect_nearest();
 
-        assert_eq!(b, [(0, 0), (1, 1), (2, 2)]);
+        assert_eq!(b, [(0, 0), (1, 1), (2, 2)] as [(usize, usize); _]);
     }
 
     #[test]

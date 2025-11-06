@@ -70,6 +70,9 @@ impl<I> Bulk for Contained<I>
 where
     I: Iterator
 {
+    default type MinLength<U> = <I as private::InfiniteSpec>::Length<U>;
+    default type MaxLength<U> = <I as private::InfiniteSpec>::Length<U>;
+
     #[inline]
     default fn len(&self) -> usize
     {
@@ -125,6 +128,9 @@ impl<I> Bulk for Contained<I>
 where
     I: ExactSizeIterator
 {
+    type MinLength<U> = <I as private::InfiniteSpec>::Length<U>;
+    type MaxLength<U> = <I as private::InfiniteSpec>::Length<U>;
+
     #[inline]
     fn len(&self) -> usize
     {
@@ -202,16 +208,33 @@ where
         self.iter.rev().try_for_each(f)
     }
 }
-unsafe impl<I> StaticBulk for Contained<I>
+unsafe impl<I, const N: usize> StaticBulk for Contained<I>
 where
-    I: InfiniteIterator
+    I: InfiniteIterator,
+    Self: Bulk<MinLength<Self::Item> = [Self::Item; N], MaxLength<Self::Item> = [Self::Item; N]>
 {
-    type Array<U> = [U; usize::MAX];
+    type Array<U> = [U; N];
 }
+
 
 mod private
 {
-    use crate::{util::Same, Contained, IntoBulk};
+    use crate::{Contained, IntoBulk, util::{InfiniteIterator, Length, Same}};
+
+    pub trait InfiniteSpec
+    {
+        type Length<U>: const Length<Elem = U> + ?Sized;
+    }
+    impl<I> InfiniteSpec for I
+    {
+        default type Length<U> = [U];
+    }
+    impl<I> InfiniteSpec for I
+    where
+        I: InfiniteIterator
+    {
+        type Length<U> = [U; usize::MAX];
+    }
 
     /// # Safety
     /// 

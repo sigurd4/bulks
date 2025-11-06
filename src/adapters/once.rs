@@ -43,6 +43,9 @@ impl<T> IntoIterator for Once<T>
 }
 impl<T> const Bulk for Once<T>
 {
+    type MinLength<U> = [U; 1];
+    type MaxLength<U> = [U; 1];
+
     fn len(&self) -> usize
     {
         1

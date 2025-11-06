@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::{Residual, Try}};
 
-use crate::{Bulk, DoubleEndedBulk, FromBulk, IntoBulk, Rev, SplitBulk, StaticBulk, adapters::array_chunks_with_remainder::ArrayChunksWithRemainder, util::{ArrayBuffer, CollectLength, Length, LengthMul, LengthSpec}};
+use crate::{Bulk, DoubleEndedBulk, FromBulk, IntoBulk, Rev, SplitBulk, StaticBulk, adapters::array_chunks_with_remainder::ArrayChunksWithRemainder, util::{ArrayBuffer, CollectLength, Length, LengthDiv, LengthSatMul, LengthSpec}};
 
 /// A bulk over `N` elements of the bulk at a time.
 ///
@@ -161,6 +161,9 @@ impl<I, const N: usize> const Bulk for ArrayChunks<I, N>
 where
     I: ~const Bulk<Item: ~const Destruct>,
 {
+    type MinLength<U> = <<<I::MinLength<U> as Length>::LengthSpec as LengthDiv<[(); N]>>::LengthDiv as LengthSpec>::Length<U>;
+    type MaxLength<U> = <<<I::MaxLength<U> as Length>::LengthSpec as LengthDiv<[(); N]>>::LengthDiv as LengthSpec>::Length<U>;
+
     #[inline]
     fn len(&self) -> usize
     {
@@ -220,24 +223,24 @@ where
 }
 unsafe impl<I, T, const N: usize, const M: usize> StaticBulk for ArrayChunks<I, N>
 where
-    I: StaticBulk<Item = T, Array<T> = [T; M]>,
-    [(); M/N]:
+    I: StaticBulk<Item = T>,
+    Self: Bulk<MinLength<Self::Item> = [Self::Item; M], MaxLength<Self::Item> = [Self::Item; M]>
 {
-    type Array<U> = [U; M/N];
+    type Array<U> = [U; M];
 }
 impl<I, const N: usize, L> const SplitBulk<L> for ArrayChunks<I, N>
 where
-    I: ~const SplitBulk<<L as LengthMul<[(); N]>>::LengthMul, Left: ~const Bulk, Right: ~const Bulk>,
+    I: ~const SplitBulk<<L as LengthSatMul<[(); N]>>::LengthSatMul, Left: ~const Bulk, Right: ~const Bulk>,
     L: ~const LengthSpec
 {
-    type Left = ArrayChunks<<I as SplitBulk<<L as LengthMul<[(); N]>>::LengthMul>>::Left, N>;
-    type Right = ArrayChunks<<I as SplitBulk<<L as LengthMul<[(); N]>>::LengthMul>>::Right, N>;
+    type Left = ArrayChunks<<I as SplitBulk<<L as LengthSatMul<[(); N]>>::LengthSatMul>>::Left, N>;
+    type Right = ArrayChunks<<I as SplitBulk<<L as LengthSatMul<[(); N]>>::LengthSatMul>>::Right, N>;
 
     fn split_at(self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let (left, right) = self.bulk.split_at(n.len_mul([(); N]));
+        let (left, right) = self.bulk.split_at(n.len_sat_mul([(); N]));
         (
             left.array_chunks(),
             right.array_chunks()

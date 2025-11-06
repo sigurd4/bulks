@@ -155,7 +155,7 @@ use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBul
 )]
 pub const trait FromBulk<A, B, L = <Self as CollectLength<A>>::Length>: Sized
 where
-    B: BulkLength<Item = A>,
+    B: BulkLength<Item = A> + ?Sized,
     L: Length<Elem = A> + ?Sized
 {
     /// Creates a value from a bulk.

@@ -1,6 +1,6 @@
 use core::{fmt, marker::Destruct, ptr::Pointee};
 
-use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, StaticBulk, util::{Length, LengthMin, LengthSpec, LengthSub, YieldOnce}};
+use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, StaticBulk, util::{Length, LengthMin, LengthSpec, LengthSatSub, YieldOnce}};
 
 /// Creates a new bulk that repeats a single element a given number of times.
 ///
@@ -99,6 +99,9 @@ where
     A: ~const Clone + ~const Destruct,
     N: ~const Length<Elem = A> + ?Sized
 {
+    type MinLength<U> = <N::LengthSpec as LengthSpec>::Length<U>;
+    type MaxLength<U> = <N::LengthSpec as LengthSpec>::Length<U>;
+
     fn len(&self) -> usize
     {
         let Self { element: _, n } = self;
@@ -172,7 +175,7 @@ where
 }
 impl<A, N, M, L, R> const SplitBulk<M> for RepeatN<A, N>
 where
-    N: Length<Elem = A, LengthSpec: ~const LengthMin<M, LengthMin = L> + ~const LengthSub<M, LengthSub = R>>,
+    N: Length<Elem = A, LengthSpec: ~const LengthMin<M, LengthMin = L> + ~const LengthSatSub<M, LengthSatSub = R>>,
     A: ~const Clone,
     M: LengthSpec,
     L: ~const LengthSpec,
@@ -189,7 +192,7 @@ where
         let n = N::LengthSpec::from_metadata(n);
         (
             repeat_n(element.clone(), n.len_min(m)),
-            repeat_n(element, n.len_sub(m))
+            repeat_n(element, n.len_sat_sub(m))
         )
     }
 }

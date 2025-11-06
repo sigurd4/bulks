@@ -1,6 +1,6 @@
 use core::{marker::Destruct, mem::MaybeUninit, ops::Try};
 
-use crate::{Bulk, DoubleEndedBulk, Guard, IntoBulk, SplitBulk, StaticBulk, util::{self, LengthSpec, Same}};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk, util::{self, Guard, LengthSpec, Same}};
 
 pub mod array
 {
@@ -88,6 +88,9 @@ macro_rules! impl_bulk {
         }
         impl<$($a,)? $t, const $n: usize> const Bulk for array::$bulk<$($a,)? $t, $n>
         {
+            type MinLength<U> = [U; $n];
+            type MaxLength<U> = [U; $n];
+
             #[inline]
             fn len(&self) -> usize
             {

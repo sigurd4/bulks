@@ -55,6 +55,9 @@ where
     I: ~const Bulk<Item = T>,
     T: ~const Destruct
 {
+    type MinLength<U> = I::MinLength<U>;
+    type MaxLength<U> = I::MaxLength<U>;
+    
     fn len(&self) -> usize
     {
         let Self { bulk } = self;
@@ -166,7 +169,7 @@ where
 }
 unsafe impl<I, T, const N: usize> StaticBulk for Enumerate<I>
 where 
-    I: StaticBulk<Item = T, Array<T> = [T; N]>
+    I: StaticBulk<Item = T, Array<(usize, T)> = [(usize, T); N], MinLength<(usize, T)> = [(usize, T); N], MaxLength<(usize, T)> = [(usize, T); N]>
 {
     type Array<U> = [U; N];
 }

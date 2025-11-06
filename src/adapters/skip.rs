@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{Length, LengthAdd, LengthSpec, LengthSub}};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{Length, LengthSatAdd, LengthSpec, LengthSatSub}};
 
 /// A bulk that skips over `n` elements of `bulk`.
 ///
@@ -47,6 +47,9 @@ where
     T: ~const Bulk<Item: ~const Destruct>,
     N: ~const Length<Elem = T::Item> + ?Sized
 {
+    type MinLength<U> = <<<T::MinLength<U> as Length>::LengthSpec as LengthSatSub<N::LengthSpec>>::LengthSatSub as LengthSpec>::Length<U>;
+    type MaxLength<U> = <<<T::MaxLength<U> as Length>::LengthSpec as LengthSatSub<N::LengthSpec>>::LengthSatSub as LengthSpec>::Length<U>;
+
     fn len(&self) -> usize
     {
         let Self { bulk, n } = self;
@@ -202,7 +205,7 @@ impl<T, N, NN, M, L, R> const SplitBulk<M> for Skip<T, N>
 where
     T: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     N: Length<Elem = T::Item, LengthSpec = NN> + ?Sized,
-    NN: ~const LengthSpec<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N> + ~const LengthAdd<M, LengthAdd = L> + ~const LengthSub<L, LengthSub = R>,
+    NN: ~const LengthSpec<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N> + ~const LengthSatAdd<M, LengthSatAdd = L> + ~const LengthSatSub<L, LengthSatSub = R>,
     M: LengthSpec,
     L: LengthSpec,
     R: ~const LengthSpec
@@ -216,11 +219,11 @@ where
     {
         let Self { bulk, n } = self;
         let n = NN::from_metadata(n);
-        let l = n.len_add(m);
+        let l = n.len_sat_add(m);
         let (left, right) = bulk.split_at(l);
         (
             left.skip(n),
-            right.skip(n.len_sub(l))
+            right.skip(n.len_sat_sub(l))
         )
     }
 }

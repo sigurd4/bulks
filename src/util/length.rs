@@ -1,4 +1,4 @@
-use core::{marker::Destruct, ptr::Pointee};
+use core::{marker::Destruct, ptr::Pointee, usize};
 
 use array_trait::AsSlice;
 
@@ -119,67 +119,99 @@ where
     }
 }
 
-pub const trait LengthAdd<R>: LengthSpec
+pub const trait LengthSatAdd<R>: LengthSpec
 where
     R: LengthSpec
 {
-    type LengthAdd: LengthSpec;
+    type LengthSatAdd: LengthSpec;
 
-    fn len_add(self, other: R) -> Self::LengthAdd;
+    fn len_sat_add(self, other: R) -> Self::LengthSatAdd;
 }
-impl<L, R> const LengthAdd<R> for L
+impl<L, R> const LengthSatAdd<R> for L
 where
     L: ~const LengthSpec,
     R: ~const LengthSpec
 {
-    default type LengthAdd = usize;
+    default type LengthSatAdd = usize;
 
-    default fn len_add(self, other: R) -> Self::LengthAdd
+    default fn len_sat_add(self, other: R) -> Self::LengthSatAdd
     {
         self.len_metadata().saturating_add(other.len_metadata()).same().ok().unwrap()
     }
 }
-impl<const M: usize, const N: usize> const LengthAdd<[(); N]> for [(); M]
+impl<const M: usize, const N: usize> const LengthSatAdd<[(); N]> for [(); M]
 where
     [(); M.saturating_add(N)]:
 {
-    type LengthAdd = [(); M.saturating_add(N)];
+    type LengthSatAdd = [(); M.saturating_add(N)];
 
-    fn len_add(self, _: [(); N]) -> Self::LengthAdd
+    fn len_sat_add(self, _: [(); N]) -> Self::LengthSatAdd
     {
         [(); M.saturating_add(N)]
     }
 }
 
-pub const trait LengthSub<R>: LengthSpec
+pub const trait LengthSatSub<R>: LengthSpec
 where
     R: LengthSpec
 {
-    type LengthSub: LengthSpec;
+    type LengthSatSub: LengthSpec;
 
-    fn len_sub(self, other: R) -> Self::LengthSub;
+    fn len_sat_sub(self, other: R) -> Self::LengthSatSub;
 }
-impl<L, R> const LengthSub<R> for L
+impl<L, R> const LengthSatSub<R> for L
 where
     L: ~const LengthSpec,
     R: ~const LengthSpec
 {
-    default type LengthSub = usize;
+    default type LengthSatSub = usize;
 
-    default fn len_sub(self, other: R) -> Self::LengthSub
+    default fn len_sat_sub(self, other: R) -> Self::LengthSatSub
     {
         self.len_metadata().saturating_sub(other.len_metadata()).same().ok().unwrap()
     }
 }
-impl<const M: usize, const N: usize> const LengthSub<[(); N]> for [(); M]
+impl<const M: usize, const N: usize> const LengthSatSub<[(); N]> for [(); M]
 where
     [(); M.saturating_sub(N)]:
 {
-    type LengthSub = [(); M.saturating_sub(N)];
+    type LengthSatSub = [(); M.saturating_sub(N)];
 
-    fn len_sub(self, _: [(); N]) -> Self::LengthSub
+    fn len_sat_sub(self, _: [(); N]) -> Self::LengthSatSub
     {
         [(); M.saturating_sub(N)]
+    }
+}
+
+pub const trait LengthSatMul<R>: LengthSpec
+where
+    R: LengthSpec
+{
+    type LengthSatMul: LengthSpec;
+
+    fn len_sat_mul(self, other: R) -> Self::LengthSatMul;
+}
+impl<L, R> const LengthSatMul<R> for L
+where
+    L: ~const LengthSpec,
+    R: ~const LengthSpec
+{
+    default type LengthSatMul = usize;
+
+    default fn len_sat_mul(self, other: R) -> Self::LengthSatMul
+    {
+        self.len_metadata().saturating_mul(other.len_metadata()).same().ok().unwrap()
+    }
+}
+impl<const M: usize, const N: usize> const LengthSatMul<[(); N]> for [(); M]
+where
+    [(); M.saturating_mul(N)]:
+{
+    type LengthSatMul = [(); M.saturating_mul(N)];
+
+    fn len_sat_mul(self, _: [(); N]) -> Self::LengthSatMul
+    {
+        [(); M.saturating_mul(N)]
     }
 }
 
@@ -200,17 +232,141 @@ where
 
     default fn len_mul(self, other: R) -> Self::LengthMul
     {
-        self.len_metadata().saturating_mul(other.len_metadata()).same().ok().unwrap()
+        (self.len_metadata()*other.len_metadata()).same().ok().unwrap()
     }
 }
 impl<const M: usize, const N: usize> const LengthMul<[(); N]> for [(); M]
 where
-    [(); M.saturating_mul(N)]:
+    [(); M*N]:
 {
-    type LengthMul = [(); M.saturating_mul(N)];
+    type LengthMul = [(); M*N];
 
     fn len_mul(self, _: [(); N]) -> Self::LengthMul
     {
-        [(); M.saturating_mul(N)]
+        [(); M*N]
+    }
+}
+
+pub const trait LengthDivCeil<R>: LengthSpec
+where
+    R: LengthSpec
+{
+    type LengthDivCeil: LengthSpec;
+
+    fn len_div_ceil(self, other: R) -> Self::LengthDivCeil;
+}
+impl<L, R> const LengthDivCeil<R> for L
+where
+    L: ~const LengthSpec,
+    R: ~const LengthSpec
+{
+    default type LengthDivCeil = usize;
+
+    default fn len_div_ceil(self, other: R) -> Self::LengthDivCeil
+    {
+        self.len_metadata().div_ceil(other.len_metadata()).same().ok().unwrap()
+    }
+}
+impl<const M: usize, const N: usize> const LengthDivCeil<[(); N]> for [(); M]
+where
+    [(); M.div_ceil(N)]:
+{
+    type LengthDivCeil = [(); M.div_ceil(N)];
+
+    fn len_div_ceil(self, _: [(); N]) -> Self::LengthDivCeil
+    {
+        [(); M.div_ceil(N)]
+    }
+}
+
+pub const trait LengthDiv<R>: LengthSpec
+where
+    R: LengthSpec
+{
+    type LengthDiv: LengthSpec;
+
+    fn len_div(self, other: R) -> Self::LengthDiv;
+}
+impl<L, R> const LengthDiv<R> for L
+where
+    L: ~const LengthSpec,
+    R: ~const LengthSpec
+{
+    default type LengthDiv = usize;
+
+    default fn len_div(self, other: R) -> Self::LengthDiv
+    {
+        (self.len_metadata()/other.len_metadata()).same().ok().unwrap()
+    }
+}
+impl<const M: usize, const N: usize> const LengthDiv<[(); N]> for [(); M]
+where
+    [(); M/N]:
+{
+    type LengthDiv = [(); M/N];
+
+    fn len_div(self, _: [(); N]) -> Self::LengthDiv
+    {
+        [(); M/N]
+    }
+}
+
+pub const trait LengthInterspersed: LengthSpec
+{
+    type LengthInterspersed: LengthSpec;
+
+    fn len_interspersed(self) -> Self::LengthInterspersed;
+}
+impl<L> const LengthInterspersed for L
+where
+    L: ~const LengthSpec
+{
+    default type LengthInterspersed = usize;
+
+    default fn len_interspersed(self) -> Self::LengthInterspersed
+    {
+        let n = self.len_metadata();
+        (n + n.saturating_sub(1)).same().ok().unwrap()
+    }
+}
+impl<const N: usize> const LengthInterspersed for [(); N]
+where
+    [(); N + N.saturating_sub(1)]:
+{
+    type LengthInterspersed = [(); N + N.saturating_sub(1)];
+
+    fn len_interspersed(self) -> Self::LengthInterspersed
+    {
+        [(); N + N.saturating_sub(1)]
+    }
+}
+
+pub const trait LengthWindowed<const N: usize>: LengthSpec
+{
+    type LengthWindowed: LengthSpec;
+
+    fn len_interspersed(self) -> Self::LengthWindowed;
+}
+impl<L, const N: usize> const LengthWindowed<N> for L
+where
+    L: ~const LengthSpec
+{
+    default type LengthWindowed = usize;
+
+    default fn len_interspersed(self) -> Self::LengthWindowed
+    {
+        let m = self.len_metadata();
+        m.saturating_sub(N - 1).same().ok().unwrap()
+    }
+}
+impl<const N: usize, const M: usize> const LengthWindowed<N> for [(); M]
+where
+    [(); M.saturating_sub(N - 1)]:
+{
+    type LengthWindowed = [(); M.saturating_sub(N - 1)];
+
+    fn len_interspersed(self) -> Self::LengthWindowed
+    {
+        [(); M.saturating_sub(N - 1)]
     }
 }

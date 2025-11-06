@@ -1,13 +1,13 @@
 use core::mem::{ManuallyDrop, MaybeUninit};
 
-use crate::Guard;
-
 moddef::moddef!(
     flat(pub) mod {
         array_buffer,
         same,
         bulk_length,
         collect_length,
+        guard,
+        nearest,
         infinite_iterator,
         length,
         mutator,

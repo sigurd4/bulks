@@ -59,6 +59,9 @@ where
     I: ~const Bulk<Item = &'a T>,
     T: ~const Clone + 'a
 {
+    type MinLength<U> = I::MinLength<U>;
+    type MaxLength<U> = I::MaxLength<U>;
+
     fn len(&self) -> usize
     {
         let Self { bulk } = self;
@@ -151,7 +154,8 @@ where
 unsafe impl<'a, I, T, const N: usize> StaticBulk for Cloned<I>
 where 
     I: StaticBulk<Item = &'a T, Array<&'a T> = [&'a T; N]>,
-    T: Clone + 'a
+    T: Clone + 'a,
+    Self: Bulk<MinLength<Self::Item> = [Self::Item; N], MaxLength<Self::Item> = [Self::Item; N]>
 {
     type Array<U> = [U; N];
 }
