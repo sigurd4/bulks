@@ -87,6 +87,7 @@ impl<const N: usize> const LengthSpec for [(); N]
         N
     }
 }
+
 pub const trait LengthMin<R>: LengthSpec
 where
     R: LengthSpec
@@ -116,6 +117,38 @@ where
     fn len_min(self, _: [(); N]) -> Self::LengthMin
     {
         [(); M.min(N)]
+    }
+}
+
+pub const trait LengthMax<R>: LengthSpec
+where
+    R: LengthSpec
+{
+    type LengthMax: LengthSpec;
+
+    fn len_max(self, other: R) -> Self::LengthMax;
+}
+impl<L, R> const LengthMax<R> for L
+where
+    L: ~const LengthSpec,
+    R: ~const LengthSpec
+{
+    default type LengthMax = usize;
+
+    default fn len_max(self, other: R) -> Self::LengthMax
+    {
+        self.len_metadata().max(other.len_metadata()).same().ok().unwrap()
+    }
+}
+impl<const M: usize, const N: usize> const LengthMax<[(); N]> for [(); M]
+where
+    [(); M.max(N)]:
+{
+    type LengthMax = [(); M.max(N)];
+
+    fn len_max(self, _: [(); N]) -> Self::LengthMax
+    {
+        [(); M.max(N)]
     }
 }
 

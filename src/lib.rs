@@ -356,6 +356,7 @@ moddef::moddef!(
         adapters,
         impl_array,
         impl_iter,
+        impl_option,
         bulk,
         double_ended_bulk,
         from_bulk,
@@ -395,10 +396,10 @@ mod tests
         let a: [i32; _] = [1];
         let b: [i32; _] = [];
 
-        let a = a.into_bulk().collect::<Option<_>>();
-        let b = b.into_bulk().collect::<Option<_>>();
+        let a = a.into_bulk().map(|x| x + 1).collect::<Option<_>>();
+        let b = b.into_bulk().map(|x| x + 1).collect::<Option<_>>();
 
-        assert_eq!(a, Some(1));
+        assert_eq!(a, Some(2));
         assert_eq!(b, None);
     }
 }
