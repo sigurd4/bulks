@@ -376,4 +376,17 @@ mod tests
 
         assert_eq!(b, [(0, 0), (1, 1), (2, 2)]);
     }
+
+    #[test]
+    fn test_option()
+    {
+        let a: [i32; _] = [1];
+        let b: [i32; _] = [];
+
+        let a = a.into_bulk().collect::<Option<_>>();
+        let b = b.into_bulk().collect::<Option<_>>();
+
+        assert_eq!(a, Some(1));
+        assert_eq!(b, None);
+    }
 }

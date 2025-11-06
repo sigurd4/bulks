@@ -190,6 +190,57 @@ where
         bulk.into_iter().collect()
     }
 }
+impl<A> FromBulk<A, crate::iter::Bulk<core::option::IntoIter<A>>, [A; 1]> for Option<A>
+{
+    fn from_bulk<I>(bulk: I) -> Self
+    where
+        I: IntoBulk<Item = A, IntoBulk = crate::iter::Bulk<core::option::IntoIter<A>>>
+    {
+        bulk.into_bulk().first()
+    }
+}
+impl<'a, A> FromBulk<&'a A, crate::iter::Bulk<core::option::Iter<'a, A>>, [&'a A; 1]> for Option<&'a A>
+{
+    fn from_bulk<I>(bulk: I) -> Self
+    where
+        I: IntoBulk<Item = &'a A, IntoBulk = crate::iter::Bulk<core::option::Iter<'a, A>>>
+    {
+        bulk.into_bulk().first()
+    }
+}
+impl<'a, A> FromBulk<&'a mut A, crate::iter::Bulk<core::option::IterMut<'a, A>>, [&'a mut A; 1]> for Option<&'a mut A>
+{
+    fn from_bulk<I>(bulk: I) -> Self
+    where
+        I: IntoBulk<Item = &'a mut A, IntoBulk = crate::iter::Bulk<core::option::IterMut<'a, A>>>
+    {
+        bulk.into_bulk().first()
+    }
+}
+impl<A, B> const FromBulk<A, B, [A; 0]> for Option<A>
+where
+    A: ~const Destruct,
+    B: ~const Bulk + StaticBulk<Item = A, Array<A> = [A; 0]>
+{
+    fn from_bulk<I>(bulk: I) -> Self
+    where
+        I: ~const IntoBulk<Item = A, IntoBulk = B>
+    {
+        bulk.into_bulk().first()
+    }
+}
+impl<A, B> const FromBulk<A, B, [A; 1]> for Option<A>
+where
+    A: ~const Destruct,
+    B: ~const Bulk + StaticBulk<Item = A, Array<A> = [A; 1]>
+{
+    fn from_bulk<I>(bulk: I) -> Self
+    where
+        I: ~const IntoBulk<Item = A, IntoBulk = B>
+    {
+        bulk.into_bulk().first()
+    }
+}
 impl<A, B, const N: usize> const FromBulk<A, B, [A; N]> for [A; N]
 where
     B: ~const Bulk + StaticBulk<Item = A, Array<A> = [A; N]>
