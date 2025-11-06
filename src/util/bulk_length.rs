@@ -21,7 +21,7 @@ where
 }
 impl<T> BulkLength for T
 where
-    T: StaticBulk + ?Sized
+    T: StaticBulk
 {
     type Length = <Self as StaticBulk>::Array<Self::Item>;
 

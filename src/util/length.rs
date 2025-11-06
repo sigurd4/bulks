@@ -1,4 +1,4 @@
-use core::{marker::Destruct, ptr::Pointee, usize};
+use core::{marker::Destruct, ptr::Pointee};
 
 use array_trait::AsSlice;
 
