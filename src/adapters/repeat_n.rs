@@ -1,6 +1,8 @@
 use core::{fmt, marker::Destruct, ptr::Pointee};
 
-use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, StaticBulk, util::{Length, LengthMin, LengthSpec, LengthSatSub, YieldOnce}};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, StaticBulk, util::YieldOnce};
 
 /// Creates a new bulk that repeats a single element a given number of times.
 ///
@@ -46,11 +48,11 @@ use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, StaticBulk, util::{Le
 pub const fn repeat_n<T, L>(element: T, n: L) -> RepeatN<T, L::Length<T>>
 where
     T: Clone,
-    L: ~const LengthSpec
+    L: length::LengthValue
 {
     RepeatN {
         element,
-        n: n.into_metadata()
+        n: length::value::into_metadata(n)
     }
 }
 
@@ -63,7 +65,7 @@ where
 pub struct RepeatN<A, N = [A]>
 where
     A: Clone,
-    N: Length<Elem = A> + ?Sized
+    N: length::Length<Elem = A> + ?Sized
 {
     element: A,
     n: <N as Pointee>::Metadata
@@ -72,7 +74,7 @@ where
 impl<A, N> fmt::Debug for RepeatN<A, N>
 where
     A: Clone + fmt::Debug,
-    N: Length<Elem = A> + ?Sized
+    N: length::Length<Elem = A> + ?Sized
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
     {
@@ -83,7 +85,7 @@ where
 impl<A, N> IntoIterator for RepeatN<A, N>
 where
     A: Clone,
-    N: Length<Elem = A> + ?Sized
+    N: length::Length<Elem = A> + ?Sized
 {
     type Item = A;
     type IntoIter = core::iter::RepeatN<A>;
@@ -91,21 +93,21 @@ where
     fn into_iter(self) -> Self::IntoIter
     {
         let Self { element, n } = self;
-        core::iter::repeat_n(element, N::len_metadata(n))
+        core::iter::repeat_n(element, length::len_metadata::<N>(n))
     }
 }
 impl<A, N> const Bulk for RepeatN<A, N>
 where
     A: ~const Clone + ~const Destruct,
-    N: ~const Length<Elem = A> + ?Sized
+    N: length::Length<Elem = A> + ?Sized
 {
-    type MinLength<U> = <N::LengthSpec as LengthSpec>::Length<U>;
-    type MaxLength<U> = <N::LengthSpec as LengthSpec>::Length<U>;
+    type MinLength<U> = N::Mapped<U>;
+    type MaxLength<U> = N::Mapped<U>;
 
     fn len(&self) -> usize
     {
         let Self { element: _, n } = self;
-        N::len_metadata(*n)
+        length::len_metadata::<N>(*n)
     }
     fn for_each<F>(self, mut f: F)
     where
@@ -113,7 +115,7 @@ where
         F: ~const FnMut(Self::Item) + ~const Destruct
     {
         let Self { element, n } = self;
-        let n = N::len_metadata(n);
+        let n = length::len_metadata::<N>(n);
         let mut i = 1;
         while i < n
         {
@@ -132,7 +134,7 @@ where
         R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
     {
         let Self { element, n } = self;
-        let n = N::len_metadata(n);
+        let n = length::len_metadata::<N>(n);
         let mut i = 1;
         while i < n
         {
@@ -149,7 +151,7 @@ where
 impl<A, N> const DoubleEndedBulk for RepeatN<A, N>
 where
     A: ~const Clone + ~const Destruct,
-    N: ~const Length<Elem = A> + ?Sized
+    N: length::Length<Elem = A> + ?Sized
 {
     fn rev_for_each<F>(self, f: F)
     where
@@ -175,11 +177,11 @@ where
 }
 impl<A, N, M, L, R> const SplitBulk<M> for RepeatN<A, N>
 where
-    N: Length<Elem = A, LengthSpec: ~const LengthMin<M, LengthMin = L> + ~const LengthSatSub<M, LengthSatSub = R>>,
+    N: length::Length<Elem = A, Value: length::LengthValue<Min<M> = L, SaturatingSub<M> = R>>,
     A: ~const Clone,
-    M: LengthSpec,
-    L: ~const LengthSpec,
-    R: ~const LengthSpec
+    M: length::LengthValue,
+    L: length::LengthValue,
+    R: length::LengthValue
 {
     type Left = RepeatN<A, L::Length<A>>;
     type Right = RepeatN<A, R::Length<A>>;
@@ -189,10 +191,10 @@ where
         Self: Sized
     {
         let Self { element, n } = self;
-        let n = N::LengthSpec::from_metadata(n);
+        let n = length::value::from_metadata::<N::Value>(n);
         (
-            repeat_n(element.clone(), n.len_min(m)),
-            repeat_n(element, n.len_sat_sub(m))
+            repeat_n(element.clone(), length::value::min(n, m)),
+            repeat_n(element, length::value::saturating_sub(n, m))
         )
     }
 }
@@ -200,12 +202,12 @@ where
 impl<A, N> const From<RepeatN<A, N>> for RepeatNWith<YieldOnce<A>, N>
 where
     A: Clone,
-    N: Length<Elem = A>
+    N: length::Length<Elem = A>
 {
     fn from(value: RepeatN<A, N>) -> Self
     {
         let RepeatN { element, n } = value;
-        crate::repeat_n_with(YieldOnce::new(element), <N::LengthSpec as LengthSpec>::from_metadata(n))
+        crate::repeat_n_with(YieldOnce::new(element), length::value::from_metadata::<N::Value>(n))
     }
 }
 

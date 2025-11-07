@@ -1,6 +1,8 @@
 use core::marker::Destruct;
 
-use crate::{Bulk, DoubleEndedBulk, OnceWith, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::{LengthSpec, TakeOne, YieldOnce}};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, OnceWith, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::{TakeOne, YieldOnce}};
 
 /// Creates a bulk that yields an element exactly once.
 /// 
@@ -112,7 +114,7 @@ unsafe impl<T> StaticBulk for Once<T>
 }
 impl<A, L> const SplitBulk<L> for Once<A>
 where
-    L: LengthSpec,
+    L: length::LengthValue,
     OnceWith<YieldOnce<A>>: ~const SplitBulk<L, Item = A, Left: ~const Bulk, Right: ~const Bulk>
 {
     type Left = <OnceWith<YieldOnce<A>> as SplitBulk<L>>::Left;

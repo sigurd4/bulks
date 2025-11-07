@@ -1,6 +1,8 @@
 use core::{marker::Destruct, mem::MaybeUninit, ops::Try};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk, util::{self, Guard, LengthSpec, Same}};
+use array_trait::{length, same::Same};
+
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk, util::{self, Guard}};
 
 pub mod array
 {
@@ -109,7 +111,7 @@ macro_rules! impl_bulk {
             where
                 Self::Item: ~const Destruct,
                 Self: Sized,
-                L: ~const LengthSpec
+                L: length::LengthValue
             $nth)?
 
             #[inline]
@@ -148,7 +150,7 @@ macro_rules! impl_bulk {
         }
         impl<$($a,)? T, const N: usize, L> SplitBulk<L> for array::$bulk<$($a,)? T, N>
         where
-            L: LengthSpec
+            L: length::LengthValue
         {
             default type Left = <<$array as IntoIterator>::IntoIter as IntoBulk>::IntoBulk;
             default type Right = <<$array as IntoIterator>::IntoIter as IntoBulk>::IntoBulk;
@@ -266,7 +268,7 @@ impl_bulk!(
 
         fn split_at(self, n) -> _
         {
-            let n = n.len_metadata();
+            let n = length::value::len(n);
             let Self {array} = self;
             let array = MaybeUninit::new(array).transpose();
             let mut left = array.into_iter();
@@ -342,7 +344,7 @@ impl_bulk!(
 
         fn split_at(self, n) -> _
         {
-            let n = n.len_metadata();
+            let n = length::value::len(n);
             let Self {array} = self;
             let (left, right) = array.split_at(n);
             (left.into_bulk(), right.into_bulk()).same().ok().unwrap()
@@ -351,7 +353,7 @@ impl_bulk!(
         fn nth(self, n) -> _
         {
             let Self {array} = self;
-            array.get(n.len_metadata())
+            array.get(length::value::len(n))
         }
     }
     {
@@ -415,7 +417,7 @@ impl_bulk!(
 
         fn split_at(self, n) -> _
         {
-            let n = n.len_metadata();
+            let n = length::value::len(n);
             let Self {array} = self;
             let (left, right) = array.split_at_mut(n);
             (left.into_bulk(), right.into_bulk()).same().ok().unwrap()
@@ -424,7 +426,7 @@ impl_bulk!(
         fn nth(self, n) -> _
         {
             let Self {array} = self;
-            array.get_mut(n.len_metadata())
+            array.get_mut(length::value::len(n))
         }
     }
     {

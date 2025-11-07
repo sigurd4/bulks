@@ -1,9 +1,9 @@
 use core::{marker::Destruct, ops::Try};
 
-use array_trait::AsArray;
+use array_trait::{AsArray, length};
 use currying::Curry;
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk, util::{Length, LengthMul, LengthSpec}};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk};
 
 /// A bulk that maps each element to an iterator, and yields the elements
 /// of the produced bulks.
@@ -68,8 +68,8 @@ where
     F: ~const FnMut(I::Item) -> U + ~const Destruct,
     U: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk>
 {
-    type MinLength<V> = <<<I::MinLength<V> as Length>::LengthSpec as LengthMul<<<U::IntoBulk as StaticBulk>::Array<V> as Length>::LengthSpec>>::LengthMul as LengthSpec>::Length<V>;
-    type MaxLength<V> = <<<I::MaxLength<V> as Length>::LengthSpec as LengthMul<<<U::IntoBulk as StaticBulk>::Array<V> as Length>::LengthSpec>>::LengthMul as LengthSpec>::Length<V>;
+    type MinLength<V> = length::Mul<I::MinLength<V>, <U::IntoBulk as StaticBulk>::Array<V>>;
+    type MaxLength<V> = length::Mul<I::MaxLength<V>, <U::IntoBulk as StaticBulk>::Array<V>>;
 
     fn len(&self) -> usize
     {

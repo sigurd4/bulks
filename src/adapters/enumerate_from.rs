@@ -1,6 +1,8 @@
 use core::{range::Step, ops::Try};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{LengthSpec, Stepper}};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::Stepper};
 
 /// A bulk that yields the element's index counting from a given initial index and the element.
 ///
@@ -84,11 +86,11 @@ where
     fn nth<L>(self, n: L) -> Option<Self::Item>
     where
         Self: Sized,
-        L: LengthSpec
+        L: length::LengthValue
     {
         let Self { bulk, initial_count } = self;
         bulk.nth(n)
-            .map(|nth| (U::forward(initial_count, n.len_metadata()), nth))
+            .map(|nth| (U::forward(initial_count, length::value::len(n)), nth))
     }
 
     fn for_each<F>(self, f: F)
@@ -158,7 +160,7 @@ impl<I, T, U, L> SplitBulk<L> for EnumerateFrom<I, U>
 where
     I: SplitBulk<L, Item = T>,
     U: Step + Copy,
-    L: LengthSpec
+    L: length::LengthValue
 {
     type Left = EnumerateFrom<I::Left, U>;
     type Right = EnumerateFrom<I::Right, U>;

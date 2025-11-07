@@ -1,6 +1,8 @@
 use core::marker::Destruct;
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk, StaticBulk, util::{BulkLength, Length, LengthSatAdd, LengthSatSub, LengthSpec, Same}};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, Length, SplitBulk, StaticBulk};
 
 
 /// A bulk that links two bulks together, in a chain.
@@ -94,8 +96,8 @@ where
     A: ~const Bulk<Item = T> + ~const Destruct,
     B: ~const Bulk<Item = T> + ~const Destruct
 {
-    type MinLength<U> = <<<A::MinLength<U> as Length>::LengthSpec as LengthSatAdd<<B::MinLength<U> as Length>::LengthSpec>>::LengthSatAdd as LengthSpec>::Length<U>;
-    type MaxLength<U> = <<<A::MaxLength<U> as Length>::LengthSpec as LengthSatAdd<<B::MaxLength<U> as Length>::LengthSpec>>::LengthSatAdd as LengthSpec>::Length<U>;
+    type MinLength<U> = length::Add<A::MinLength<U>, B::MinLength<U>>;
+    type MaxLength<U> = length::Add<A::MinLength<U>, B::MinLength<U>>;
 
     fn len(&self) -> usize
     {
@@ -182,13 +184,14 @@ where
 {
     type Array<U> = [U; N];
 }
-impl<A, B, T, L, R, D> const SplitBulk<L> for Chain<A, B>
+impl<A, B, T, D, L, R> const SplitBulk<L> for Chain<A, B>
 where
-    A: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk> + ~const Bulk + ~const Destruct + BulkLength<Length: Length<LengthSpec = D>>,
+    A: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk> + ~const Bulk + ~const Destruct,
     B: ~const SplitBulk<R, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
-    L: ~const LengthSatSub<D, LengthSatSub = R>,
-    R: LengthSpec,
-    D: ~const LengthSpec<Metadata: ~const Destruct>
+    Length<A>: length::Length<Value = D>,
+    L: length::LengthValue<SaturatingSub<D> = R>,
+    R: length::LengthValue,
+    D: length::LengthValue
 {
     type Left = Chain<A::Left, B::Left>;
     type Right = Chain<A::Right, B::Right>;
@@ -198,7 +201,7 @@ where
         Self: Sized
     {
         let Self { a, b } = self;
-        let m = n.len_sat_sub(D::from_metadata(a.len().same().unwrap_or_default()));
+        let m = length::value::saturating_sub(n, length::value::or_len::<D>(a.len()));
         let (a_left, a_right) = a.split_at(n);
         let (b_left, b_right) = b.split_at(m);
         (

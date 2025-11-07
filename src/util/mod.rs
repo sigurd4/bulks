@@ -3,13 +3,11 @@ use core::mem::{ManuallyDrop, MaybeUninit};
 moddef::moddef!(
     flat(pub) mod {
         array_buffer,
-        same,
         bulk_length,
         collect_length,
         guard,
         nearest,
         infinite_iterator,
-        length,
         mutator,
         stepper,
         take_one,

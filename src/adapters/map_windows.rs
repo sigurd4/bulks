@@ -1,6 +1,8 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{Bulk, DoubleEndedBulk, StaticBulk, util::{ArrayBuffer, Length, LengthSpec, LengthWindowed}};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, StaticBulk, util::{ArrayBuffer}};
 
 /// A bulk over the mapped windows of another bulk.
 ///
@@ -62,8 +64,8 @@ where
     I: ~const Bulk<Item: ~const Destruct>,
     F: ~const FnMut(&[I::Item; N]) -> U + ~const Destruct
 {
-    type MinLength<V> = <<<I::MinLength<V> as Length>::LengthSpec as LengthWindowed<N>>::LengthWindowed as LengthSpec>::Length<V>;
-    type MaxLength<V> = <<<I::MaxLength<V> as Length>::LengthSpec as LengthWindowed<N>>::LengthWindowed as LengthSpec>::Length<V>;
+    type MinLength<V> = length::Windowed<I::MinLength<V>, [V; N]>;
+    type MaxLength<V> = length::Windowed<I::MaxLength<V>, [V; N]>;
 
     fn len(&self) -> usize
     {

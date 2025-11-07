@@ -1,6 +1,8 @@
 use core::{fmt, marker::Destruct};
 
-use crate::{Bulk, DoubleEndedBulk, Once, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::{LengthSpec, TakeOne}};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, Once, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::TakeOne};
 
 /// Creates a bulk that lazily generates a value exactly once by invoking
 /// the provided closure.
@@ -137,7 +139,7 @@ where
 impl<F, A, L> const SplitBulk<L> for OnceWith<F>
 where
     F: FnOnce() -> A,
-    L: LengthSpec,
+    L: length::LengthValue,
     RepeatNWith<TakeOne<F>, [A; 1]>: ~const SplitBulk<L, Item = A>
 {
     type Left = <RepeatNWith<TakeOne<F>, [A; 1]> as SplitBulk<L>>::Left;

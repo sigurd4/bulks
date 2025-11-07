@@ -1,6 +1,8 @@
 use core::{fmt, marker::Destruct, ops::Try};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{LengthSpec, Mutator}};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::Mutator};
 
 /// A bulk that calls a function with a mutable reference to each element before
 /// yielding it.
@@ -154,7 +156,7 @@ impl<I, F, L> const SplitBulk<L> for Mutate<I, F>
 where
     I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     F: FnMut(&mut I::Item) + ~const Clone,
-    L: LengthSpec
+    L: length::LengthValue
 {
     type Left = Mutate<I::Left, F>;
     type Right = Mutate<I::Right, F>;

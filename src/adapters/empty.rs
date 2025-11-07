@@ -1,6 +1,8 @@
 use core::{fmt, marker::{Destruct, PhantomData}};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk, util::LengthSpec};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk};
 
 /// Creates a bulk that yields nothing.
 /// 
@@ -97,7 +99,7 @@ impl<T> const Bulk for Empty<T>
     where
         Self: Sized,
         Self::Item: ~const Destruct,
-        L: ~const LengthSpec
+        L: length::LengthValue
     {
         None
     }
@@ -144,7 +146,7 @@ unsafe impl<T> StaticBulk for Empty<T>
 }
 impl<T, L> const SplitBulk<L> for Empty<T>
 where
-    L: LengthSpec
+    L: length::LengthValue
 {
     type Left = Self;
     type Right = Self;

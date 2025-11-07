@@ -1,6 +1,8 @@
 use core::{marker::Destruct, ops::{ControlFlow, Try}, ptr::Pointee};
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk, StaticBulk, util::{Length, LengthMin, LengthSatSub, LengthSpec}};
+use array_trait::length;
+
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk, StaticBulk};
 
 /// Creates a bulk that only delivers the first `n` iterations of `iterable`.
 #[allow(invalid_type_param_default)]
@@ -10,7 +12,7 @@ pub const fn take<I, L>(iterable: I, n: L) -> Take<
 >
 where
     I: ~const IntoContained,
-    L: ~const LengthSpec
+    L: length::LengthValue
 {
     unsafe {
         Take::new(iterable.into_contained().into_bulk(), n)
@@ -26,7 +28,7 @@ where
 pub struct Take<T, N = [<T as IntoIterator>::Item]>
 where
     T: Bulk,
-    N: Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
     bulk: T,
     n: <N as Pointee>::Metadata
@@ -35,17 +37,17 @@ where
 impl<T, N> Take<T, N>
 where
     T: Bulk,
-    N: Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
-    pub(crate) const fn new(bulk: T, n: N::LengthSpec) -> Take<T, N>
+    pub(crate) const fn new(bulk: T, n: N::Value) -> Take<T, N>
     {
-        Self { bulk, n: n.into_metadata() }
+        Self { bulk, n: length::value::into_metadata(n) }
     }
 }
 impl<T, N> IntoIterator for Take<T, N>
 where
     T: Bulk,
-    N: Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
     type Item = T::Item;
     type IntoIter = <<core::iter::Take<
@@ -58,7 +60,7 @@ where
         unsafe {
             bulk.into_iter()
                 .contained_into_iter()
-                .take(N::len_metadata(n))
+                .take(length::len_metadata::<N>(n))
                 .into_contained()
                 .into_iter()
         }
@@ -67,15 +69,15 @@ where
 impl<T, N> const Bulk for Take<T, N>
 where
     T: ~const Bulk<Item: ~const Destruct>,
-    N: ~const Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
-    type MinLength<U> = <<<T::MinLength<U> as Length>::LengthSpec as LengthMin<N::LengthSpec>>::LengthMin as LengthSpec>::Length<U>;
-    type MaxLength<U> = <<<T::MaxLength<U> as Length>::LengthSpec as LengthMin<N::LengthSpec>>::LengthMin as LengthSpec>::Length<U>;
+    type MinLength<U> = length::Min<T::MinLength<U>, N::Mapped<U>>;
+    type MaxLength<U> = length::Min<T::MaxLength<U>, N::Mapped<U>>;
 
     fn len(&self) -> usize
     {
         let Self { bulk, n } = self;
-        let n = N::len_metadata(*n);
+        let n = length::len_metadata::<N>(*n);
         Ord::min(bulk.len(), n)
     }
     fn for_each<F>(self, f: F)
@@ -127,7 +129,7 @@ where
         let Self { bulk, n } = self;
         bulk.try_for_each(Closure {
             f,
-            n: N::len_metadata(n)
+            n: length::len_metadata::<N>(n)
         }).into_value()
     }
     fn try_for_each<F, R>(self, f: F) -> R
@@ -188,7 +190,7 @@ where
         let Self { bulk, n } = self;
         match bulk.try_for_each(Closure {
             f,
-            n: N::len_metadata(n)
+            n: length::len_metadata::<N>(n)
         })
         {
             ControlFlow::Break(Err(residual)) => R::from_residual(residual),
@@ -199,7 +201,7 @@ where
 impl<T, N> const DoubleEndedBulk for Take<T, N>
 where
     T: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk,
-    N: ~const Length<Elem = T::Item> + ?Sized,
+    N: length::Length<Elem = T::Item> + ?Sized,
     Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<F>(self, f: F)
@@ -208,7 +210,7 @@ where
         F: ~const FnMut(Self::Item) + ~const Destruct
     {
         let Self { bulk, n } = self;
-        let m = bulk.len() - N::len_metadata(n);
+        let m = bulk.len() - length::len_metadata::<N>(n);
         bulk.rev().skip(m).for_each(f)
     }
     fn try_rev_for_each<F, R>(self, f: F) -> R
@@ -218,7 +220,7 @@ where
         R: ~const Try<Output = (), Residual: ~const Destruct>
     {
         let Self { bulk, n } = self;
-        let m = bulk.len() - N::len_metadata(n);
+        let m = bulk.len() - length::len_metadata::<N>(n);
         bulk.rev().skip(m).try_for_each(f)
     }
 }
@@ -232,10 +234,10 @@ where
 impl<T, N, NN, M, R> const SplitBulk<M> for Take<T, N>
 where
     T: ~const SplitBulk<M, Left: ~const Bulk, Right: ~const Bulk>,
-    N: Length<Elem = T::Item, LengthSpec = NN> + ?Sized,
-    NN: ~const LengthSpec<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N> + ~const LengthSatSub<M, LengthSatSub = R>,
-    M: LengthSpec,
-    R: LengthSpec
+    N: length::Length<Elem = T::Item, Value = NN> + ?Sized,
+    NN: length::LengthValue<Metadata = N::Metadata, Length<T::Item> = N, SaturatingSub<M> = R>,
+    M: length::LengthValue,
+    R: length::LengthValue
 {
     type Left = Take<T::Left, N>;
     type Right = Take<T::Right, R::Length<T::Item>>;
@@ -249,7 +251,7 @@ where
         let (left, right) = bulk.split_at(m);
         (
             left.take(n),
-            right.take(n.len_sat_sub(m))
+            right.take(length::value::saturating_sub(n, m))
         )
     }
 }

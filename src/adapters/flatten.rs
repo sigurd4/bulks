@@ -1,8 +1,8 @@
 use core::{marker::Destruct, ops::Try};
 
-use array_trait::AsArray;
+use array_trait::{AsArray, length};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk, util::{Length, LengthSatMul, LengthSpec}};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk};
 
 /// A bulk that flattens one level of nesting in a of things
 /// that can be turned into bulks.
@@ -57,8 +57,8 @@ impl<I> const Bulk for Flatten<I>
 where
     I: ~const Bulk<Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct>
 {
-    type MinLength<V> = <<<I::MinLength<V> as Length>::LengthSpec as LengthSatMul<<<<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<V> as Length>::LengthSpec>>::LengthSatMul as LengthSpec>::Length<V>;
-    type MaxLength<V> = <<<I::MaxLength<V> as Length>::LengthSpec as LengthSatMul<<<<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<V> as Length>::LengthSpec>>::LengthSatMul as LengthSpec>::Length<V>;
+    type MinLength<V> = length::Mul<I::MinLength<V>, <<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<V>>;
+    type MaxLength<V> = length::Mul<I::MaxLength<V>, <<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<V>>;
 
     fn len(&self) -> usize
     {

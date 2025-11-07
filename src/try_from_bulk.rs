@@ -1,6 +1,8 @@
 use core::{marker::Destruct, ops::{Residual, Try}};
 
-use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBulk};
+use array_trait::length;
+
+use crate::{util::{BulkLength, CollectLength}, Bulk, IntoBulk, StaticBulk};
 
 /// Fallible conversion from a [`Bulk`].
 ///
@@ -73,7 +75,7 @@ use crate::{util::{BulkLength, CollectLength, Length}, Bulk, IntoBulk, StaticBul
 pub const trait TryFromBulk<A, B, L = <Self as CollectLength<A>>::Length>: Sized
 where
     B: BulkLength<Item: Try<Output = A, Residual: Residual<Self>>> + ?Sized,
-    L: Length<Elem = A> + ?Sized
+    L: length::Length<Elem = A> + ?Sized
 {
     /// Fallably creates a value from a bulk.
     ///

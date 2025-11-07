@@ -1,6 +1,8 @@
 use core::{fmt, marker::Destruct, ptr::Pointee};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{Length, LengthMin, LengthSpec, LengthSatSub}};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk};
 
 /// Creates a new bulk that repeats elements of type `A` a given number of times
 /// applying the provided closure, the repeater, `F: FnMut() -> A`.
@@ -32,11 +34,11 @@ use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{Length, LengthM
 pub const fn repeat_n_with<G, L>(repeater: G, n: L) -> RepeatNWith<G, L::Length<G::Output>>
 where
     G: FnMut<()>,
-    L: ~const LengthSpec
+    L: length::LengthValue
 {
     RepeatNWith {
         repeater,
-        n: n.into_metadata()
+        n: length::value::into_metadata(n)
     }
 }
 
@@ -50,7 +52,7 @@ where
 pub struct RepeatNWith<G, N = [<G as FnOnce<()>>::Output]>
 where
     G: FnMut<()>,
-    N: Length<Elem = G::Output> + ?Sized
+    N: length::Length<Elem = G::Output> + ?Sized
 {
     repeater: G,
     n: <N as Pointee>::Metadata
@@ -59,7 +61,7 @@ where
 impl<A, G, N> fmt::Debug for RepeatNWith<G, N>
 where
     G: FnMut() -> A,
-    N: Length<Elem = A> + ?Sized
+    N: length::Length<Elem = A> + ?Sized
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
     {
@@ -70,7 +72,7 @@ where
 impl<A, G, N> IntoIterator for RepeatNWith<G, N>
 where
     G: FnMut() -> A,
-    N: Length<Elem = A> + ?Sized
+    N: length::Length<Elem = A> + ?Sized
 {
     type Item = A;
     type IntoIter = core::iter::Take<core::iter::RepeatWith<G>>;
@@ -78,21 +80,21 @@ where
     fn into_iter(self) -> Self::IntoIter
     {
         let Self { repeater, n } = self;
-        core::iter::repeat_with(repeater).take(N::len_metadata(n))
+        core::iter::repeat_with(repeater).take(length::value::len_metadata::<N::Value>(n))
     }
 }
 impl<A, G, N> const Bulk for RepeatNWith<G, N>
 where
     G: ~const FnMut() -> A + ~const Destruct,
-    N: ~const Length<Elem = A> + ?Sized
+    N: length::Length<Elem = A> + ?Sized
 {
-    type MinLength<U> = <N::LengthSpec as LengthSpec>::Length<U>;
-    type MaxLength<U> = <N::LengthSpec as LengthSpec>::Length<U>;
+    type MinLength<U> = N::Mapped<U>;
+    type MaxLength<U> = N::Mapped<U>;
 
     fn len(&self) -> usize
     {
         let Self { repeater: _, n } = self;
-        N::len_metadata(*n)
+        length::value::len_metadata::<N::Value>(*n)
     }
 
     fn for_each<F>(self, mut f: F)
@@ -101,7 +103,7 @@ where
         F: ~const FnMut(Self::Item) + ~const Destruct
     {
         let Self { mut repeater, n } = self;
-        let n = N::len_metadata(n);
+        let n = length::value::len_metadata::<N::Value>(n);
         let mut i = 0;
         while i < n
         {
@@ -116,7 +118,7 @@ where
         R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
     {
         let Self { mut repeater, n } = self;
-        let n = N::len_metadata(n);
+        let n = length::value::len_metadata::<N::Value>(n);
         let mut i = 0;
         while i < n
         {
@@ -129,7 +131,7 @@ where
 impl<A, G, N> const DoubleEndedBulk for RepeatNWith<G, N>
 where
     G: ~const FnMut() -> A + ~const Destruct,
-    N: ~const Length<Elem = A> + ?Sized,
+    N: length::Length<Elem = A> + ?Sized,
     Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<F>(self, f: F)
@@ -155,13 +157,14 @@ where
 {
     type Array<U> = [U; N];
 }
-impl<A, G, N, M, L, R> const SplitBulk<M> for RepeatNWith<G, N>
+impl<A, G, N, M, L, R, NN> const SplitBulk<M> for RepeatNWith<G, N>
 where
-    N: Length<Elem = A, LengthSpec: ~const LengthMin<M, LengthMin = L> + ~const LengthSatSub<M, LengthSatSub = R>>,
+    N: length::Length<Elem = A, Value = NN>,
+    NN: length::LengthValue<Min<M> = L, SaturatingSub<M> = R, Metadata = N::Metadata>,
     G: FnMut() -> A + ~const Clone,
-    M: LengthSpec,
-    L: ~const LengthSpec,
-    R: ~const LengthSpec
+    M: length::LengthValue,
+    L: length::LengthValue,
+    R: length::LengthValue
 {
     type Left = RepeatNWith<G, L::Length<A>>;
     type Right = RepeatNWith<G, R::Length<A>>;
@@ -171,10 +174,10 @@ where
         Self: Sized
     {
         let Self { repeater, n } = self;
-        let n = N::LengthSpec::from_metadata(n);
+        let n = NN::from_metadata(n);
         (
-            repeat_n_with(repeater.clone(), n.len_min(m)),
-            repeat_n_with(repeater, n.len_sat_sub(m))
+            repeat_n_with(repeater.clone(), length::value::min(n, m)),
+            repeat_n_with(repeater, length::value::saturating_sub(n, m))
         )
     }
 }

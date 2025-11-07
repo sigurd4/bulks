@@ -1,6 +1,8 @@
 use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{Length, LengthSatAdd, LengthSpec, LengthSatSub}};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk};
 
 /// A bulk that skips over `n` elements of `bulk`.
 ///
@@ -11,7 +13,7 @@ use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{Length, LengthS
 pub struct Skip<T, N = [<T as IntoIterator>::Item]>
 where
     T: Bulk,
-    N: Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
     bulk: T,
     n: <N as Pointee>::Metadata
@@ -20,17 +22,17 @@ where
 impl<T, N> Skip<T, N>
 where
     T: Bulk,
-    N: Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
-    pub(crate) const fn new(bulk: T, n: N::LengthSpec) -> Skip<T, N>
+    pub(crate) const fn new(bulk: T, n: N::Value) -> Skip<T, N>
     {
-        Self { bulk, n: n.into_metadata() }
+        Self { bulk, n: length::value::into_metadata(n) }
     }
 }
 impl<T, N> IntoIterator for Skip<T, N>
 where
     T: Bulk,
-    N: Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
     type Item = T::Item;
     type IntoIter = core::iter::Skip<T::IntoIter>;
@@ -39,26 +41,26 @@ where
     {
         let Self { bulk, n } = self;
         bulk.into_iter()
-            .skip(N::len_metadata(n))
+            .skip(length::len_metadata::<N>(n))
     }
 }
 impl<T, N> const Bulk for Skip<T, N>
 where
     T: ~const Bulk<Item: ~const Destruct>,
-    N: ~const Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
-    type MinLength<U> = <<<T::MinLength<U> as Length>::LengthSpec as LengthSatSub<N::LengthSpec>>::LengthSatSub as LengthSpec>::Length<U>;
-    type MaxLength<U> = <<<T::MaxLength<U> as Length>::LengthSpec as LengthSatSub<N::LengthSpec>>::LengthSatSub as LengthSpec>::Length<U>;
+    type MinLength<U> = length::SaturatingSub<T::MinLength<U>, N::Mapped<U>>;
+    type MaxLength<U> = length::SaturatingSub<T::MaxLength<U>, N::Mapped<U>>;
 
     fn len(&self) -> usize
     {
         let Self { bulk, n } = self;
-        bulk.len().saturating_sub(N::len_metadata(*n))
+        bulk.len().saturating_sub(length::len_metadata::<N>(*n))
     }
     fn is_empty(&self) -> bool
     {
         let Self { bulk, n } = self;
-        bulk.len() > N::len_metadata(*n)
+        bulk.len() > length::len_metadata::<N>(*n)
     }
 
     fn for_each<F>(self, f: F)
@@ -109,7 +111,7 @@ where
         let Self { bulk, n } = self;
         bulk.for_each(Closure {
             f,
-            n: N::len_metadata(n)
+            n: length::len_metadata::<N>(n)
         })
     }
     fn try_for_each<F, R>(self, f: F) -> R
@@ -165,14 +167,14 @@ where
         let Self { bulk, n } = self;
         bulk.try_for_each(Closure {
             f,
-            n: N::len_metadata(n)
+            n: length::len_metadata::<N>(n)
         })
     }
 }
 impl<T, N> const DoubleEndedBulk for Skip<T, N>
 where
     T: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk,
-    N: ~const Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
     fn rev_for_each<F>(self, f: F)
     where
@@ -180,7 +182,7 @@ where
         F: ~const FnMut(Self::Item) + ~const Destruct
     {
         let Self { bulk, n } = self;
-        let m = bulk.len() - N::len_metadata(n);
+        let m = bulk.len() - length::len_metadata::<N>(n);
         bulk.rev().take(m).for_each(f)
     }
     fn try_rev_for_each<F, R>(self, f: F) -> R
@@ -190,7 +192,7 @@ where
         R: ~const Try<Output = (), Residual: ~const Destruct>
     {
         let Self { bulk, n } = self;
-        let m = bulk.len() - N::len_metadata(n);
+        let m = bulk.len() - length::len_metadata::<N>(n);
         bulk.rev().take(m).try_for_each(f)
     }
 }
@@ -204,11 +206,11 @@ where
 impl<T, N, NN, M, L, R> const SplitBulk<M> for Skip<T, N>
 where
     T: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
-    N: Length<Elem = T::Item, LengthSpec = NN> + ?Sized,
-    NN: ~const LengthSpec<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N> + ~const LengthSatAdd<M, LengthSatAdd = L> + ~const LengthSatSub<L, LengthSatSub = R>,
-    M: LengthSpec,
-    L: LengthSpec,
-    R: ~const LengthSpec
+    N: length::Length<Elem = T::Item, Value = NN> + ?Sized,
+    NN: length::LengthValue<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N, SaturatingAdd<M> = L, SaturatingSub<L> = R>,
+    M: length::LengthValue,
+    L: length::LengthValue,
+    R: length::LengthValue
 {
     type Left = Skip<T::Left, N>;
     type Right = Skip<T::Right, R::Length<T::Item>>;
@@ -219,11 +221,11 @@ where
     {
         let Self { bulk, n } = self;
         let n = NN::from_metadata(n);
-        let l = n.len_sat_add(m);
+        let l = length::value::saturating_add(n, m);
         let (left, right) = bulk.split_at(l);
         (
             left.skip(n),
-            right.skip(n.len_sat_sub(l))
+            right.skip(length::value::saturating_sub(n, l))
         )
     }
 }

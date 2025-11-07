@@ -1,6 +1,8 @@
 use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
-use crate::{Bulk, SplitBulk, StaticBulk, util::{Length, LengthDivCeil, LengthSatMul, LengthSpec}};
+use array_trait::length;
+
+use crate::{Bulk, SplitBulk, StaticBulk};
 
 /// A bulk that steps by a custom amount.
 ///
@@ -11,7 +13,7 @@ use crate::{Bulk, SplitBulk, StaticBulk, util::{Length, LengthDivCeil, LengthSat
 pub struct StepBy<T, N = [<T as IntoIterator>::Item]>
 where
     T: Bulk,
-    N: Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
     bulk: T,
     step: <N as Pointee>::Metadata
@@ -20,14 +22,14 @@ where
 impl<T, N> StepBy<T, N>
 where
     T: Bulk,
-    N: Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
-    pub(crate) const fn new(bulk: T, step: N::LengthSpec) -> StepBy<T, N>
+    pub(crate) const fn new(bulk: T, step: N::Value) -> StepBy<T, N>
     where
-        N: ~const Length<Elem = T::Item>
+        N: length::Length<Elem = T::Item>
     {
-        let step = step.into_metadata();
-        assert!(N::len_metadata(step) != 0);
+        let step = length::value::into_metadata(step);
+        assert!(length::len_metadata::<N>(step) != 0);
         Self { bulk, step }
     }
 }
@@ -35,7 +37,7 @@ where
 impl<T, N> IntoIterator for StepBy<T, N>
 where
     T: Bulk,
-    N: Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
     type Item = T::Item;
     type IntoIter = core::iter::StepBy<T::IntoIter>;
@@ -44,21 +46,21 @@ where
     {
         let Self { bulk, step } = self;
         bulk.into_iter()
-            .step_by(N::len_metadata(step))
+            .step_by(length::len_metadata::<N>(step))
     }
 }
 impl<T, N> const Bulk for StepBy<T, N>
 where
     T: ~const Bulk<Item: ~const Destruct>,
-    N: ~const Length<Elem = T::Item> + ?Sized
+    N: length::Length<Elem = T::Item> + ?Sized
 {
-    type MinLength<U> = <<<T::MinLength<U> as Length>::LengthSpec as LengthDivCeil<N::LengthSpec>>::LengthDivCeil as LengthSpec>::Length<U>;
-    type MaxLength<U> = <<<T::MaxLength<U> as Length>::LengthSpec as LengthDivCeil<N::LengthSpec>>::LengthDivCeil as LengthSpec>::Length<U>;
+    type MinLength<U> = length::DivCeil<T::MinLength<U>, N::Mapped<U>>;
+    type MaxLength<U> = length::DivCeil<T::MinLength<U>, N::Mapped<U>>;
 
     fn len(&self) -> usize
     {
         let Self { bulk, step } = self;
-        bulk.len()/N::len_metadata(*step)
+        bulk.len()/length::len_metadata::<N>(*step)
     }
 
     fn for_each<F>(self, f: F)
@@ -109,7 +111,7 @@ where
         bulk.for_each(Closure {
             f,
             n: 0,
-            step: N::len_metadata(step)
+            step: length::len_metadata::<N>(step)
         })
     }
     fn try_for_each<F, R>(self, f: F) -> R
@@ -165,7 +167,7 @@ where
         bulk.try_for_each(Closure {
             f,
             n: 0,
-            step: N::len_metadata(step)
+            step: length::len_metadata::<N>(step)
         })
     }
 }
@@ -179,10 +181,10 @@ where
 impl<T, N, NN, M, L> const SplitBulk<M> for StepBy<T, N>
 where
     T: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
-    N: Length<Elem = T::Item, LengthSpec = NN> + ?Sized,
-    NN: ~const LengthSpec<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N> + ~const LengthSatMul<M, LengthSatMul = L>,
-    M: LengthSpec,
-    L: LengthSpec
+    N: length::Length<Elem = T::Item, Value = NN> + ?Sized,
+    NN: length::LengthValue<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N, SaturatingMul<M> = L>,
+    M: length::LengthValue,
+    L: length::LengthValue
 {
     type Left = StepBy<T::Left, N>;
     type Right = StepBy<T::Right, N>;
@@ -193,7 +195,7 @@ where
     {
         let Self { bulk, step } = self;
         let n = NN::from_metadata(step);
-        let (left, right) = bulk.split_at(n.len_sat_mul(m));
+        let (left, right) = bulk.split_at(length::value::saturating_mul(n, m));
         (
             left.step_by(n),
             right.step_by(n)

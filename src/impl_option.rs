@@ -1,9 +1,13 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{Bulk, util::LengthSpec};
+use array_trait::length;
+
+use crate::{Bulk, IntoBulk};
 
 pub mod option
 {
+    use array_trait::{AsSlice, length};
+
     pub struct IntoBulk<T>
     {
         pub(super) option: Option<T>
@@ -17,6 +21,28 @@ pub mod option
     pub struct BulkMut<'a, T>
     {
         pub(super) option: &'a mut Option<T>
+    }
+
+    pub trait MaybeLength = length::Length<Max<[<Self as AsSlice>::Elem; 1]> = [<Self as AsSlice>::Elem; 1]>;
+
+    pub const trait Maybe: ~const crate::IntoBulk<IntoBulk: ~const crate::Bulk<MaxLength<<Self as IntoIterator>::Item>: MaybeLength<Elem = <Self as IntoIterator>::Item>, MinLength<<Self as IntoIterator>::Item>: MaybeLength<Elem = <Self as IntoIterator>::Item>>>
+    {
+        type Opposite: Maybe<Item = Self::Item>;
+    }
+
+    impl<A, T> const Maybe for T
+    where
+        T: ~const crate::IntoBulk<Item = A, IntoBulk: ~const crate::Bulk<Item = A, MaxLength<A>: MaybeLength<Elem = A>, MinLength<A>: MaybeLength<Elem = A>>>
+    {
+        default type Opposite = Option<A>;
+    }
+    impl<A> const Maybe for [A; 1]
+    {
+        type Opposite = [A; 0];
+    }
+    impl<A> const Maybe for [A; 0]
+    {
+        type Opposite = [A; 1];
     }
 }
 
@@ -38,7 +64,17 @@ macro_rules! impl_option {
                 self.option.into_iter()
             }
         }
+        impl<$($a,)? $t> const IntoBulk for $option
+        {
+            type IntoBulk = option::$bulk<$($a,)? $t>;
 
+            fn into_bulk(self) -> Self::IntoBulk
+            {
+                option::$bulk {
+                    option: self
+                }
+            }
+        }
         impl<$($a,)? $t> const Bulk for option::$bulk<$($a,)? $t>
         {
             type MinLength<U> = [U; 0];
@@ -93,9 +129,9 @@ macro_rules! impl_option {
             where
                 Self: Sized,
                 Self::Item: ~const Destruct,
-                L: ~const LengthSpec
+                L: length::LengthValue
             {
-                if n.len_metadata() == 0
+                if length::value::len(n) == 0
                 {
                     self.first()
                 }

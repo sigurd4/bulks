@@ -1,6 +1,8 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{Bulk, DoubleEndedBulk, EnumerateFrom, SplitBulk, StaticBulk, util::LengthSpec};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, EnumerateFrom, SplitBulk, StaticBulk};
 
 /// A bulk that yields the element's index and the element.
 ///
@@ -99,12 +101,12 @@ where
     where
         Self: Sized,
         Self::Item: ~const Destruct,
-        L: ~const LengthSpec
+        L: length::LengthValue
     {
         let Self { bulk } = self;
         match bulk.nth(n)
         {
-            Some(last) => Some((n.len_metadata(), last)),
+            Some(last) => Some((length::value::len(n), last)),
             None => None
         }
     }
@@ -176,7 +178,7 @@ where
 impl<I, T, L> const SplitBulk<L> for Enumerate<I>
 where
     I: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
-    L: LengthSpec
+    L: length::LengthValue
 {
     type Left = Enumerate<I::Left>;
     type Right = EnumerateFrom<I::Right, usize>;

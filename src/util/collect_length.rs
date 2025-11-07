@@ -1,8 +1,8 @@
-use crate::util::Length;
+use array_trait::length;
 
 pub trait CollectLength<A>: Sized
 {
-    type Length: Length<Elem = A> + ?Sized;
+    type Length: length::Length<Elem = A> + ?Sized;
 }
 impl<T, A> CollectLength<A> for T
 {

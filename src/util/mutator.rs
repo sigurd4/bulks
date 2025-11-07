@@ -1,6 +1,6 @@
 use core::marker::Destruct;
 
-use crate::util::Same;
+use array_trait::same::Same;
 
 pub struct Mutator<F>(pub(crate) F);
 

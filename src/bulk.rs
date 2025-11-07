@@ -1,6 +1,8 @@
 use core::{marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}, range::Step};
 
-use crate::{ArrayChunks, Chain, Cloned, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, TryFromBulk, Zip, util::{self, BulkLength, CollectLength, Length, LengthSpec, Nearest, TryNearest}};
+use array_trait::length;
+
+use crate::{ArrayChunks, Chain, Cloned, CollectLength, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Length, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, TryFromBulk, Zip, option::Maybe, util::{self, BulkLength, Nearest, TryNearest, TryNearestFrom}};
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -25,10 +27,11 @@ use crate::{ArrayChunks, Chain, Cloned, Copied, DoubleEndedBulk, Enumerate, Enum
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 {
-    type MinLength<U>: const Length<Elem = U> + ?Sized = [U; 0];
-    type MaxLength<U>: const Length<Elem = U> + ?Sized = [U];
+    type MinLength<U>: length::Length<Elem = U> + ?Sized = [U; 0];
+    type MaxLength<U>: length::Length<Elem = U> + ?Sized = [U];
 
-    type CollectNearest: FromBulk<Self::Item, Self, <Self as BulkLength>::Length> + IntoBulk<Item = Self::Item> = <Self as Nearest>::Nearest
+    type CollectNearest: FromBulk<Self::Item, Self, Length<Self>> + IntoBulk<Item = Self::Item>
+        = <Self as Nearest>::Nearest
     where
         Self: Nearest;
 
@@ -172,7 +175,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     where
         Self: Sized,
         Self::Item: ~const Destruct,
-        L: ~const LengthSpec
+        L: length::LengthValue
     {
         self.skip(n).first()
     }
@@ -589,7 +592,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn step_by<L>(self, step: L) -> StepBy<Self, L::Length<Self::Item>>
     where
         Self: Sized,
-        L: ~const LengthSpec
+        L: length::LengthValue
     {
         StepBy::new(self, step)
     }
@@ -1015,7 +1018,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn skip<L>(self, n: L) -> Skip<Self, L::Length<Self::Item>>
     where
         Self: Sized,
-        L: ~const LengthSpec
+        L: length::LengthValue
     {
         Skip::new(self, n)
     }
@@ -1069,7 +1072,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn take<L>(self, n: L) -> Take<Self, L::Length<Self::Item>>
     where
         Self: Sized,
-        L: LengthSpec
+        L: length::LengthValue
     {
         Take::new(self, n)
     }
@@ -1502,11 +1505,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     #[inline]
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
     #[allow(invalid_type_param_default)]
-    fn collect<B = <Self as Nearest>::Nearest, L = <B as CollectLength<<Self as IntoIterator>::Item>>::Length>(self) -> B
+    fn collect<B = <Self as Nearest>::Nearest, L = CollectLength<B, <Self as IntoIterator>::Item>>(self) -> B
     where
         Self: Sized,
         B: ~const FromBulk<Self::Item, Self, L>,
-        L: Length<Elem = Self::Item> + ?Sized
+        L: length::Length<Elem = Self::Item> + ?Sized
     {
         FromBulk::from_bulk(self)
     }
@@ -1582,12 +1585,12 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     #[inline]
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
     #[allow(invalid_type_param_default)]
-    fn try_collect<B, L = <B as CollectLength<<<Self as IntoIterator>::Item as Try>::Output>>::Length>(self) -> <<Self::Item as Try>::Residual as Residual<B>>::TryType
+    fn try_collect<B, L = CollectLength<B, <<Self as IntoIterator>::Item as Try>::Output>>(self) -> <<Self::Item as Try>::Residual as Residual<B>>::TryType
     where
         Self: Sized,
         Self::Item: Try<Residual: Residual<B>>,
         B: ~const TryFromBulk<<Self::Item as Try>::Output, Self, L>,
-        L: Length<Elem = <Self::Item as Try>::Output> + ?Sized
+        L: length::Length<Elem = <Self::Item as Try>::Output> + ?Sized
     {
         TryFromBulk::try_from_bulk(self)
     }
@@ -1725,6 +1728,15 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         Try::from_output(util::try_collect_array_with!(|pusher| self.try_for_each(pusher)?; for Self))
     }
 
+    /// Collects into an option if possible, otherwise a vector (if feature "alloc" is enabled)
+    #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
+    fn collect_option(self) -> Option<Self::Item>
+    where
+        Self: Maybe<Item: ~const Destruct> + Sized
+    {
+        self.collect()
+    }
+
     /// Collects into an array if possible, otherwise a vector (if feature "alloc" is enabled)
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
     fn collect_nearest(self) -> Self::CollectNearest
@@ -1740,9 +1752,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<<Self as TryNearest>::TryNearest>>::TryType
     where
         Self: TryNearest<Item: Try<Residual: Residual<<Self as TryNearest>::TryNearest>>> + Sized,
-        <Self as TryNearest>::TryNearest: ~const TryFromBulk<<Self::Item as Try>::Output, Self, <<<Self as BulkLength>::Length as Length>::LengthSpec as LengthSpec>::Length<<<Self as IntoIterator>::Item as Try>::Output>>
+        <Self as TryNearest>::TryNearest: ~const TryNearestFrom<Self>
     {
-        self.try_collect::<<Self as TryNearest>::TryNearest, <<<Self as BulkLength>::Length as Length>::LengthSpec as LengthSpec>::Length<<<Self as IntoIterator>::Item as Try>::Output>>()
+        self.try_collect()
     }
 
     /// Reverses a bulks's direction.

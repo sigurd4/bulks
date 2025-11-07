@@ -1,6 +1,8 @@
 use core::{fmt, marker::Destruct, ops::Try};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::LengthSpec};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk};
 
 /// A bulk that calls a function with a reference to each element before
 /// yielding it.
@@ -153,7 +155,7 @@ impl<I, F, L> const SplitBulk<L> for Inspect<I, F>
 where
     I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     F: FnMut(&I::Item) + ~const Clone,
-    L: LengthSpec
+    L: length::LengthValue
 {
     type Left = Inspect<I::Left, F>;
     type Right = Inspect<I::Right, F>;

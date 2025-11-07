@@ -1,6 +1,8 @@
 use core::{marker::Destruct, ptr::Pointee};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::{BulkLength, Length, LengthSpec, LengthSatSub}};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::BulkLength};
 
 
 /// A double-ended bulk with the direction inverted.
@@ -138,10 +140,10 @@ where
 }
 impl<I, N, L, R> const SplitBulk<L> for Rev<I>
 where
-    I: ~const SplitBulk<R, Left: ~const Bulk + DoubleEndedBulk, Right: ~const Bulk + DoubleEndedBulk> + ~const Bulk + DoubleEndedBulk + BulkLength<Length: Length<LengthSpec = N> + Pointee<Metadata = N::Metadata>>,
-    N: ~const LengthSpec + ~const LengthSatSub<L, LengthSatSub = R>,
-    L: LengthSpec,
-    R: LengthSpec
+    I: ~const SplitBulk<R, Left: ~const Bulk + DoubleEndedBulk, Right: ~const Bulk + DoubleEndedBulk> + ~const Bulk + DoubleEndedBulk + BulkLength<Length: length::Length<Value = N> + Pointee<Metadata = N::Metadata>>,
+    N: length::LengthValue<SaturatingSub<L> = R>,
+    L: length::LengthValue,
+    R: length::LengthValue
 {
     type Left = Rev<I::Right>;
     type Right = Rev<I::Left>;
@@ -151,8 +153,8 @@ where
         Self: Sized
     {
         let Self { bulk } = self;
-        let n = N::or_len_metadata(bulk.len());
-        let (left, right) = bulk.split_at(n.len_sat_sub(m));
+        let n = N::or_len(bulk.len());
+        let (left, right) = bulk.split_at(length::value::saturating_sub(n, m));
         (
             right.rev(),
             left.rev()

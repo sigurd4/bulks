@@ -1,6 +1,8 @@
 use core::marker::Destruct;
 
-use crate::{Bulk, IntoBulk, StaticBulk, util::{BulkLength, CollectLength, Length, LengthMax}};
+use array_trait::length;
+
+use crate::{Bulk, IntoBulk, StaticBulk, option, util::{BulkLength, CollectLength}};
 
 /// Conversion from a [`Bulk`].
 ///
@@ -156,7 +158,7 @@ use crate::{Bulk, IntoBulk, StaticBulk, util::{BulkLength, CollectLength, Length
 pub const trait FromBulk<A, B, L = <Self as CollectLength<A>>::Length>: Sized
 where
     B: BulkLength<Item = A> + ?Sized,
-    L: Length<Elem = A> + ?Sized
+    L: length::Length<Elem = A> + ?Sized
 {
     /// Creates a value from a bulk.
     ///
@@ -193,7 +195,7 @@ where
 impl<A, B> const FromBulk<A, B, [A; 1]> for Option<A>
 where
     A: ~const Destruct,
-    B: ~const Bulk<Item = A, MaxLength<A>: Length<LengthSpec: LengthMax<[(); 1], LengthMax = [(); 1]>>, MinLength<A>: Length<LengthSpec: LengthMax<[(); 1], LengthMax = [(); 1]>>>
+    B: ~const Bulk<Item = A, MaxLength<A>: option::MaybeLength, MinLength<A>: option::MaybeLength>
 {
     fn from_bulk<I>(bulk: I) -> Self
     where

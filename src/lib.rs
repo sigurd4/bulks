@@ -28,6 +28,7 @@
 #![feature(const_drop_in_place)]
 #![feature(const_precise_live_drops)]
 #![feature(control_flow_into_value)]
+#![feature(trait_alias)]
 #![feature(new_range_api)]
 #![feature(const_option_ops)]
 #![feature(step_trait)]
@@ -344,7 +345,6 @@
 /*
 # MISSING FEATURES:
 - collect_into (requires `Extend` to become a const-trait)
-- try_collect
 - const enumerate_with
 */
 
@@ -368,10 +368,13 @@ moddef::moddef!(
     mod util
 );
 
+pub type Length<T> = <T as util::BulkLength>::Length;
+pub type CollectLength<T, A> = <T as util::CollectLength<A>>::Length;
+
 #[cfg(test)]
 mod tests
 {
-    use crate::*;
+    use crate::{option::Maybe, *};
 
     #[test]
     fn it_works()
@@ -396,5 +399,11 @@ mod tests
 
         assert_eq!(a, Some(2));
         assert_eq!(b, None);
+
+        fn maybe(_: impl Maybe<Item = i32>) {}
+
+        maybe(Some(1));
+        maybe([]);
+        maybe([1]);
     }
 }

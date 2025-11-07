@@ -1,6 +1,8 @@
 use core::marker::Destruct;
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::LengthSpec};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk};
 
 /// A bulk that clones the elements of an underlying bulk.
 ///
@@ -94,7 +96,7 @@ where
     where
         Self: Sized,
         Self::Item: ~const Destruct,
-        L: ~const LengthSpec
+        L: length::LengthValue
     {
         let Self { bulk } = self;
         bulk.nth(n).map(Clone::clone)
@@ -163,7 +165,7 @@ impl<'a, I, T, L> const SplitBulk<L> for Cloned<I>
 where
     I: ~const SplitBulk<L, Item = &'a T, Left: ~const Bulk, Right: ~const Bulk>,
     T: ~const Clone + 'a,
-    L: LengthSpec
+    L: length::LengthValue
 {
     type Left = Cloned<I::Left>;
     type Right = Cloned<I::Right>;

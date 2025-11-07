@@ -1,6 +1,8 @@
 use core::fmt;
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, SplitBulk, StaticBulk, util::{Length, LengthMin, LengthSpec}};
+use array_trait::length;
+
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, SplitBulk, StaticBulk};
 
 /// Converts the arguments to bulks and zips them.
 ///
@@ -119,8 +121,8 @@ where
     A: Bulk,
     B: Bulk
 {
-    type MinLength<U> = <<<A::MinLength<U> as Length>::LengthSpec as LengthMin<<B::MinLength<U> as Length>::LengthSpec>>::LengthMin as LengthSpec>::Length<U>;
-    type MaxLength<U> = <<<A::MaxLength<U> as Length>::LengthSpec as LengthMin<<B::MaxLength<U> as Length>::LengthSpec>>::LengthMin as LengthSpec>::Length<U>;
+    type MinLength<U> = length::Min<A::MinLength<U>, B::MinLength<U>>;
+    type MaxLength<U> = length::Min<A::MaxLength<U>, B::MaxLength<U>>;
 
     fn len(&self) -> usize
     {
@@ -195,7 +197,7 @@ impl<A, B, L> const SplitBulk<L> for Zip<A, B>
 where
     A: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     B: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
-    L: LengthSpec
+    L: length::LengthValue
 {
     type Left = Zip<A::Left, B::Left>;
     type Right = Zip<A::Right, B::Right>;

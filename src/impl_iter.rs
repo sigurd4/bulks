@@ -1,6 +1,8 @@
 use core::ops::Try;
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, util::{LengthSpec, Same}};
+use array_trait::{same::Same, length};
+
+use crate::{Bulk, DoubleEndedBulk, IntoBulk};
 
 pub mod iter
 {
@@ -97,9 +99,9 @@ where
     fn nth<L>(mut self, n: L) -> Option<Self::Item>
     where
         Self: Sized,
-        L: LengthSpec
+        L: length::LengthValue
     {
-        self.inner.nth(n.len_metadata())
+        self.inner.nth(length::value::len(n))
     }
 }
 impl<T, A, I> DoubleEndedBulk for iter::Bulk<T>

@@ -1,6 +1,8 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{Bulk, Chain, DoubleEndedBulk, IntoContained, Once, SplitBulk, StaticBulk, util::{Length, LengthInterspersed, LengthSpec}};
+use array_trait::length;
+
+use crate::{Bulk, Chain, DoubleEndedBulk, IntoContained, Once, SplitBulk, StaticBulk};
 
 /// A bulk adapter that places a separator between all elements.
 ///
@@ -53,8 +55,8 @@ where
     I: ~const Bulk<Item = T>,
     T: ~const Clone + ~const Destruct
 {
-    type MinLength<U> = <<<I::MinLength<U> as Length>::LengthSpec as LengthInterspersed>::LengthInterspersed as LengthSpec>::Length<U>;
-    type MaxLength<U> = <<<I::MaxLength<U> as Length>::LengthSpec as LengthInterspersed>::LengthInterspersed as LengthSpec>::Length<U>;
+    type MinLength<U> = length::Interspersed<I::MinLength<U>>;
+    type MaxLength<U> = length::Interspersed<I::MaxLength<U>>;
 
     fn len(&self) -> usize
     {
@@ -148,7 +150,7 @@ where
     I: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
     T: ~const Clone + ~const Destruct,
     Once<T>: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
-    L: ~const LengthSpec
+    L: length::LengthValue
 {
     type Left = Chain<Intersperse<I::Left>, <Once<T> as SplitBulk<usize>>::Left>;
     type Right = Chain<<Once<T> as SplitBulk<usize>>::Right, Intersperse<I::Right>>;
@@ -158,7 +160,7 @@ where
         Self: Sized
     {
         let Self { bulk, separator } = self;
-        let n = n.len_metadata();
+        let n = length::value::len(n);
         let m = n.div_ceil(2);
         let (left, right) = bulk.split_at(m);
         let g = crate::once(separator.clone());

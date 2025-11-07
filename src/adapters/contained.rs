@@ -1,10 +1,10 @@
 use crate::util::InfiniteIterator;
-use crate::util::LengthSpec;
 use crate::Bulk;
 use crate::DoubleEndedBulk;
 use crate::IntoBulk;
 use crate::StaticBulk;
 
+use array_trait::length;
 pub(crate) use private::IntoContained as IntoContained;
 pub(crate) use private::ContainedIntoIter as ContainedIntoIter;
 
@@ -100,9 +100,9 @@ where
     fn nth<L>(mut self, n: L) -> Option<Self::Item>
     where
         Self: Sized,
-        L: LengthSpec
+        L: length::LengthValue
     {
-        self.iter.nth(n.len_metadata())
+        self.iter.nth(length::value::len(n))
     }
     
     #[inline]
@@ -219,11 +219,13 @@ where
 
 mod private
 {
-    use crate::{Contained, IntoBulk, util::{InfiniteIterator, Length, Same}};
+    use array_trait::{length, same::Same};
+
+    use crate::{Contained, IntoBulk, util::InfiniteIterator};
 
     pub trait InfiniteSpec
     {
-        type Length<U>: const Length<Elem = U> + ?Sized;
+        type Length<U>: length::Length<Elem = U> + ?Sized;
     }
     impl<I> InfiniteSpec for I
     {

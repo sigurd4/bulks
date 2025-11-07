@@ -1,6 +1,8 @@
 use core::{fmt, marker::Destruct};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::LengthSpec};
+use array_trait::length;
+
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk};
 
 /// A bulk that maps the values of `bulk` with `f`.
 ///
@@ -199,7 +201,7 @@ impl<I, F, L> const SplitBulk<L> for Map<I, F>
 where
     I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     F: FnMut<(I::Item,)> + ~const Clone,
-    L: LengthSpec
+    L: length::LengthValue
 {
     type Left = Map<I::Left, F>;
     type Right = Map<I::Right, F>;

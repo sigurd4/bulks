@@ -1,10 +1,12 @@
 use core::ptr::Pointee;
 
-use crate::{util::{Length, Same}, Bulk, StaticBulk};
+use array_trait::{same::Same, length};
+
+use crate::{Bulk, StaticBulk};
 
 pub trait BulkLength: Bulk
 {
-    type Length: Length<Elem = <Self as IntoIterator>::Item> + ?Sized;
+    type Length: length::Length<Elem = <Self as IntoIterator>::Item> + ?Sized;
 
     fn len_metadata(&self) -> <Self::Length as Pointee>::Metadata;
 }

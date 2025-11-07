@@ -2,14 +2,19 @@ use core::ops::Residual;
 use core::ops::Try;
 
 use array_trait::Array;
+use array_trait::length;
 
-use crate::{Bulk, FromBulk, IntoBulk, Map, StaticBulk, TryFromBulk, util::{BulkLength, Length, LengthSpec}};
+use crate::Length;
+use crate::util;
+use crate::{Bulk, FromBulk, IntoBulk, Map, StaticBulk, TryFromBulk, util::{BulkLength}};
+
+pub const trait NearestFrom<B: BulkLength + ?Sized, L: length::Length<Elem = B::Item> + ?Sized = <B as BulkLength>::Length> = ~const FromBulk<B::Item, B, L> + IntoBulk<Item = B::Item>;
 
 pub trait Nearest<L = <Self as BulkLength>::Length>: Bulk
 where
-    L: Length<Elem = Self::Item> + ?Sized
+    L: length::Length<Elem = Self::Item> + ?Sized
 {
-    type Nearest: FromBulk<Self::Item, Self, L> + IntoBulk<Item = Self::Item>;
+    type Nearest: NearestFrom<Self>;
 }
 #[cfg(feature = "alloc")]
 impl<T, B> Nearest<[T]> for B
@@ -21,20 +26,21 @@ where
 impl<T, B, A> Nearest<A> for B
 where
     B: StaticBulk<Item = T, Array<T> = A> + BulkLength<Length = A>,
-    A: Array<Elem = T> + Length + IntoBulk<Item = T> + FromBulk<T, Self, A>
+    A: Array<Elem = T> + length::Length + util::CollectLength<T, Length = A> + IntoBulk<Item = T> + FromBulk<T, Self, A>
 {
     type Nearest = A;
 }
 
+pub const trait TryNearestFrom<B: BulkLength<Item: Try<Residual: Residual<Self>>> + ?Sized, L: length::Length<Elem = B::Item> + ?Sized = Length<B>> = ~const TryFromBulk<<B::Item as Try>::Output, B, length::Mapped<Length<B>, <B::Item as Try>::Output>> + IntoBulk<Item = <B::Item as Try>::Output>;
+
 pub trait TryNearest: Bulk<Item: Try<Residual: Residual<<Self as TryNearest>::TryNearest>>>
 {
-    type TryNearest: TryFromBulk<<Self::Item as Try>::Output, Self, <<<Self as BulkLength>::Length as Length>::LengthSpec as LengthSpec>::Length<<<Self as IntoIterator>::Item as Try>::Output>> + IntoBulk<Item = <Self::Item as Try>::Output>;
+    type TryNearest: TryNearestFrom<Self>;
 }
 impl<R, T, B> TryNearest for B
 where
     B: Bulk<Item = R>,
-    Map<Self, Unwrapper>: Bulk<Item = T, CollectNearest: TryFromBulk<<Self::Item as Try>::Output, Self, <<<Self as BulkLength>::Length as Length>::LengthSpec as LengthSpec>::Length<T>> + IntoBulk<Item = T>>
-    + Nearest,
+    Map<Self, Unwrapper>: Bulk<Item = T, CollectNearest: TryNearestFrom<Self>> + Nearest,
     R: Try<Output = T, Residual: Residual<<Map<Self, Unwrapper> as Bulk>::CollectNearest>>
 {
     type TryNearest = <Map<Self, Unwrapper> as Bulk>::CollectNearest;
