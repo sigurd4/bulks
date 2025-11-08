@@ -6,6 +6,7 @@ use crate::StaticBulk;
 
 use array_trait::length;
 pub(crate) use private::IntoContained as IntoContained;
+#[allow(unused)]
 pub(crate) use private::IntoContainedIter as IntoContainedIter;
 pub(crate) use private::ContainedIntoIter as ContainedIntoIter;
 
@@ -244,6 +245,7 @@ mod private
     /// This creates an iterator that is possibly only invalid.
     /// 
     /// Always wrap this bulk in another bulk so that its length is limited.
+    #[allow(unused)]
     pub unsafe trait IntoContainedIter: IntoIterator
     {
         type IntoContainedIter: ExactSizeIterator<Item = Self::Item>;

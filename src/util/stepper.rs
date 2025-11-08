@@ -1,4 +1,4 @@
-use core::range::Step;
+use crate::Step;
 
 pub struct Stepper<U, const REV: bool = false>
 where
@@ -17,7 +17,7 @@ where
         }
     }
 }
-impl<T, U, const REV: bool> FnOnce<(T,)> for Stepper<U, REV>
+impl<T, U, const REV: bool> const FnOnce<(T,)> for Stepper<U, REV>
 where
     U: Step + Copy
 {
@@ -28,20 +28,20 @@ where
         (self.i, x)
     }
 }
-impl<T, U, const REV: bool> FnMut<(T,)> for Stepper<U, REV>
+impl<T, U, const REV: bool> const FnMut<(T,)> for Stepper<U, REV>
 where
-    U: Step + Copy
+    U: ~const Step + Copy
 {
     extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
     {
-        let i = self.i;
         if REV
         {
-            self.i = U::backward(i, 1);
+            self.i = Step::backward(self.i, 1);
         }
-        else
+        let i = self.i;
+        if !REV
         {
-            self.i = U::forward(i, 1);
+            self.i = Step::forward(self.i, 1);
         }
         (i, x)
     }

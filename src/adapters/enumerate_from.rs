@@ -1,8 +1,8 @@
-use core::{range::Step, ops::Try};
+use core::{marker::Destruct, ops::Try};
 
 use array_trait::length;
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::Stepper};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, Step, util::Stepper};
 
 /// A bulk that yields the element's index counting from a given initial index and the element.
 ///
@@ -48,10 +48,11 @@ where
             .map(Stepper::new(initial_count))
     }
 }
-impl<I, T, U> Bulk for EnumerateFrom<I, U>
+impl<I, T, U> const Bulk for EnumerateFrom<I, U>
 where
-    I: Bulk<Item = T>,
-    U: Step + Copy
+    I: ~const Bulk<Item = T>,
+    T: ~const Destruct,
+    U: ~const Step + Copy + ~const Destruct
 {
     type MinLength<V> = I::MinLength<V>;
     type MaxLength<V> = I::MaxLength<V>;
@@ -66,9 +67,9 @@ where
         let Self { bulk, initial_count: _ } = self;
         bulk.is_empty()
     }
-
     fn first(self) -> Option<Self::Item>
     where
+        Self::Item: ~const Destruct,
         Self: Sized
     {
         let Self { bulk, initial_count } = self;
@@ -76,12 +77,12 @@ where
     }
     fn last(self) -> Option<Self::Item>
     where
+        Self::Item: ~const Destruct,
         Self: Sized
     {
         let Self { bulk, initial_count } = self;
         let len = bulk.len();
-        bulk.last()
-            .map(|last| (U::forward(initial_count, len - 1), last))
+        bulk.last().map(Stepper::<_, false>::new(Step::forward(initial_count, len - 1)))
     }
     fn nth<L>(self, n: L) -> Option<Self::Item>
     where
@@ -89,14 +90,13 @@ where
         L: length::LengthValue
     {
         let Self { bulk, initial_count } = self;
-        bulk.nth(n)
-            .map(|nth| (U::forward(initial_count, length::value::len(n)), nth))
+        bulk.nth(n).map(Stepper::<_, false>::new(Step::forward(initial_count, length::value::len(n))))
     }
 
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: FnMut(Self::Item)
+        F: ~const FnMut(Self::Item) + ~const Destruct
     {
         let Self { bulk, initial_count } = self;
         bulk.for_each(Closure {
@@ -107,8 +107,8 @@ where
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: FnMut(Self::Item) -> R,
-        R: Try<Output = ()>
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = (), Residual: ~const Destruct>
     {
         let Self { bulk, initial_count } = self;
         bulk.try_for_each(Closure {
@@ -117,20 +117,21 @@ where
         })
     }
 }
-impl<I, T, U> DoubleEndedBulk for EnumerateFrom<I, U>
+impl<I, T, U> const DoubleEndedBulk for EnumerateFrom<I, U>
 where
-    I: DoubleEndedBulk<Item = T> + Bulk,
-    U: Step + Copy
+    I: ~const DoubleEndedBulk<Item = T> + ~const Bulk,
+    T: ~const Destruct,
+    U: ~const Step + Copy + ~const Destruct
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: FnMut(Self::Item)
+        F: ~const FnMut(Self::Item) + ~const Destruct
     {
         let Self { bulk, initial_count } = self;
         let i = bulk.len();
         bulk.rev_for_each(Closure {
-            i: Stepper::<_, true>::new(U::forward(initial_count, i.saturating_sub(1))),
+            i: Stepper::<_, true>::new(Step::forward(initial_count, i)),
             f
         })
     }
@@ -138,13 +139,13 @@ where
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: FnMut(Self::Item) -> R,
-        R: Try<Output = ()>
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = (), Residual: ~const Destruct>
     {
         let Self { bulk, initial_count } = self;
         let i = bulk.len();
         bulk.try_rev_for_each(Closure {
-            i: Stepper::<_, true>::new(U::forward(initial_count, i.saturating_sub(1))),
+            i: Stepper::<_, true>::new(Step::forward(initial_count, i)),
             f
         })
     }
@@ -156,10 +157,10 @@ where
 {
     type Array<V> = [V; N];
 }
-impl<I, T, U, L> SplitBulk<L> for EnumerateFrom<I, U>
+impl<I, T, U, L> const SplitBulk<L> for EnumerateFrom<I, U>
 where
-    I: SplitBulk<L, Item = T>,
-    U: Step + Copy,
+    I: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
+    U: ~const Step + Copy,
     L: length::LengthValue
 {
     type Left = EnumerateFrom<I::Left, U>;
@@ -171,7 +172,7 @@ where
     {
         let Self { bulk, initial_count } = self;
         let (left, right) = bulk.split_at(n);
-        let following_count = U::forward(initial_count, left.len());
+        let following_count = Step::forward(initial_count, left.len());
         (
             left.enumerate_from(initial_count),
             right.enumerate_from(following_count)
