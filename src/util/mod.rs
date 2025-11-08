@@ -5,6 +5,7 @@ moddef::moddef!(
         array_buffer,
         bulk_length,
         collect_length,
+        const_step,
         guard,
         nearest,
         infinite_iterator,

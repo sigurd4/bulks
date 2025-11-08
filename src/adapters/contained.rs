@@ -6,6 +6,7 @@ use crate::StaticBulk;
 
 use array_trait::length;
 pub(crate) use private::IntoContained as IntoContained;
+pub(crate) use private::IntoContainedIter as IntoContainedIter;
 pub(crate) use private::ContainedIntoIter as ContainedIntoIter;
 
 pub struct Contained<I>
@@ -240,11 +241,51 @@ mod private
 
     /// # Safety
     /// 
+    /// This creates an iterator that is possibly only invalid.
+    /// 
+    /// Always wrap this bulk in another bulk so that its length is limited.
+    pub unsafe trait IntoContainedIter: IntoIterator
+    {
+        type IntoContainedIter: ExactSizeIterator<Item = Self::Item>;
+
+        /// # Safety
+        /// 
+        /// This creates a bulk that is possibly only invalid.
+        /// 
+        /// Always wrap this bulk in another bulk so that its length is limited.
+        unsafe fn into_contained_iter(self) -> Self::IntoContainedIter;
+    }
+    unsafe impl<T> IntoContainedIter for T
+    where
+        T: IntoIterator
+    {
+        default type IntoContainedIter = Contained<T::IntoIter>;
+
+        default unsafe fn into_contained_iter(self) -> Self::IntoContainedIter
+        {
+            unsafe {
+                Contained::new(self.into_iter()).same().ok().unwrap()
+            }
+        }
+    }
+    unsafe impl<T> IntoContainedIter for T
+    where
+        T: IntoIterator<IntoIter: ExactSizeIterator>
+    {
+        type IntoContainedIter = T::IntoIter;
+
+        unsafe fn into_contained_iter(self) -> Self::IntoContainedIter
+        {
+            self.into_iter()
+        }
+    }
+
+    /// # Safety
+    /// 
     /// This creates a bulk that is possibly only invalid.
     /// 
     /// Always wrap this bulk in another bulk so that its length is limited.
-    #[const_trait]
-    pub unsafe trait IntoContained: IntoIterator
+    pub const unsafe trait IntoContained: IntoIterator
     {
         type IntoContained: ~const IntoBulk<Item = Self::Item, IntoIter: ExactSizeIterator<Item = Self::Item>>;
 

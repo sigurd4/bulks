@@ -3,13 +3,16 @@
 #![feature(rustc_attrs)]
 #![feature(extend_one)]
 #![feature(unboxed_closures)]
+#![feature(const_range)]
 #![feature(exact_size_is_empty)]
 #![feature(iter_array_chunks)]
 #![feature(iter_intersperse)]
+#![feature(ascii_char)]
 #![feature(iter_map_windows)]
 #![feature(tuple_trait)]
 #![feature(try_trait_v2)]
 #![feature(ptr_metadata)]
+#![feature(range_bounds_is_empty)]
 #![feature(const_trait_impl)]
 #![feature(const_cmp)]
 #![feature(core_intrinsics)]
@@ -37,6 +40,7 @@
 #![feature(mem_copy_fn)]
 #![feature(array_into_iter_constructors)]
 #![feature(decl_macro)]
+#![feature(negative_impls)]
 #![feature(ptr_as_ref_unchecked)]
 #![feature(iter_next_chunk)]
 #![feature(iter_advance_by)]
@@ -356,6 +360,7 @@ moddef::moddef!(
         adapters,
         impl_array,
         impl_iter,
+        impl_range,
         impl_option,
         bulk,
         double_ended_bulk,
@@ -370,6 +375,8 @@ moddef::moddef!(
 
 pub type Length<T> = <T as util::BulkLength>::Length;
 pub type CollectLength<T, A> = <T as util::CollectLength<A>>::Length;
+
+pub use util::ConstStep as Step;
 
 #[cfg(test)]
 mod tests
