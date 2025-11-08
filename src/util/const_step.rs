@@ -3,27 +3,72 @@ use core::{ascii::Char as AsciiChar, net::{Ipv4Addr, Ipv6Addr}, range::Step};
 /// Temporary solution because they haven't made the `Step` trait const yet... :(
 pub const trait ConstStep: Step
 {
+    /// Returns the bounds on the number of *successor* steps required to get from `start` to `end`
+    ///
+    /// Returns `(usize::MAX, None)` if the number of steps would overflow `usize`, or is infinite.
     fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>);
 
+    /// Returns the value that would be obtained by taking the *successor*
+    /// of `self` `count` times.
+    ///
+    /// If this would overflow the range of values supported by `Self`, returns `None`.
     fn forward_checked(start: Self, count: usize) -> Option<Self>;
 
+    /// Returns the value that would be obtained by taking the *successor*
+    /// of `self` `count` times.
+    ///
+    /// If this would overflow the range of values supported by `Self`,
+    /// this function is allowed to panic, wrap, or saturate.
+    /// The suggested behavior is to panic when debug assertions are enabled,
+    /// and to wrap or saturate otherwise.
+    ///
+    /// Unsafe code should not rely on the correctness of behavior after overflow.
     fn forward(start: Self, count: usize) -> Self
     {
         ConstStep::forward_checked(start, count).expect("overflow in `Step::forward`")
     }
 
+    /// Returns the value that would be obtained by taking the *successor*
+    /// of `self` `count` times.
+    ///
+    /// # Safety
+    ///
+    /// It is undefined behavior for this operation to overflow the
+    /// range of values supported by `Self`. If you cannot guarantee that this
+    /// will not overflow, use `forward` or `forward_checked` instead.
     unsafe fn forward_unchecked(start: Self, count: usize) -> Self
     {
         ConstStep::forward(start, count)
     }
 
+    /// Returns the value that would be obtained by taking the *predecessor*
+    /// of `self` `count` times.
+    ///
+    /// If this would overflow the range of values supported by `Self`, returns `None`.
     fn backward_checked(start: Self, count: usize) -> Option<Self>;
 
+    /// Returns the value that would be obtained by taking the *predecessor*
+    /// of `self` `count` times.
+    ///
+    /// If this would overflow the range of values supported by `Self`,
+    /// this function is allowed to panic, wrap, or saturate.
+    /// The suggested behavior is to panic when debug assertions are enabled,
+    /// and to wrap or saturate otherwise.
+    ///
+    /// Unsafe code should not rely on the correctness of behavior after overflow.
     fn backward(start: Self, count: usize) -> Self
     {
         ConstStep::backward_checked(start, count).expect("overflow in `Step::backward`")
     }
 
+    /// Returns the value that would be obtained by taking the *predecessor*
+    /// of `self` `count` times.
+    ///
+    /// # Safety
+    ///
+    /// It is undefined behavior for this operation to overflow the
+    /// range of values supported by `Self`. If you cannot guarantee that this
+    /// will not overflow, use `backward` or `backward_checked` instead.
     unsafe fn backward_unchecked(start: Self, count: usize) -> Self
     {
         ConstStep::backward(start, count)
@@ -343,12 +388,10 @@ impl const ConstStep for char {
                 } else {
                     (usize::MAX, None)
                 }
+            } else if let Ok(steps) = usize::try_from(count) {
+                (steps, Some(steps))
             } else {
-                if let Ok(steps) = usize::try_from(count) {
-                    (steps, Some(steps))
-                } else {
-                    (usize::MAX, None)
-                }
+                (usize::MAX, None)
             }
         } else {
             (0, None)
