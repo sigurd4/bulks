@@ -1,8 +1,8 @@
-use core::ops::Try;
+use core::{marker::Destruct, ops::Try};
 
 use array_trait::{same::Same, length};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, Step, range::BoundedRange};
 
 pub mod iter
 {
@@ -61,18 +61,18 @@ where
     I: ExactSizeIterator<Item = A>
 {
     #[inline]
-    fn len(&self) -> usize
+    default fn len(&self) -> usize
     {
         self.inner.len()
     }
     #[inline]
-    fn is_empty(&self) -> bool
+    default fn is_empty(&self) -> bool
     {
         self.inner.is_empty()
     }
 
     #[inline]
-    fn for_each<F>(self, f: F)
+    default fn for_each<F>(self, f: F)
     where
         Self: Sized,
         F: FnMut(Self::Item)
@@ -80,7 +80,7 @@ where
         self.inner.for_each(f)
     }
     #[inline]
-    fn try_for_each<F, R>(mut self, f: F) -> R
+    default fn try_for_each<F, R>(mut self, f: F) -> R
     where
         Self: Sized,
         F: FnMut(Self::Item) -> R,
@@ -89,14 +89,14 @@ where
         self.inner.try_for_each(f)
     }
 
-    fn first(mut self) -> Option<Self::Item>
+    default fn first(mut self) -> Option<Self::Item>
     where
         Self: Sized
     {
         self.inner.next()
     }
     
-    fn nth<L>(mut self, n: L) -> Option<Self::Item>
+    default fn nth<L>(mut self, n: L) -> Option<Self::Item>
     where
         Self: Sized,
         L: length::LengthValue
@@ -123,6 +123,75 @@ where
         R: Try<Output = ()>
     {
         self.inner.rev().try_for_each(f)
+    }
+}
+
+impl<R> const Bulk for iter::Bulk<R>
+where
+    R: ~const BoundedRange<R::Item> + ExactSizeIterator<Item: Copy + ~const Step> + ~const Destruct,
+{
+    fn len(&self) -> usize
+    {
+        self.inner.steps().0
+    }
+    fn first(self) -> Option<Self::Item>
+    where
+        Self: Sized
+    {
+        if !self.is_empty()
+        {
+            return Some(*self.inner.start())
+        }
+        None
+    }
+    fn for_each<F>(self, mut f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        let Self { inner } = self;
+        let inclusive = inner.inclusive();
+        let mut range = *inner.start()..*inner.end();
+        loop
+        {
+            let n = Step::steps_between(&range.start, &range.end).0;
+            if n == 0
+            {
+                if inclusive
+                {
+                    f(range.start)
+                }
+                break
+            }
+
+            f(range.start);
+            range.start = Step::forward(range.start, 1);
+        }
+    }
+    fn try_for_each<F, RR>(self, mut f: F) -> RR
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) -> RR + ~const Destruct,
+        RR: ~const Try<Output = ()>
+    {
+        let Self { inner } = self;
+        let inclusive = inner.inclusive();
+        let mut range = *inner.start()..*inner.end();
+        loop
+        {
+            let n = Step::steps_between(&range.start, &range.end).0;
+            if n == 0
+            {
+                if inclusive
+                {
+                    f(range.start)?
+                }
+                break RR::from_output(())
+            }
+            
+            f(range.start)?;
+            range.start = Step::forward(range.start, 1);
+        }
     }
 }
 
