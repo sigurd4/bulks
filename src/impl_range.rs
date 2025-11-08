@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::{Range, RangeInclusive, Try}};
 
-use crate::{Bulk, Contained, ContainedIntoIter, IntoBulk, IntoContained, IntoContainedIter, Step, range::BoundedRange};
+use crate::{Bulk, IntoBulk, IntoContainedIter, Step, range::BoundedRange};
 
 pub mod range
 {
@@ -99,6 +99,7 @@ where
         }
     }
 }
+
 
 impl<T> const IntoBulk for Range<T>
 where
