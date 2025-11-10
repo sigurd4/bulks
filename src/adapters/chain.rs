@@ -20,7 +20,7 @@ use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
 /// let a2 = [4, 5, 6];
 /// let bulk = a1.into_bulk().chain(a2.into_bulk());
 /// 
-/// let a = bulk.collect::<[_; _]>();
+/// let a: [_; _] = bulk.collect();
 /// 
 /// assert_eq!(a, [1, 2, 3, 4, 5, 6]);
 /// ```
@@ -60,7 +60,7 @@ where
 ///
 /// let mut bulk = bulks::chain(a, b);
 ///
-/// let c = bulk.collect::<[_; _]>();
+/// let c: [_; _] = bulk.collect();
 /// 
 /// assert_eq!(c, [1, 2, 3, 4, 5, 6]);
 /// ```

@@ -37,11 +37,11 @@ where
     /// use bulks::*;
     ///
     /// let s = b"foobar";
-    /// let mut s2 = s.bulk()
+    /// let mut s2: [_; _] = s.bulk()
     ///     .copied()
     ///     .rev()
     ///     .into_inner()
-    ///     .collect::<[_; _]>();
+    ///     .collect();
     /// assert_eq!(&s2, b"foobar");
     /// ```
     pub const fn into_inner(self) -> I

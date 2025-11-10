@@ -64,12 +64,12 @@
 //!
 //! let a = [1, 2, 3];
 //!
-//! let b = a.bulk()
+//! let b: [_; _] = a.bulk()
 //!     .copied()
 //!     .map(|x| (x - 1) as usize)
 //!     .enumerate()
 //!     .inspect(|(i, x)| assert_eq!(i, x))
-//!     .collect::<[_; _]>();
+//!     .collect();
 //!
 //! assert_eq!(b, [(0, 0), (1, 1), (2, 2)]);
 //! ```

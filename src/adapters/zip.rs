@@ -19,7 +19,7 @@ use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, I
 ///
 /// let bulk = bulks::zip(xs, ys);
 ///
-/// let s = bulk.collect::<[_; _]>();
+/// let s: [_; _] = bulk.collect();
 /// assert_eq!(s, [(1, 4), (2, 5), (3, 6)]);
 ///
 /// // Nested zips are also possible:
@@ -27,7 +27,7 @@ use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, I
 ///
 /// let bulk = bulks::zip(bulks::zip(xs, ys), zs);
 ///
-/// let s = bulk.collect::<[_; _]>();
+/// let s: [_; _] = bulk.collect();
 /// assert_eq!(s, [((1, 4), 7), ((2, 5), 8), ((3, 6), 9)]);
 /// ```
 pub const fn zip<A, B>(a: A, b: B) -> Zip<

@@ -579,12 +579,12 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let a = [0, 1, 2, 3, 4, 5];
     /// 
     /// let mut bulk = a.into_bulk().step_by([(); 2]);
-    /// let a_even = bulk.collect::<[_; _]>();
+    /// let a_even: [_; _] = bulk.collect();
     ///
     /// assert_eq!(a_even, [0, 2, 4]);
     /// 
     /// let mut bulk = a.into_bulk().skip([(); 1]).step_by([(); 2]);
-    /// let a_odd = bulk.collect::<[_; _]>();
+    /// let a_odd: [_; _] = bulk.collect();
     /// 
     /// assert_eq!(a_odd, [1, 3, 5]);
     /// ```
@@ -619,7 +619,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///     .chain(s2)
     ///     .copied();
     /// 
-    /// let s = bulk.collect::<[_; _]>();
+    /// let s: [_; _] = bulk.collect();
     /// 
     /// assert_eq!(s, *b"abcdef");
     /// ```
@@ -639,7 +639,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let mut bulk = a1.into_bulk()
     ///     .chain(a2);
     /// 
-    /// let a = bulk.collect::<[_; _]>();
+    /// let a: [_; _] = bulk.collect();
     /// 
     /// assert_eq!(a, [1, 2, 3, 4, 5, 6]);
     /// ```
@@ -670,7 +670,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// let mut bulk = s1.zip(s2);
     /// 
-    /// let s = bulk.collect::<[_; _]>();
+    /// let s: [_; _] = bulk.collect();
     /// 
     /// assert_eq!(s, [(b'a', b'd'), (b'b', b'e'), (b'c', b'f')]);
     /// ```
@@ -689,7 +689,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// let mut bulk = a1.into_bulk().zip(a2);
     ///
-    /// let a = bulk.collect::<[_; _]>();
+    /// let a: [_; _] = bulk.collect();
+    /// 
     /// assert_eq!(a, [(1, 4), (2, 5), (3, 6)]);
     /// ```
     ///
@@ -728,7 +729,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///     b.into_bulk().map(|x| x * 2).skip([(); 1]),
     /// );
     /// 
-    /// let c = zipped.collect::<[_; _]>();
+    /// let c: [_; _] = zipped.collect();
+    /// 
     /// assert_eq!(c, [(4, 6), (6, 8)]);
     /// ```
     ///
@@ -749,7 +751,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///         .skip([(); 1])
     ///     );
     /// #
-    /// # let c = zipped.collect::<[_; _]>();
+    /// # let c: [_; _] = zipped.collect();
     /// # assert_eq!(c, [(4, 6), (6, 8)]);
     /// ```
     #[inline]
@@ -778,7 +780,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
-    /// let mut a = [0, 1, 2].into_bulk().intersperse(100).collect::<[_; _]>();
+    /// let mut a: [_; _] = [0, 1, 2].into_bulk().intersperse(100).collect();
     /// 
     /// assert_eq!(a, [0, 100, 1, 100, 2]);
     /// ```
@@ -826,7 +828,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// struct NotClone(usize);
     ///
     /// let v = [NotClone(0), NotClone(1), NotClone(2)];
-    /// let u = v.into_bulk().intersperse_with(|| NotClone(99)).collect::<[_; _]>();
+    /// let u: [_; _] = v.into_bulk().intersperse_with(|| NotClone(99)).collect();
     ///
     /// assert_eq!(u, [NotClone(0), NotClone(99), NotClone(1), NotClone(99), NotClone(2)]);
     /// ```
@@ -842,7 +844,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let mut happy_emojis = [" ❤️ ", " 😀 "].into_iter();
     /// let separator = || happy_emojis.next().unwrap_or(" 🦀 ");
     ///
-    /// let result = src.intersperse_with(separator).collect::<String>();
+    /// let result: String = src.intersperse_with(separator).collect();
+    /// 
     /// assert_eq!(result, "Hello ❤️ to 😀 all 🦀 people 🦀 !!");
     /// ```
     #[inline]
@@ -873,7 +876,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// 
     /// let a = [1, 2, 3];
     ///
-    /// let mut b = a.bulk().map(|x| 2 * x).collect::<[_; _]>();
+    /// let mut b: [_; _] = a.bulk().map(|x| 2 * x).collect();
     ///
     /// assert_eq!(b, [2, 4, 6]);
     /// ```
@@ -1008,8 +1011,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// 
     /// let a = [1, 2, 3];
     ///
-    /// let b = a.into_bulk().skip([(); 2]).collect::<[_; _]>();
-    /// let c = a.into_bulk().skip(2).collect::<Vec<_>>();
+    /// let b: [_; _] = a.into_bulk().skip([(); 2]).collect();
+    /// let c: Vec<_> = a.into_bulk().skip(2).collect();
     ///
     /// assert_eq!(b, [3]);
     /// assert_eq!(c, [3]);
@@ -1042,7 +1045,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// 
     /// let a = [1, 2, 3];
     ///
-    /// let b = a.into_bulk().take([(); 2]).collect::<Vec<_>>();
+    /// let b: Vec<_> = a.into_bulk().take([(); 2]).collect();
     ///
     /// assert_eq!(b, [1, 2]);
     /// ```
@@ -1050,7 +1053,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// `take()` is often used with an infinite iterator, to make it finite:
     ///
     /// ```
-    /// let a = (0..).take(3).collect::<Vec<_>>();
+    /// let a: Vec<_> = (0..).take(3).collect();
     ///
     /// assert_eq!(a, [0, 1, 2])
     /// ```
@@ -1063,7 +1066,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// use bulks::*;
     /// 
     /// let v = [1, 2];
-    /// let b = v.into_bulk().take([(); 5]).collect::<[_; _]>();
+    /// let b: [_; _] = v.into_bulk().take([(); 5]).collect();
     /// 
     /// assert_eq!(b, [1, 2])
     /// ```
@@ -1206,10 +1209,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     ///
-    /// let strings = b"abcd".bulk()
+    /// let strings: [_; _] = b"abcd".bulk()
     ///     .map(|&c| char::from(c))
     ///     .map_windows(|[x, y]| format!("{}+{}", x, y))
-    ///     .collect::<[_; _]>();
+    ///     .collect();
     ///
     /// assert_eq!(strings, ["a+b", "b+c", "c+d"]);
     /// ```
@@ -1239,9 +1242,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     ///
-    /// let w = [1, 3, 8, 1].bulk()
+    /// let w: [_; _] = [1, 3, 8, 1].bulk()
     ///     .map_windows(|&[a, b]| a + b)
-    ///     .collect::<[_; _]>();
+    ///     .collect();
     /// 
     /// assert_eq!(w, [1 + 3, 3 + 8, 8 + 1]);
     /// ```
@@ -1253,9 +1256,12 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     ///
-    /// let w = b"ferris".bulk()
-    ///     .map_windows(|w: &[_; 3]| w.bulk().copied().copied().collect::<[_; _]>())
-    ///     .collect::<[_; _]>();
+    /// let w: [[_; _]; _] = b"ferris".bulk()
+    ///     .map_windows(|w: &[_; 3]| w.bulk()
+    ///         .copied()
+    ///         .copied()
+    ///         .collect())
+    ///     .collect();
     /// 
     /// assert_eq!(w, [[b'f', b'e', b'r'], [b'e', b'r', b'r'], [b'r', b'r', b'i'], [b'r', b'i', b's']]);
     /// ```
@@ -1267,9 +1273,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     ///
-    /// let w = [0.5, 1.0, 3.5, 3.0, 8.5, 8.5, f32::NAN].bulk()
+    /// let w: [_; _] = [0.5, 1.0, 3.5, 3.0, 8.5, 8.5, f32::NAN].bulk()
     ///     .map_windows(|[a, b]| a <= b)
-    ///     .collect::<[_; _]>();
+    ///     .collect();
     /// 
     /// assert_eq!(w, [true, true, false, true, true, false]);
     /// ```
@@ -1380,9 +1386,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let a = [1, 4, 2, 3];
     ///
     /// // this iterator sequence is complex.
-    /// let b = a.into_bulk()
+    /// let b: [_; _] = a.into_bulk()
     ///     .mutate(|x| *x += 1)
-    ///     .collect::<[_; _]>();
+    ///     .collect();
     ///
     /// assert_eq!(b, [2, 5, 3, 4]);
     /// ```
@@ -1447,7 +1453,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// let doubled = a.bulk()
     ///     .map(|x| x * 2)
-    ///     .collect::<[i32; 3]>();
+    ///     .collect::<[i32; 3], _>();
     ///
     /// assert_eq!(doubled, [2, 4, 6]);
     /// ```
@@ -1460,9 +1466,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// 
     /// let a = [1, 2, 3];
     ///
-    /// let doubled = a.bulk()
+    /// let doubled: [_; _] = a.bulk()
     ///     .map(|x| x * 2)
-    ///     .collect::<[_; _]>();
+    ///     .collect();
     ///
     /// assert_eq!(doubled, [2, 4, 6]);
     /// ```
@@ -1537,7 +1543,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// use bulks::*;
     /// 
     /// let u = [Some(1), Some(2), Some(3)];
-    /// let v = u.into_bulk().try_collect::<[i32; _]>();
+    /// 
+    /// let v = u.into_bulk().try_collect::<[i32; _], _>();
+    /// 
     /// assert_eq!(v, Some([1, 2, 3]));
     /// ```
     ///
@@ -1546,7 +1554,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// use bulks::*;
     /// 
     /// let u = [Some(1), Some(2), None, Some(3)];
-    /// let v = u.into_bulk().try_collect::<[i32; _]>();
+    /// 
+    /// let v = u.into_bulk().try_collect::<[i32; _], _>();
+    /// 
     /// assert_eq!(v, None);
     /// ```
     ///
@@ -1555,11 +1565,15 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// use bulks::*;
     /// 
     /// let u: [Result<i32, ()>; _] = [Ok(1), Ok(2), Ok(3)];
-    /// let v = u.into_bulk().try_collect::<[i32; _]>();
+    /// 
+    /// let v = u.into_bulk().try_collect::<[i32; _], _>();
+    /// 
     /// assert_eq!(v, Ok([1, 2, 3]));
     ///
     /// let u = [Ok(1), Ok(2), Err(()), Ok(3)];
-    /// let v = u.into_bulk().try_collect::<[i32; _]>();
+    /// 
+    /// let v = u.into_bulk().try_collect::<[i32; _], _>();
+    /// 
     /// assert_eq!(v, Err(()));
     /// ```
     ///
@@ -1574,12 +1588,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// let u = [Continue(1), Continue(2), Break(3), Continue(4), Continue(5)];
     /// 
-    /// let v = u.into_bulk().try_collect::<[_; _]>();
+    /// let v = u.into_bulk().try_collect::<[_; _], _>();
+    /// 
     /// assert_eq!(v, Break(3));
     ///
     /// let v = u.into_bulk().take([(); 2])
     ///     .chain(u.into_bulk().skip([(); 3]))
-    ///     .try_collect::<[_; _]>();
+    ///     .try_collect::<[_; _], _>();
+    /// 
     /// assert_eq!(v, Continue([1, 2, 4, 5]));
     /// ```
     #[inline]
@@ -1874,8 +1890,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///     .copied()
     ///     .array_chunks();
     /// 
-    /// let (c, r) = bulk.collect_with_remainder::<[_; _]>();
-    /// let r = r.collect::<Vec<_>>();
+    /// let (c, r) = bulk.collect_with_remainder::<[_; _], _>();
+    /// 
+    /// let r: Vec<_> = r.collect();
     /// 
     /// assert_eq!(c, [[b'l', b'o'], [b'r', b'e']]);
     /// assert_eq!(r, [b'm']);

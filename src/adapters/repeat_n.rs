@@ -16,7 +16,7 @@ use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, util::YieldOnce};
 /// use bulks::*;
 ///
 /// // four of the number four:
-/// let four_fours = bulks::repeat_n(4, [(); 4]).collect::<[_; _]>();
+/// let four_fours: [_; _] = bulks::repeat_n(4, [(); 4]).collect();
 /// 
 /// assert_eq!(four_fours, [4, 4, 4, 4]);
 /// ```

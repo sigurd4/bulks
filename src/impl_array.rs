@@ -496,7 +496,7 @@ mod test
     {
         let a = [1, 2, 3];
         
-        let b = a.bulk().copied().rev().map(|x| 4 - x).collect::<[_; 3], _>();
+        let b: [_; 3] = a.bulk().copied().rev().map(|x| 4 - x).collect();
 
         println!("{:?}", b)
     }

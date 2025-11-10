@@ -23,8 +23,8 @@ where
     ///     .copied()
     ///     .split_at([(); 4]);
     /// 
-    /// let left = a1.collect::<[_; _]>();
-    /// let right = a2.collect::<[_; _]>();
+    /// let left: [_; _] = a1.collect();
+    /// let right: [_; _] = a2.collect();
     /// 
     /// assert_eq!(&left, b"left");
     /// assert_eq!(&right, b"right");

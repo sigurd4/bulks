@@ -263,7 +263,7 @@ mod test
         let c = b.into_bulk()
             .map(|(_, b)| b.into_bulk()
                 .map(|b: u32| b.checked_sub(3))
-                .try_collect::<[_; _], _>()
+                .collect::<Option<[_; _]>, [_; _]>()
             ).collect::<[_; _], _>();
 
         println!("{c:?}");

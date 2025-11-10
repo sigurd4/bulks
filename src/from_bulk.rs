@@ -48,7 +48,7 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
 /// ```
 /// use bulks::*;
 /// 
-/// let first = (0..10).into_bulk().collect::<Vec<_>>();
+/// let first = (0..10).into_bulk().collect::<Vec<_>, _>();
 /// let second = <Vec<_>>::from_bulk(0..10);
 ///
 /// assert_eq!(first, second);
@@ -57,6 +57,10 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
 /// Implementing `FromBulk` for your type:
 ///
 /// ```
+/// # #![feature(try_trait_v2)]
+/// # #![feature(try_trait_v2_residual)]
+/// use core::ops::{Try, Residual};
+/// 
 /// use bulks::*;
 /// 
 /// // A sample collection, that's just a wrapper over Vec<T>
@@ -78,14 +82,12 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
 ///     }
 /// }
 ///
-/// // and we'll implement FromIterator
-/// impl<B> FromBulk<i32, B, [i32]> for MyCollection
-/// where
-///     B: Bulk<Item = i32>
+/// // and we'll implement FromBulk
+/// impl FromBulk<[i32]> for MyCollection
 /// {
 ///     fn from_bulk<I>(bulk: I) -> Self
 ///     where
-///         I: IntoBulk<Item = i32, IntoBulk = B>
+///         I: IntoBulk<Item = i32>
 ///     {
 ///         let mut c = MyCollection::new();
 ///
@@ -95,9 +97,22 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
 ///
 ///         c
 ///     }
+/// 
+///     fn try_from_bulk<I>(bulk: I) -> <<I::Item as Try>::Residual as Residual<Self>>::TryType
+///     where
+///         I: IntoBulk<Item: Try<Output = i32, Residual: Residual<Self>>>
+///     {
+///         let mut c = MyCollection::new();
+///
+///         for i in bulk {
+///             c.add(i?);
+///         }
+///
+///         Try::from_output(c)
+///     }
 /// }
 ///
-/// // Now we can make a new iterator...
+/// // Now we can make a new bulk...
 /// let iter = (0..5).into_bulk();
 ///
 /// // ... and make a MyCollection out of it
@@ -270,11 +285,36 @@ where
         bulk.collect_array()
     }
 }
-impl<A, B, T> const CollectionStrategy<B, T> for Option<A>
+impl<A, B, const N: usize> const CollectionStrategy<B, Option<[A; N]>> for [Option<A>; N]
+where
+    B: ~const Bulk<Item = Option<A>> + StaticBulk<Array<A> = [A; N]> + ?Sized,
+    A: ~const Destruct
+{
+    fn adapt(bulk: B) -> <Self as CollectionAdapter>::Strategy<B, Option<[A; N]>>
+    where
+        B: Sized
+    {
+        bulk.try_collect_array()
+    }
+}
+impl<A, B, E, const N: usize> const CollectionStrategy<B, Result<[A; N], E>> for [Result<A, E>; N]
+where
+    B: ~const Bulk<Item = Result<A, E>> + StaticBulk<Array<A> = [A; N]> + ?Sized,
+    A: ~const Destruct,
+    E: ~const Destruct
+{
+    fn adapt(bulk: B) -> <Self as CollectionAdapter>::Strategy<B, Result<[A; N], E>>
+    where
+        B: Sized
+    {
+        bulk.try_collect_array()
+    }
+}
+impl<A, B> const CollectionStrategy<B, Option<A>> for Option<A>
 where
     B: ~const Bulk<Item = A, MinLength: MaybeLength, MaxLength: MaybeLength, Length: MaybeLength> + ?Sized
 {
-    fn adapt(bulk: B) -> <Self as CollectionAdapter>::Strategy<B, T>
+    fn adapt(bulk: B) -> <Self as CollectionAdapter>::Strategy<B, Option<A>>
     where
         B: Sized
     {
@@ -366,16 +406,55 @@ where
 {
     fn from_bulk<I>(bulk: I) -> Self
     where
-        I: ~const IntoBulk<IntoBulk: ~const Bulk<Item = <[A; N] as CollectionAdapter>::Elem>>,
+        I: ~const IntoBulk<IntoBulk: ~const Bulk<Item = A>>,
         [A; N]: ~const CollectionStrategy<I::IntoBulk, Self>
     {
         <[A; N] as CollectionStrategy<I::IntoBulk, Self>>::adapt(bulk.into_bulk())
     }
     fn try_from_bulk<I>(bulk: I) -> <<I::Item as Try>::Residual as Residual<Self>>::TryType
     where
-        I: ~const IntoBulk<IntoBulk: ~const Bulk, Item: ~const Try<Output = <[A; N] as CollectionAdapter>::Elem, Residual: ~const Residual<Self, TryType: ~const Try>>>,
+        I: ~const IntoBulk<IntoBulk: ~const Bulk, Item: ~const Try<Output = A, Residual: ~const Residual<Self, TryType: ~const Try>>>,
         [A; N]: ~const TryCollectionAdapter<I::IntoBulk, Self>
     {
         <[A; N] as TryCollectionAdapter<I::IntoBulk, Self>>::try_adapt(bulk.into_bulk())
+    }
+}
+impl<A, const N: usize> const FromBulk<[Option<A>; N]> for Option<[A; N]>
+where
+    A: ~const Destruct
+{
+    fn from_bulk<I>(bulk: I) -> Self
+    where
+        I: ~const IntoBulk<IntoBulk: ~const Bulk<Item = Option<A>>>,
+        [Option<A>; N]: ~const CollectionStrategy<I::IntoBulk, Self>
+    {
+        <[Option<A>; N] as CollectionStrategy<I::IntoBulk, Self>>::adapt(bulk.into_bulk())
+    }
+    fn try_from_bulk<I>(bulk: I) -> <<I::Item as Try>::Residual as Residual<Self>>::TryType
+    where
+        I: ~const IntoBulk<IntoBulk: ~const Bulk, Item: ~const Try<Output = Option<A>, Residual: ~const Residual<Self, TryType: ~const Try>>>,
+        [Option<A>; N]: ~const TryCollectionAdapter<I::IntoBulk, Self>
+    {
+        <[Option<A>; N] as TryCollectionAdapter<I::IntoBulk, Self>>::try_adapt(bulk.into_bulk())
+    }
+}
+impl<A, E, const N: usize> const FromBulk<[Result<A, E>; N]> for Result<[A; N], E>
+where
+    A: ~const Destruct,
+    E: ~const Destruct
+{
+    fn from_bulk<I>(bulk: I) -> Self
+    where
+        I: ~const IntoBulk<IntoBulk: ~const Bulk<Item = Result<A, E>>>,
+        [Result<A, E>; N]: ~const CollectionStrategy<I::IntoBulk, Self>
+    {
+        <[Result<A, E>; N] as CollectionStrategy<I::IntoBulk, Self>>::adapt(bulk.into_bulk())
+    }
+    fn try_from_bulk<I>(bulk: I) -> <<I::Item as Try>::Residual as Residual<Self>>::TryType
+    where
+        I: ~const IntoBulk<IntoBulk: ~const Bulk, Item: ~const Try<Output = Result<A, E>, Residual: ~const Residual<Self>>>,
+        [Result<A, E>; N]: ~const TryCollectionAdapter<I::IntoBulk, Self>
+    {
+        <[Result<A, E>; N] as TryCollectionAdapter<I::IntoBulk, Self>>::try_adapt(bulk.into_bulk())
     }
 }

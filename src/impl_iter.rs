@@ -204,8 +204,11 @@ mod test
     fn vec()
     {
         let a = vec![1i32, 2, 3, 4, 5];
+        
         let bulk = a.into_bulk().map(|x| x as f64);
-        let b = bulk.collect::<Vec<f64>, _>();
+
+        let b: Vec<f64> = bulk.collect();
+
         println!("{b:?}")
     }
 }

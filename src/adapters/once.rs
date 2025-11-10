@@ -16,7 +16,7 @@ use crate::{Bulk, DoubleEndedBulk, OnceWith, RepeatN, RepeatNWith, SplitBulk, St
 /// use bulks::*;
 ///
 /// // one is the loneliest number
-/// let mut one = bulks::once(1).collect::<[_; _]>();
+/// let mut one: [_; _] = bulks::once(1).collect();
 ///
 /// // just one, that's all we get
 /// assert_eq!(one, [1])
