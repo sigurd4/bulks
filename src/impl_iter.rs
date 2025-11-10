@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try};
 
-use array_trait::{same::Same, length};
+use array_trait::{length::{self, LengthValue}, same::Same};
 
 use crate::{Bulk, DoubleEndedBulk, IntoBulk, Step, range::BoundedRange};
 
@@ -99,7 +99,7 @@ where
     default fn nth<L>(mut self, n: L) -> Option<Self::Item>
     where
         Self: Sized,
-        L: length::LengthValue
+        L: LengthValue
     {
         self.inner.nth(length::value::len(n))
     }
@@ -205,7 +205,7 @@ mod test
     {
         let a = vec![1i32, 2, 3, 4, 5];
         let bulk = a.into_bulk().map(|x| x as f64);
-        let b = bulk.collect::<Vec<f64>>();
+        let b = bulk.collect::<Vec<f64>, _>();
         println!("{b:?}")
     }
 }

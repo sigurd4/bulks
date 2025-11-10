@@ -1,6 +1,6 @@
 use core::{fmt, marker::{Destruct, PhantomData}};
 
-use array_trait::length;
+use array_trait::length::LengthValue;
 
 use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk};
 
@@ -69,8 +69,8 @@ impl<T> const IntoBulk for core::iter::Empty<T>
 }
 impl<T> const Bulk for Empty<T>
 {
-    type MinLength<U> = [U; 0];
-    type MaxLength<U> = [U; 0];
+    type MinLength = [(); 0];
+    type MaxLength = [(); 0];
 
     fn len(&self) -> usize
     {
@@ -99,7 +99,7 @@ impl<T> const Bulk for Empty<T>
     where
         Self: Sized,
         Self::Item: ~const Destruct,
-        L: length::LengthValue
+        L: LengthValue
     {
         None
     }
@@ -140,13 +140,9 @@ impl<T> const DoubleEndedBulk for Empty<T>
         R::from_output(())
     }
 }
-unsafe impl<T> StaticBulk for Empty<T>
-{
-    type Array<U> = [U; 0];
-}
 impl<T, L> const SplitBulk<L> for Empty<T>
 where
-    L: length::LengthValue
+    L: LengthValue
 {
     type Left = Self;
     type Right = Self;

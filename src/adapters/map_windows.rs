@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length;
 
-use crate::{Bulk, DoubleEndedBulk, StaticBulk, util::{ArrayBuffer}};
+use crate::{Bulk, DoubleEndedBulk, util::{ArrayBuffer}};
 
 /// A bulk over the mapped windows of another bulk.
 ///
@@ -64,8 +64,8 @@ where
     I: ~const Bulk<Item: ~const Destruct>,
     F: ~const FnMut(&[I::Item; N]) -> U + ~const Destruct
 {
-    type MinLength<V> = length::Windowed<I::MinLength<V>, [V; N]>;
-    type MaxLength<V> = length::Windowed<I::MaxLength<V>, [V; N]>;
+    type MinLength = length::Windowed<I::MinLength, [(); N]>;
+    type MaxLength = length::Windowed<I::MaxLength, [(); N]>;
 
     fn len(&self) -> usize
     {
@@ -135,14 +135,6 @@ where
             buffer: ArrayBuffer::new()
         })
     }
-}
-unsafe impl<I: Bulk, F, T, U, const N: usize, const M: usize> StaticBulk for MapWindows<I, F, N>
-where
-    I: StaticBulk<Item = T>,
-    F: FnMut(&[T; N]) -> U,
-    Self: Bulk<MinLength<Self::Item> = [Self::Item; M], MaxLength<Self::Item> = [Self::Item; M]>
-{
-    type Array<W> = [W; M];
 }
 
 struct Closure<F, FF, T, U, const N: usize, const REV: bool>
@@ -237,7 +229,7 @@ mod test
         let mut i = 0;
         let a = crate::repeat_n_with(|| {i += 1; i}, [(); 20])
             .map_windows(|&[n, m]| n + m)
-            .collect::<[_; _]>();
+            .collect::<[_; _], _>();
 
         println!("{a:?}")
     }

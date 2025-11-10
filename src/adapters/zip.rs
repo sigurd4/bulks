@@ -1,8 +1,8 @@
 use core::fmt;
 
-use array_trait::length;
+use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, SplitBulk, StaticBulk};
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, SplitBulk};
 
 /// Converts the arguments to bulks and zips them.
 ///
@@ -121,8 +121,8 @@ where
     A: Bulk,
     B: Bulk
 {
-    type MinLength<U> = length::Min<A::MinLength<U>, B::MinLength<U>>;
-    type MaxLength<U> = length::Min<A::MaxLength<U>, B::MaxLength<U>>;
+    type MinLength = length::Min<A::MinLength, B::MinLength>;
+    type MaxLength = length::Min<A::MaxLength, B::MaxLength>;
 
     fn len(&self) -> usize
     {
@@ -185,19 +185,11 @@ where
         self.into_iter().rev().try_for_each(f)
     }
 }
-unsafe impl<A, B, const N: usize> StaticBulk for Zip<A, B>
-where
-    A: StaticBulk,
-    B: StaticBulk,
-    Self: Bulk<MinLength<Self::Item> = [Self::Item; N], MaxLength<Self::Item> = [Self::Item; N]>
-{
-    type Array<U> = [U; N];
-}
 impl<A, B, L> const SplitBulk<L> for Zip<A, B>
 where
     A: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     B: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
-    L: length::LengthValue
+    L: LengthValue
 {
     type Left = Zip<A::Left, B::Left>;
     type Right = Zip<A::Right, B::Right>;
@@ -241,7 +233,7 @@ mod test
         let bulk = a.into_bulk()
             .zip(b)
             .map(|(a, b)| a + b);
-        let c = bulk.collect::<[_; _], [_; _]>();
+        let c = bulk.collect::<[_; _], _>();
         println!("{c:?}")
     }
 
@@ -259,7 +251,7 @@ mod test
                 .skip([(); 1])
             );
         
-        let c = zipped.collect::<[_; _]>();
+        let c = zipped.collect::<[_; _], _>();
         assert_eq!(c, [(4, 6), (6, 8)]);
     }
 }

@@ -1,8 +1,8 @@
 use core::{marker::Destruct, ptr::Pointee};
 
-use array_trait::length;
+use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::BulkLength};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 
 
 /// A double-ended bulk with the direction inverted.
@@ -77,8 +77,8 @@ impl<I> const Bulk for Rev<I>
 where
     I: ~const Bulk + ~const DoubleEndedBulk
 {
-    type MinLength<U> = I::MinLength<U>;
-    type MaxLength<U> = I::MaxLength<U>;
+    type MinLength = I::MinLength;
+    type MaxLength = I::MaxLength;
     
     fn len(&self) -> usize
     {
@@ -132,18 +132,12 @@ where
         bulk.try_for_each(f)
     }
 }
-unsafe impl<I> StaticBulk for Rev<I>
-where
-    I: StaticBulk + DoubleEndedBulk
-{
-    type Array<U> = I::Array<U>;
-}
 impl<I, N, L, R> const SplitBulk<L> for Rev<I>
 where
-    I: ~const SplitBulk<R, Left: ~const Bulk + DoubleEndedBulk, Right: ~const Bulk + DoubleEndedBulk> + ~const Bulk + DoubleEndedBulk + BulkLength<Length: length::Length<Value = N> + Pointee<Metadata = N::Metadata>>,
-    N: length::LengthValue<SaturatingSub<L> = R>,
-    L: length::LengthValue,
-    R: length::LengthValue
+    I: ~const SplitBulk<R, Left: ~const Bulk + DoubleEndedBulk, Right: ~const Bulk + DoubleEndedBulk> + ~const Bulk<Length: Length<Value = N> + Pointee<Metadata = N::Metadata>> + DoubleEndedBulk,
+    N: LengthValue<SaturatingSub<L> = R>,
+    L: LengthValue,
+    R: LengthValue
 {
     type Left = Rev<I::Right>;
     type Right = Rev<I::Left>;

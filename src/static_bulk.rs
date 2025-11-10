@@ -1,6 +1,6 @@
-use array_trait::{Array, length};
+use array_trait::{Array, length::Length};
 
-use crate::{Bulk, IntoBulk, util::BulkLength};
+use crate::{Bulk, IntoBulk};
 
 /// A trait for bulks whose length can be determined at compile-time.
 /// 
@@ -12,7 +12,19 @@ use crate::{Bulk, IntoBulk, util::BulkLength};
     message = "cannot determine the length of bulk `{Self}` at compile-time",
     label = "the bulk `{Self}` is not statically sized",
 )]
-pub unsafe trait StaticBulk: Bulk<MinLength<<Self as IntoIterator>::Item> = Self::Array<<Self as IntoIterator>::Item>, MaxLength<<Self as IntoIterator>::Item> = Self::Array<<Self as IntoIterator>::Item>> + BulkLength<Length: Array> + Sized
+pub unsafe trait StaticBulk: Bulk<
+    MinLength = Self::Array<()>,
+    MaxLength = Self::Array<()>
+> + Sized
 {
-    type Array<U>: const Array<Elem = U> + length::Length<Elem = U> + IntoBulk<Item = U>;
+    type Array<U>: const Array<Elem = U> + Length<Elem = U> + IntoBulk<Item = U>;
+}
+unsafe impl<T, const N: usize> StaticBulk for T
+where
+    T: Bulk<
+    MinLength = [(); N],
+    MaxLength = [(); N]
+> + Sized
+{
+    type Array<U> = [U; N];
 }

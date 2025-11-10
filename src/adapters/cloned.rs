@@ -1,8 +1,8 @@
 use core::marker::Destruct;
 
-use array_trait::length;
+use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 
 /// A bulk that clones the elements of an underlying bulk.
 ///
@@ -61,8 +61,8 @@ where
     I: ~const Bulk<Item = &'a T>,
     T: ~const Clone + 'a
 {
-    type MinLength<U> = I::MinLength<U>;
-    type MaxLength<U> = I::MaxLength<U>;
+    type MinLength = I::MinLength;
+    type MaxLength = I::MaxLength;
 
     fn len(&self) -> usize
     {
@@ -96,7 +96,7 @@ where
     where
         Self: Sized,
         Self::Item: ~const Destruct,
-        L: length::LengthValue
+        L: LengthValue
     {
         let Self { bulk } = self;
         bulk.nth(n).map(Clone::clone)
@@ -153,19 +153,11 @@ where
         })
     }
 }
-unsafe impl<'a, I, T, const N: usize> StaticBulk for Cloned<I>
-where 
-    I: StaticBulk<Item = &'a T, Array<&'a T> = [&'a T; N]>,
-    T: Clone + 'a,
-    Self: Bulk<MinLength<Self::Item> = [Self::Item; N], MaxLength<Self::Item> = [Self::Item; N]>
-{
-    type Array<U> = [U; N];
-}
 impl<'a, I, T, L> const SplitBulk<L> for Cloned<I>
 where
     I: ~const SplitBulk<L, Item = &'a T, Left: ~const Bulk, Right: ~const Bulk>,
     T: ~const Clone + 'a,
-    L: length::LengthValue
+    L: LengthValue
 {
     type Left = Cloned<I::Left>;
     type Right = Cloned<I::Right>;
@@ -218,10 +210,10 @@ mod test
     fn it_works()
     {
         let a = ["it", "works", "right?"];
-        let a = a.into_bulk().map(|s| s.to_string()).collect::<[_; _]>();
-        let a = a.bulk().collect::<[_; _]>();
+        let a = a.into_bulk().map(|s| s.to_string()).collect::<[_; _], _>();
+        let a = a.bulk().collect::<[_; _], _>();
 
-        let b = a.into_bulk().cloned().collect::<[_; _]>();
+        let b = a.into_bulk().cloned().collect::<[_; _], _>();
 
         println!("{b:?}")
     }

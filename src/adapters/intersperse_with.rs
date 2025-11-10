@@ -1,8 +1,8 @@
 use core::{marker::Destruct, ops::Try};
 
-use array_trait::length;
+use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, Chain, DoubleEndedBulk, IntoContained, OnceWith, SplitBulk, StaticBulk};
+use crate::{Bulk, Chain, DoubleEndedBulk, IntoContained, OnceWith, SplitBulk};
 
 /// A bulk adapter that places a separator between all elements.
 ///
@@ -56,8 +56,8 @@ where
     I: ~const Bulk<Item = T>,
     G: ~const FnMut() -> T + ~const Destruct
 {
-    type MinLength<U> = length::Interspersed<I::MinLength<U>>;
-    type MaxLength<U> = length::Interspersed<I::MaxLength<U>>;
+    type MinLength = length::Interspersed<I::MinLength>;
+    type MaxLength = length::Interspersed<I::MaxLength>;
 
     fn len(&self) -> usize
     {
@@ -141,20 +141,12 @@ where
         })
     }
 }
-unsafe impl<I, G, T, const N: usize> StaticBulk for IntersperseWith<I, G>
-where
-    I: StaticBulk<Item = T, Array<T> = [T; N]>,
-    G: FnMut() -> T,
-    [(); N + N.saturating_sub(1)]:
-{
-    type Array<U> = [U; N + N.saturating_sub(1)];
-}
 impl<I, G, T, L> const SplitBulk<L> for IntersperseWith<I, G>
 where
     I: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
     G: ~const FnMut() -> T + ~const FnOnce() -> T + ~const Clone + ~const Destruct,
     OnceWith<G>: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
-    L: length::LengthValue
+    L: LengthValue
 {
     type Left = Chain<IntersperseWith<I::Left, G>, <OnceWith<G> as SplitBulk<usize>>::Left>;
     type Right = Chain<<OnceWith<G> as SplitBulk<usize>>::Right, IntersperseWith<I::Right, G>>;
@@ -268,7 +260,7 @@ mod test
     {
         let a = ['H', 'e', 'l', 'l', 'o'];
         let b = '_';
-        let c = a.into_bulk().intersperse_with(|| b).collect::<String>();
+        let c = a.into_bulk().intersperse_with(|| b).collect::<String, _>();
 
         println!("{:?}", c);
     }

@@ -1,8 +1,8 @@
 use core::{marker::Destruct, ops::Try};
 
-use array_trait::length;
+use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, Step, util::Stepper};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, Step, util::Stepper};
 
 /// A bulk that yields the element's index counting from a given initial index and the element.
 ///
@@ -54,8 +54,8 @@ where
     T: ~const Destruct,
     U: ~const Step + Copy + ~const Destruct
 {
-    type MinLength<V> = I::MinLength<V>;
-    type MaxLength<V> = I::MaxLength<V>;
+    type MinLength = I::MinLength;
+    type MaxLength = I::MaxLength;
     
     fn len(&self) -> usize
     {
@@ -87,7 +87,7 @@ where
     fn nth<L>(self, n: L) -> Option<Self::Item>
     where
         Self: Sized,
-        L: length::LengthValue
+        L: LengthValue
     {
         let Self { bulk, initial_count } = self;
         bulk.nth(n).map(Stepper::<_, false>::new(Step::forward(initial_count, length::value::len(n))))
@@ -150,18 +150,11 @@ where
         })
     }
 }
-unsafe impl<I, T, U, const N: usize> StaticBulk for EnumerateFrom<I, U>
-where 
-    I: StaticBulk<Item = T, Array<(U, T)> = [(U, T); N], MinLength<(U, T)> = [(U, T); N], MaxLength<(U, T)> = [(U, T); N]>,
-    U: Step + Copy
-{
-    type Array<V> = [V; N];
-}
 impl<I, T, U, L> const SplitBulk<L> for EnumerateFrom<I, U>
 where
     I: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
     U: ~const Step + Copy,
-    L: length::LengthValue
+    L: LengthValue
 {
     type Left = EnumerateFrom<I::Left, U>;
     type Right = EnumerateFrom<I::Right, U>;

@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{util::ArrayBuffer, ArrayChunks, Bulk, StaticBulk};
+use crate::{util::ArrayBuffer, ArrayChunks, Bulk};
 
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 pub struct ArrayChunksWithRemainder<'a, I, const N: usize, const REV: bool>
@@ -168,10 +168,10 @@ where
 }
 impl<'a, I, const N: usize, const REV: bool> const Bulk for ArrayChunksWithRemainder<'a, I, N, REV>
 where
-    I: ~const Bulk<Item: ~const Destruct>,
+    I: ~const Bulk<Item: ~const Destruct>
 {
-    type MinLength<U> = <ArrayChunks<I, N> as Bulk>::MinLength<U>;
-    type MaxLength<U> = <ArrayChunks<I, N> as Bulk>::MaxLength<U>;
+    type MinLength = <ArrayChunks<I, N> as Bulk>::MinLength;
+    type MaxLength = <ArrayChunks<I, N> as Bulk>::MaxLength;
     
     #[inline]
     fn len(&self) -> usize
@@ -199,13 +199,6 @@ where
         let (bulk, closure) = self.try_for_each_closure(f);
         bulk.try_for_each(closure)
     }
-}
-unsafe impl<'a, I, const N: usize, const REV: bool> StaticBulk for ArrayChunksWithRemainder<'a, I, N, REV>
-where
-    I: Bulk,
-    ArrayChunks<I, N>: StaticBulk
-{
-    type Array<U> = <ArrayChunks<I, N> as StaticBulk>::Array<U>;
 }
 
 mod iter

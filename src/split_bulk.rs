@@ -1,10 +1,10 @@
-use array_trait::length;
+use array_trait::length::LengthValue;
 
 use crate::Bulk;
 
 pub const trait SplitBulk<L>: Bulk
 where
-    L: length::LengthValue
+    L: LengthValue
 {
     type Left: Bulk<Item = Self::Item>;
     type Right: Bulk<Item = Self::Item>;

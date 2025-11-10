@@ -237,8 +237,8 @@
 //! // Then, we implement `Bulk` for our `Counter`:
 //! impl<const N: usize> Bulk for Counter<N>
 //! {
-//!     type MinLength<U> = [U; N];
-//!     type MaxLength<U> = [U; N];
+//!     type MinLength = [(); N];
+//!     type MaxLength = [(); N];
 //!
 //!     fn len(&self) -> usize
 //!     {
@@ -268,13 +268,6 @@
 //!         }
 //!         R::from_output(())
 //!     }
-//! }
-//!
-//! // To allow collection into arrays, we can implement `StaticBulk`.
-//! // SAFETY: We must guarantee that `Counter<N>` will always yield exactly `N` elements.
-//! unsafe impl<const N: usize> StaticBulk for Counter<N>
-//! {
-//!     type Array<U> = [U; N];
 //! }
 //!
 //! // And now we can use it!
@@ -367,30 +360,26 @@ moddef::moddef!(
         from_bulk,
         into_bulk,
         split_bulk,
-        static_bulk,
-        try_from_bulk
+        static_bulk
     },
     mod util
 );
-
-pub type Length<T> = <T as util::BulkLength>::Length;
-pub type CollectLength<T, A> = <T as util::CollectLength<A>>::Length;
 
 pub use util::ConstStep as Step;
 
 #[cfg(test)]
 mod tests
 {
-    use crate::{option::Maybe, *};
+    use crate::{option::MaybeBulk, *};
 
     #[test]
     fn it_works()
     {
-        let a = [1, 2, 3];
+        let a: [i32; _] = [1, 2, 3];
 
         let f = |x| (x - 1) as usize;
 
-        let b = a.bulk().copied().map(f).enumerate().inspect(|(i, x)| assert_eq!(i, x)).collect_nearest();
+        let b: [(usize, usize); _] = a.bulk().copied().map(f).enumerate().inspect(|(i, x)| assert_eq!(i, x)).collect_nearest();
 
         assert_eq!(b, [(0, 0), (1, 1), (2, 2)] as [(usize, usize); _]);
     }
@@ -401,16 +390,16 @@ mod tests
         let a: [i32; _] = [1];
         let b: [i32; _] = [];
 
-        let a = a.into_bulk().map(|x| x + 1).collect::<Option<_>>();
-        let b = b.into_bulk().map(|x| x + 1).collect::<Option<_>>();
+        let a: Option<i32> = a.into_bulk().map(|x| x + 1).collect();
+        let b: Option<i32> = b.into_bulk().map(|x| x + 1).collect();
 
         assert_eq!(a, Some(2));
         assert_eq!(b, None);
 
-        fn maybe(_: impl Maybe<Item = i32>) {}
+        fn maybe(_: impl IntoBulk<IntoBulk: MaybeBulk<Item = i32>>) {}
 
         maybe(Some(1));
-        maybe([]);
+        maybe([1; 0]);
         maybe([1]);
     }
 }

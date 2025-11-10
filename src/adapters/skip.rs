@@ -1,8 +1,8 @@
 use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
-use array_trait::length;
+use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 
 /// A bulk that skips over `n` elements of `bulk`.
 ///
@@ -10,10 +10,10 @@ use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk};
 /// documentation for more.
 #[derive(Clone, Debug)]
 #[must_use = "bulks are lazy and do nothing unless consumed"]
-pub struct Skip<T, N = [<T as IntoIterator>::Item]>
+pub struct Skip<T, N = [()]>
 where
     T: Bulk,
-    N: length::Length<Elem = T::Item> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
     bulk: T,
     n: <N as Pointee>::Metadata
@@ -22,7 +22,7 @@ where
 impl<T, N> Skip<T, N>
 where
     T: Bulk,
-    N: length::Length<Elem = T::Item> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
     pub(crate) const fn new(bulk: T, n: N::Value) -> Skip<T, N>
     {
@@ -32,7 +32,7 @@ where
 impl<T, N> IntoIterator for Skip<T, N>
 where
     T: Bulk,
-    N: length::Length<Elem = T::Item> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
     type Item = T::Item;
     type IntoIter = core::iter::Skip<T::IntoIter>;
@@ -47,10 +47,10 @@ where
 impl<T, N> const Bulk for Skip<T, N>
 where
     T: ~const Bulk<Item: ~const Destruct>,
-    N: length::Length<Elem = T::Item> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
-    type MinLength<U> = length::SaturatingSub<T::MinLength<U>, N::Mapped<U>>;
-    type MaxLength<U> = length::SaturatingSub<T::MaxLength<U>, N::Mapped<U>>;
+    type MinLength = length::SaturatingSub<T::MinLength, N>;
+    type MaxLength = length::SaturatingSub<T::MaxLength, N>;
 
     fn len(&self) -> usize
     {
@@ -174,7 +174,7 @@ where
 impl<T, N> const DoubleEndedBulk for Skip<T, N>
 where
     T: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk,
-    N: length::Length<Elem = T::Item> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
     fn rev_for_each<F>(self, f: F)
     where
@@ -196,24 +196,17 @@ where
         bulk.rev().take(m).try_for_each(f)
     }
 }
-unsafe impl<T, A, const N: usize, const M: usize> StaticBulk for Skip<T, [A; N]>
-where
-    T: StaticBulk<Item = A, Array<A> = [A; M]>,
-    [A; M.saturating_sub(N)]:
-{
-    type Array<U> = [U; M.saturating_sub(N)];
-}
 impl<T, N, NN, M, L, R> const SplitBulk<M> for Skip<T, N>
 where
     T: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
-    N: length::Length<Elem = T::Item, Value = NN> + ?Sized,
-    NN: length::LengthValue<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N, SaturatingAdd<M> = L, SaturatingSub<L> = R>,
-    M: length::LengthValue,
-    L: length::LengthValue,
-    R: length::LengthValue
+    N: Length<Elem = (), Value = NN> + ?Sized,
+    NN: LengthValue<Metadata = <N as Pointee>::Metadata, Length<()> = N, SaturatingAdd<M> = L, SaturatingSub<L> = R>,
+    M: LengthValue,
+    L: LengthValue,
+    R: LengthValue
 {
     type Left = Skip<T::Left, N>;
-    type Right = Skip<T::Right, R::Length<T::Item>>;
+    type Right = Skip<T::Right, R::Length<()>>;
 
     fn split_at(self, m: M) -> (Self::Left, Self::Right)
     where

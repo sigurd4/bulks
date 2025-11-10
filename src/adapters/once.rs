@@ -1,6 +1,6 @@
 use core::marker::Destruct;
 
-use array_trait::length;
+use array_trait::length::LengthValue;
 
 use crate::{Bulk, DoubleEndedBulk, OnceWith, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::{TakeOne, YieldOnce}};
 
@@ -45,8 +45,8 @@ impl<T> IntoIterator for Once<T>
 }
 impl<T> const Bulk for Once<T>
 {
-    type MinLength<U> = [U; 1];
-    type MaxLength<U> = [U; 1];
+    type MinLength = [(); 1];
+    type MaxLength = [(); 1];
 
     fn len(&self) -> usize
     {
@@ -108,13 +108,9 @@ impl<T> const DoubleEndedBulk for Once<T>
         self.try_for_each(f)
     }
 }
-unsafe impl<T> StaticBulk for Once<T>
-{
-    type Array<U> = [U; 1];
-}
 impl<A, L> const SplitBulk<L> for Once<A>
 where
-    L: length::LengthValue,
+    L: LengthValue,
     OnceWith<YieldOnce<A>>: ~const SplitBulk<L, Item = A, Left: ~const Bulk, Right: ~const Bulk>
 {
     type Left = <OnceWith<YieldOnce<A>> as SplitBulk<L>>::Left;
@@ -145,7 +141,7 @@ impl<A> const From<Once<A>> for OnceWith<YieldOnce<A>>
         crate::once_with(YieldOnce::new(value.0))
     }
 }
-impl<A> const From<Once<A>> for RepeatN<A, [A; 1]>
+impl<A> const From<Once<A>> for RepeatN<A, [(); 1]>
 where
     A: Clone
 {
@@ -154,7 +150,7 @@ where
         crate::repeat_n(value.0, [(); 1])
     }
 }
-impl<A> const From<Once<A>> for RepeatNWith<TakeOne<YieldOnce<A>>, [A; 1]>
+impl<A> const From<Once<A>> for RepeatNWith<TakeOne<YieldOnce<A>>, [(); 1]>
 {
     fn from(value: Once<A>) -> Self
     {
@@ -171,7 +167,7 @@ mod test
     fn it_works()
     {
         let a = const {
-            crate::once(1).collect::<[_; _]>()
+            crate::once(1).collect::<[_; _], _>()
         };
         assert_eq!(a, [1])
     }

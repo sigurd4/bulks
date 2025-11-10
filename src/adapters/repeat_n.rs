@@ -1,8 +1,8 @@
 use core::{fmt, marker::Destruct, ptr::Pointee};
 
-use array_trait::length;
+use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, StaticBulk, util::YieldOnce};
+use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, util::YieldOnce};
 
 /// Creates a new bulk that repeats a single element a given number of times.
 ///
@@ -44,11 +44,10 @@ use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, StaticBulk, util::Yie
 /// assert_eq!(last.len(), 0);
 /// assert_eq!(last.capacity(), 123);
 /// ```
-#[allow(invalid_type_param_default)]
-pub const fn repeat_n<T, L>(element: T, n: L) -> RepeatN<T, L::Length<T>>
+pub const fn repeat_n<T, L>(element: T, n: L) -> RepeatN<T, L::Length<()>>
 where
     T: Clone,
-    L: length::LengthValue
+    L: LengthValue
 {
     RepeatN {
         element,
@@ -62,10 +61,10 @@ where
 /// See its documentation for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 #[derive(Clone)]
-pub struct RepeatN<A, N = [A]>
+pub struct RepeatN<A, N = [()]>
 where
     A: Clone,
-    N: length::Length<Elem = A> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
     element: A,
     n: <N as Pointee>::Metadata
@@ -74,7 +73,7 @@ where
 impl<A, N> fmt::Debug for RepeatN<A, N>
 where
     A: Clone + fmt::Debug,
-    N: length::Length<Elem = A> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
     {
@@ -85,7 +84,7 @@ where
 impl<A, N> IntoIterator for RepeatN<A, N>
 where
     A: Clone,
-    N: length::Length<Elem = A> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
     type Item = A;
     type IntoIter = core::iter::RepeatN<A>;
@@ -99,10 +98,10 @@ where
 impl<A, N> const Bulk for RepeatN<A, N>
 where
     A: ~const Clone + ~const Destruct,
-    N: length::Length<Elem = A> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
-    type MinLength<U> = N::Mapped<U>;
-    type MaxLength<U> = N::Mapped<U>;
+    type MinLength = N;
+    type MaxLength = N;
 
     fn len(&self) -> usize
     {
@@ -151,7 +150,7 @@ where
 impl<A, N> const DoubleEndedBulk for RepeatN<A, N>
 where
     A: ~const Clone + ~const Destruct,
-    N: length::Length<Elem = A> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
     fn rev_for_each<F>(self, f: F)
     where
@@ -169,22 +168,16 @@ where
         self.try_for_each(f)
     }
 }
-unsafe impl<A, const N: usize> StaticBulk for RepeatN<A, [A; N]>
-where
-    A: Clone
-{
-    type Array<U> = [U; N];
-}
 impl<A, N, M, L, R> const SplitBulk<M> for RepeatN<A, N>
 where
-    N: length::Length<Elem = A, Value: length::LengthValue<Min<M> = L, SaturatingSub<M> = R>>,
+    N: Length<Elem = (), Value: LengthValue<Min<M> = L, SaturatingSub<M> = R>>,
     A: ~const Clone,
-    M: length::LengthValue,
-    L: length::LengthValue,
-    R: length::LengthValue
+    M: LengthValue,
+    L: LengthValue,
+    R: LengthValue
 {
-    type Left = RepeatN<A, L::Length<A>>;
-    type Right = RepeatN<A, R::Length<A>>;
+    type Left = RepeatN<A, L::Length<()>>;
+    type Right = RepeatN<A, R::Length<()>>;
 
     fn split_at(self, m: M) -> (Self::Left, Self::Right)
     where
@@ -202,7 +195,7 @@ where
 impl<A, N> const From<RepeatN<A, N>> for RepeatNWith<YieldOnce<A>, N>
 where
     A: Clone,
-    N: length::Length<Elem = A>
+    N: Length<Elem = ()>
 {
     fn from(value: RepeatN<A, N>) -> Self
     {
@@ -219,7 +212,7 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = crate::repeat_n(1, [(); _]).collect::<[_; _]>();
+        let a = crate::repeat_n(1, [(); _]).collect::<[_; _], _>();
         assert_eq!(a, [1, 1, 1, 1])
     }
 

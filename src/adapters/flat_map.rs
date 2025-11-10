@@ -68,8 +68,8 @@ where
     F: ~const FnMut(I::Item) -> U + ~const Destruct,
     U: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk>
 {
-    type MinLength<V> = length::Mul<I::MinLength<V>, <U::IntoBulk as StaticBulk>::Array<V>>;
-    type MaxLength<V> = length::Mul<I::MaxLength<V>, <U::IntoBulk as StaticBulk>::Array<V>>;
+    type MinLength = length::Mul<I::MinLength, <U::IntoBulk as StaticBulk>::Array<()>>;
+    type MaxLength = length::Mul<I::MaxLength, <U::IntoBulk as StaticBulk>::Array<()>>;
 
     fn len(&self) -> usize
     {
@@ -280,15 +280,6 @@ where
         })
     }
 }
-unsafe impl<I, U, F, T, V, const N: usize> StaticBulk for FlatMap<I, U, F>
-where
-    I: StaticBulk<Item = T>,
-    F: FnMut(T) -> U,
-    U: IntoBulk<Item = V, IntoBulk: StaticBulk<Item = V>>,
-    Self: Bulk<MinLength<Self::Item> = [Self::Item; N], MaxLength<Self::Item> = [Self::Item; N]>
-{
-    type Array<W> = [W; N];
-}
 
 #[cfg(test)]
 mod test
@@ -301,7 +292,7 @@ mod test
         let a = [1, 2, 3];
         let b = a.into_bulk()
             .flat_map(|x| [x, -x])
-            .collect::<[_; _]>();
+            .collect::<[_; _], _>();
 
         println!("{b:?}")
     }

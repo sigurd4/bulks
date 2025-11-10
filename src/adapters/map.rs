@@ -1,8 +1,8 @@
 use core::{fmt, marker::Destruct};
 
-use array_trait::length;
+use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 
 /// A bulk that maps the values of `bulk` with `f`.
 ///
@@ -113,8 +113,8 @@ where
     I: ~const Bulk<Item: ~const Destruct>,
     F: ~const FnMut<(I::Item,)> + ~const Destruct
 {
-    type MinLength<U> = I::MinLength<U>;
-    type MaxLength<U> = I::MaxLength<U>;
+    type MinLength = I::MinLength;
+    type MaxLength = I::MaxLength;
     
     fn len(&self) -> usize
     {
@@ -189,19 +189,11 @@ where
         })
     }
 }
-unsafe impl<I, F> StaticBulk for Map<I, F>
-where
-    I: StaticBulk,
-    F: FnMut<(I::Item,)>,
-    Self: Bulk<MinLength<Self::Item> = I::Array<Self::Item>, MaxLength<Self::Item> = I::Array<Self::Item>>
-{
-    type Array<U> = I::Array<U>;
-}
 impl<I, F, L> const SplitBulk<L> for Map<I, F>
 where
     I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     F: FnMut<(I::Item,)> + ~const Clone,
-    L: length::LengthValue
+    L: LengthValue
 {
     type Left = Map<I::Left, F>;
     type Right = Map<I::Right, F>;

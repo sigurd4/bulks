@@ -1,8 +1,8 @@
 use core::marker::Destruct;
 
-use array_trait::length;
+use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 
 /// A bulk that copies the elements of an underlying bulk.
 ///
@@ -61,8 +61,8 @@ where
     I: ~const Bulk<Item = &'a T>,
     T: Copy + 'a
 {
-    type MinLength<U> = I::MinLength<U>;
-    type MaxLength<U> = I::MaxLength<U>;
+    type MinLength = I::MinLength;
+    type MaxLength = I::MaxLength;
 
     fn len(&self) -> usize
     {
@@ -96,7 +96,7 @@ where
     where
         Self: Sized,
         Self::Item: ~const Destruct,
-        L: length::LengthValue
+        L: LengthValue
     {
         let Self { bulk } = self;
         bulk.nth(n).map(core::mem::copy)
@@ -153,19 +153,11 @@ where
         })
     }
 }
-unsafe impl<'a, I, T, const N: usize> StaticBulk for Copied<I>
-where 
-    I: StaticBulk<Item = &'a T, Array<&'a T> = [&'a T; N]>,
-    T: Copy + 'a,
-    Self: Bulk<MinLength<Self::Item> = [Self::Item; N], MaxLength<Self::Item> = [Self::Item; N]>
-{
-    type Array<U> = [U; N];
-}
 impl<'a, I, T, L> const SplitBulk<L> for Copied<I>
 where
     I: ~const SplitBulk<L, Item = &'a T, Left: ~const Bulk, Right: ~const Bulk>,
     T: Copy + 'a,
-    L: length::LengthValue
+    L: LengthValue
 {
     type Left = Copied<I::Left>;
     type Right = Copied<I::Right>;

@@ -85,14 +85,14 @@ mod test
         let r = 0..4;
         let r = r.into_bulk()
             .map(|n| n + 1)
-            .collect::<Vec<_>>();
+            .collect::<Vec<_>, _>();
         
         assert_eq!(r, [1, 2, 3, 4]);
 
         let r = 0u16..=4;
         let r = r.into_bulk()
             .map(|n| n + 1)
-            .collect::<Vec<_>>();
+            .collect::<Vec<_>, _>();
         
         assert_eq!(r, [1, 2, 3, 4, 5]);
     }

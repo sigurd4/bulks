@@ -1,6 +1,6 @@
 use core::{marker::Destruct, mem::MaybeUninit, ops::Try};
 
-use array_trait::{length, same::Same};
+use array_trait::{length::{self, LengthValue}, same::Same};
 
 use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk, util::{self, Guard}};
 
@@ -90,8 +90,8 @@ macro_rules! impl_bulk {
         }
         impl<$($a,)? $t, const $n: usize> const Bulk for array::$bulk<$($a,)? $t, $n>
         {
-            type MinLength<U> = [U; $n];
-            type MaxLength<U> = [U; $n];
+            type MinLength = [(); $n];
+            type MaxLength = [(); $n];
 
             #[inline]
             fn len(&self) -> usize
@@ -111,7 +111,7 @@ macro_rules! impl_bulk {
             where
                 Self::Item: ~const Destruct,
                 Self: Sized,
-                L: length::LengthValue
+                L: LengthValue
             $nth)?
 
             #[inline]
@@ -150,7 +150,7 @@ macro_rules! impl_bulk {
         }
         impl<$($a,)? T, const N: usize, L> SplitBulk<L> for array::$bulk<$($a,)? T, N>
         where
-            L: length::LengthValue
+            L: LengthValue
         {
             default type Left = <<$array as IntoIterator>::IntoIter as IntoBulk>::IntoBulk;
             default type Right = <<$array as IntoIterator>::IntoIter as IntoBulk>::IntoBulk;
@@ -184,10 +184,6 @@ macro_rules! impl_bulk {
                     }
                 )
             }
-        }
-        unsafe impl<$($a,)? $t, const $n: usize> StaticBulk for array::$bulk<$($a,)? $t, $n>
-        {
-            type Array<U> = [U; $n];
         }
     };
 }
@@ -500,7 +496,7 @@ mod test
     {
         let a = [1, 2, 3];
         
-        let b = a.bulk().copied().rev().map(|x| 4 - x).collect::<[_; _], _>();
+        let b = a.bulk().copied().rev().map(|x| 4 - x).collect::<[_; 3], _>();
 
         println!("{:?}", b)
     }

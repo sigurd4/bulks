@@ -1,8 +1,8 @@
 use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
-use array_trait::length;
+use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, SplitBulk, StaticBulk};
+use crate::{Bulk, SplitBulk};
 
 /// A bulk that steps by a custom amount.
 ///
@@ -10,10 +10,10 @@ use crate::{Bulk, SplitBulk, StaticBulk};
 /// its documentation for more.
 #[derive(Clone, Debug)]
 #[must_use = "bulks are lazy and do nothing unless consumed"]
-pub struct StepBy<T, N = [<T as IntoIterator>::Item]>
+pub struct StepBy<T, N = [()]>
 where
     T: Bulk,
-    N: length::Length<Elem = T::Item> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
     bulk: T,
     step: <N as Pointee>::Metadata
@@ -22,11 +22,9 @@ where
 impl<T, N> StepBy<T, N>
 where
     T: Bulk,
-    N: length::Length<Elem = T::Item> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
     pub(crate) const fn new(bulk: T, step: N::Value) -> StepBy<T, N>
-    where
-        N: length::Length<Elem = T::Item>
     {
         let step = length::value::into_metadata(step);
         assert!(length::len_metadata::<N>(step) != 0);
@@ -37,7 +35,7 @@ where
 impl<T, N> IntoIterator for StepBy<T, N>
 where
     T: Bulk,
-    N: length::Length<Elem = T::Item> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
     type Item = T::Item;
     type IntoIter = core::iter::StepBy<T::IntoIter>;
@@ -52,10 +50,10 @@ where
 impl<T, N> const Bulk for StepBy<T, N>
 where
     T: ~const Bulk<Item: ~const Destruct>,
-    N: length::Length<Elem = T::Item> + ?Sized
+    N: Length<Elem = ()> + ?Sized
 {
-    type MinLength<U> = length::DivCeil<T::MinLength<U>, N::Mapped<U>>;
-    type MaxLength<U> = length::DivCeil<T::MinLength<U>, N::Mapped<U>>;
+    type MinLength = length::DivCeil<T::MinLength, N>;
+    type MaxLength = length::DivCeil<T::MaxLength, N>;
 
     fn len(&self) -> usize
     {
@@ -171,20 +169,13 @@ where
         })
     }
 }
-unsafe impl<T, A, const N: usize, const M: usize> StaticBulk for StepBy<T, [A; N]>
-where
-    T: StaticBulk<Item = A, Array<A> = [A; M]>,
-    [A; M.div_ceil(N)]:
-{
-    type Array<U> = [U; M.div_ceil(N)];
-}
 impl<T, N, NN, M, L> const SplitBulk<M> for StepBy<T, N>
 where
     T: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
-    N: length::Length<Elem = T::Item, Value = NN> + ?Sized,
-    NN: length::LengthValue<Metadata = <N as Pointee>::Metadata, Length<T::Item> = N, SaturatingMul<M> = L>,
-    M: length::LengthValue,
-    L: length::LengthValue
+    N: Length<Elem = (), Value = NN> + ?Sized,
+    NN: LengthValue<Metadata = <N as Pointee>::Metadata, Length<()> = N, SaturatingMul<M> = L>,
+    M: LengthValue,
+    L: LengthValue
 {
     type Left = StepBy<T::Left, N>;
     type Right = StepBy<T::Right, N>;
@@ -212,10 +203,10 @@ mod test
     fn it_works()
     {
         let a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let a_even = a.into_bulk().step_by([(); 2]).collect::<[_; _]>();
+        let a_even = a.into_bulk().step_by([(); 2]).collect::<[_; _], _>();
         println!("{a_even:?}");
 
-        let a_odd = a.into_bulk().skip([(); 1]).step_by([(); 2]).collect::<[_; _]>();
+        let a_odd = a.into_bulk().skip([(); 1]).step_by([(); 2]).collect::<[_; _], _>();
         println!("{a_odd:?}");
     }
 }

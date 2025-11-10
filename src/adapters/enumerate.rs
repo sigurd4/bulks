@@ -1,8 +1,8 @@
 use core::{marker::Destruct, ops::Try};
 
-use array_trait::length;
+use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, EnumerateFrom, SplitBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, EnumerateFrom, SplitBulk};
 
 /// A bulk that yields the element's index and the element.
 ///
@@ -57,8 +57,8 @@ where
     I: ~const Bulk<Item = T>,
     T: ~const Destruct
 {
-    type MinLength<U> = I::MinLength<U>;
-    type MaxLength<U> = I::MaxLength<U>;
+    type MinLength = I::MinLength;
+    type MaxLength = I::MaxLength;
     
     fn len(&self) -> usize
     {
@@ -101,7 +101,7 @@ where
     where
         Self: Sized,
         Self::Item: ~const Destruct,
-        L: length::LengthValue
+        L: LengthValue
     {
         let Self { bulk } = self;
         match bulk.nth(n)
@@ -169,16 +169,10 @@ where
         })
     }
 }
-unsafe impl<I, T, const N: usize> StaticBulk for Enumerate<I>
-where 
-    I: StaticBulk<Item = T, Array<(usize, T)> = [(usize, T); N], MinLength<(usize, T)> = [(usize, T); N], MaxLength<(usize, T)> = [(usize, T); N]>
-{
-    type Array<U> = [U; N];
-}
 impl<I, T, L> const SplitBulk<L> for Enumerate<I>
 where
     I: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
-    L: length::LengthValue
+    L: LengthValue
 {
     type Left = Enumerate<I::Left>;
     type Right = EnumerateFrom<I::Right, usize>;

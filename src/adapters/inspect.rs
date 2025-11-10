@@ -1,8 +1,8 @@
 use core::{fmt, marker::Destruct, ops::Try};
 
-use array_trait::length;
+use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 
 /// A bulk that calls a function with a reference to each element before
 /// yielding it.
@@ -65,8 +65,8 @@ where
     I: ~const Bulk,
     F: ~const FnMut(&I::Item) + ~const Destruct
 {
-    type MinLength<U> = I::MinLength<U>;
-    type MaxLength<U> = I::MaxLength<U>;
+    type MinLength = I::MinLength;
+    type MaxLength = I::MaxLength;
     
     fn len(&self) -> usize
     {
@@ -144,18 +144,11 @@ where
         })
     }
 }
-unsafe impl<I, F> StaticBulk for Inspect<I, F>
-where
-    I: StaticBulk,
-    F: FnMut(&I::Item)
-{
-    type Array<U> = I::Array<U>;
-}
 impl<I, F, L> const SplitBulk<L> for Inspect<I, F>
 where
     I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     F: FnMut(&I::Item) + ~const Clone,
-    L: length::LengthValue
+    L: LengthValue
 {
     type Left = Inspect<I::Left, F>;
     type Right = Inspect<I::Right, F>;

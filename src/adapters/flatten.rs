@@ -57,8 +57,8 @@ impl<I> const Bulk for Flatten<I>
 where
     I: ~const Bulk<Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct>
 {
-    type MinLength<V> = length::Mul<I::MinLength<V>, <<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<V>>;
-    type MaxLength<V> = length::Mul<I::MaxLength<V>, <<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<V>>;
+    type MinLength = length::Mul<I::MinLength, <<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<()>>;
+    type MaxLength = length::Mul<I::MaxLength, <<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<()>>;
 
     fn len(&self) -> usize
     {
@@ -249,14 +249,6 @@ where
             f
         })
     }
-}
-unsafe impl<I, T, V, const N: usize> StaticBulk for Flatten<I>
-where
-    I: StaticBulk<Item = T>,
-    T: IntoBulk<Item = V, IntoBulk: StaticBulk<Item = V>>,
-    Self: Bulk<MinLength<Self::Item> = [Self::Item; N], MaxLength<Self::Item> = [Self::Item; N]>
-{
-    type Array<W> = [W; N];
 }
 
 #[cfg(test)]

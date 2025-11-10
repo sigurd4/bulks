@@ -1,8 +1,8 @@
 use core::{fmt, marker::Destruct};
 
-use array_trait::length;
+use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, Once, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::TakeOne};
+use crate::{Bulk, DoubleEndedBulk, Once, RepeatN, RepeatNWith, SplitBulk, util::TakeOne};
 
 /// Creates a bulk that lazily generates a value exactly once by invoking
 /// the provided closure.
@@ -66,8 +66,8 @@ impl<F, A> const Bulk for OnceWith<F>
 where
     F: ~const FnOnce() -> A
 {
-    type MinLength<U> = [U; 1];
-    type MaxLength<U> = [U; 1];
+    type MinLength = [(); 1];
+    type MaxLength = [(); 1];
 
     fn len(&self) -> usize
     {
@@ -130,20 +130,14 @@ where
         self.try_for_each(f)
     }
 }
-unsafe impl<F, A> StaticBulk for OnceWith<F>
-where
-    F: FnOnce() -> A
-{
-    type Array<U> = [U; 1];
-}
 impl<F, A, L> const SplitBulk<L> for OnceWith<F>
 where
     F: FnOnce() -> A,
-    L: length::LengthValue,
-    RepeatNWith<TakeOne<F>, [A; 1]>: ~const SplitBulk<L, Item = A>
+    L: LengthValue,
+    RepeatNWith<TakeOne<F>, [(); 1]>: ~const SplitBulk<L, Item = A>
 {
-    type Left = <RepeatNWith<TakeOne<F>, [A; 1]> as SplitBulk<L>>::Left;
-    type Right = <RepeatNWith<TakeOne<F>, [A; 1]> as SplitBulk<L>>::Right;
+    type Left = <RepeatNWith<TakeOne<F>, [(); 1]> as SplitBulk<L>>::Left;
+    type Right = <RepeatNWith<TakeOne<F>, [(); 1]> as SplitBulk<L>>::Right;
 
     fn split_at(self, n: L) -> (Self::Left, Self::Right)
     where
@@ -162,7 +156,7 @@ where
         crate::once(value.0())
     }
 }
-impl<F, A> const From<OnceWith<F>> for RepeatN<A, [A; 1]>
+impl<F, A> const From<OnceWith<F>> for RepeatN<A, [(); 1]>
 where
     F: ~const FnOnce() -> A,
     A: Clone
@@ -172,7 +166,7 @@ where
         crate::repeat_n((value.0)(), [(); 1])
     }
 }
-impl<F, A> const From<OnceWith<F>> for RepeatNWith<F, [A; 1]>
+impl<F, A> const From<OnceWith<F>> for RepeatNWith<F, [(); 1]>
 where
     F: FnMut() -> A
 {
@@ -181,7 +175,7 @@ where
         crate::repeat_n_with(value.0, [(); 1])
     }
 }
-impl<F, A> const From<OnceWith<F>> for RepeatNWith<TakeOne<F>, [A; 1]>
+impl<F, A> const From<OnceWith<F>> for RepeatNWith<TakeOne<F>, [(); 1]>
 where
     F: FnOnce() -> A
 {
@@ -205,7 +199,7 @@ mod test
         }
 
         let a = const {
-            crate::once_with(one).collect::<[_; _]>()
+            crate::once_with(one).collect::<[_; _], _>()
         };
         assert_eq!(a, [1])
     }

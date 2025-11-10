@@ -1,8 +1,8 @@
 use core::{marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}, range::Step};
 
-use array_trait::length;
+use array_trait::length::{Length, LengthValue};
 
-use crate::{ArrayChunks, Chain, Cloned, CollectLength, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Length, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, TryFromBulk, Zip, option::Maybe, util::{self, BulkLength, Nearest, TryNearest, TryNearestFrom}};
+use crate::{ArrayChunks, Chain, Cloned, CollectionStrategy, CollectionAdapter, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -27,13 +27,14 @@ use crate::{ArrayChunks, Chain, Cloned, CollectLength, Copied, DoubleEndedBulk, 
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 {
-    type MinLength<U>: length::Length<Elem = U> + ?Sized = [U; 0];
-    type MaxLength<U>: length::Length<Elem = U> + ?Sized = [U];
-
-    type CollectNearest: FromBulk<Self::Item, Self, Length<Self>> + IntoBulk<Item = Self::Item>
-        = <Self as Nearest>::Nearest
+    type Nearest: ?Sized = <Self as private::BulkBase>::Nearest;
+    type TryNearest: ?Sized = <Self as private::BulkBase>::TryNearest
     where
-        Self: Nearest;
+        Self::Item: Try;
+    type Length: Length<Elem = ()> + ?Sized = <Self as private::BulkBase>::Length;
+    type Strategy<U, C>: CollectionAdapter<Elem = U> + CollectionStrategy<Self, C> + ?Sized = <Self as private::BulkBase>::Strategy<U, C>;
+    type MinLength: Length<Elem = ()> + ?Sized = [(); 0];
+    type MaxLength: Length<Elem = ()> + ?Sized = [()];
 
     /// Returns the exact length of the bulk.
     ///
@@ -175,7 +176,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     where
         Self: Sized,
         Self::Item: ~const Destruct,
-        L: length::LengthValue
+        L: LengthValue
     {
         self.skip(n).first()
     }
@@ -589,10 +590,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     #[inline]
     #[track_caller]
-    fn step_by<L>(self, step: L) -> StepBy<Self, L::Length<Self::Item>>
+    fn step_by<L>(self, step: L) -> StepBy<Self, L::Length<()>>
     where
         Self: Sized,
-        L: length::LengthValue
+        L: LengthValue
     {
         StepBy::new(self, step)
     }
@@ -1015,10 +1016,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     #[inline]
     #[track_caller]
-    fn skip<L>(self, n: L) -> Skip<Self, L::Length<Self::Item>>
+    fn skip<L>(self, n: L) -> Skip<Self, L::Length<()>>
     where
         Self: Sized,
-        L: length::LengthValue
+        L: LengthValue
     {
         Skip::new(self, n)
     }
@@ -1069,10 +1070,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     #[doc(alias = "limit")]
     #[inline]
     #[track_caller]
-    fn take<L>(self, n: L) -> Take<Self, L::Length<Self::Item>>
+    fn take<L>(self, n: L) -> Take<Self, L::Length<()>>
     where
         Self: Sized,
-        L: length::LengthValue
+        L: LengthValue
     {
         Take::new(self, n)
     }
@@ -1504,12 +1505,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     #[inline]
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
-    #[allow(invalid_type_param_default)]
-    fn collect<B = <Self as Nearest>::Nearest, L = CollectLength<B, <Self as IntoIterator>::Item>>(self) -> B
+    fn collect<C, A>(self) -> C
     where
         Self: Sized,
-        B: ~const FromBulk<Self::Item, Self, L>,
-        L: length::Length<Elem = Self::Item> + ?Sized
+        C: ~const FromBulk<A>,
+        A: CollectionAdapter<Elem = Self::Item> + ~const CollectionStrategy<Self, C> + ?Sized
     {
         FromBulk::from_bulk(self)
     }
@@ -1584,15 +1584,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     #[inline]
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
-    #[allow(invalid_type_param_default)]
-    fn try_collect<B, L = CollectLength<B, <<Self as IntoIterator>::Item as Try>::Output>>(self) -> <<Self::Item as Try>::Residual as Residual<B>>::TryType
+    fn try_collect<C, A>(self) -> <<Self::Item as Try>::Residual as Residual<C>>::TryType
     where
         Self: Sized,
-        Self::Item: Try<Residual: Residual<B>>,
-        B: ~const TryFromBulk<<Self::Item as Try>::Output, Self, L>,
-        L: length::Length<Elem = <Self::Item as Try>::Output> + ?Sized
+        C: ~const FromBulk<A>,
+        A: CollectionAdapter<Elem = <Self::Item as Try>::Output> + ~const TryCollectionAdapter<Self, C> + ?Sized,
+        Self::Item: ~const Try<Residual: ~const Residual<C, TryType: ~const Try>> + ~const Destruct
     {
-        TryFromBulk::try_from_bulk(self)
+        FromBulk::try_from_bulk(self)
     }
 
     /// Transforms a statically sized bulk into an array.
@@ -1728,31 +1727,25 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         Try::from_output(util::try_collect_array_with!(|pusher| self.try_for_each(pusher)?; for Self))
     }
 
-    /// Collects into an option if possible, otherwise a vector (if feature "alloc" is enabled)
-    #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
-    fn collect_option(self) -> Option<Self::Item>
-    where
-        Self: Maybe<Item: ~const Destruct> + Sized
-    {
-        self.collect()
-    }
-
     /// Collects into an array if possible, otherwise a vector (if feature "alloc" is enabled)
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
-    fn collect_nearest(self) -> Self::CollectNearest
+    fn collect_nearest(self) -> Self::Nearest
     where
-        Self: Nearest + Sized,
-        Self::CollectNearest: ~const FromBulk<Self::Item, Self, <Self as BulkLength>::Length>
+        Self: Sized,
+        Self::Nearest: ~const FromBulk<Self::Strategy<Self::Item, Self::Nearest>>,
+        Self::Strategy<Self::Item, Self::Nearest>: CollectionAdapter<Elem = Self::Item> + ~const CollectionStrategy<Self, Self::Nearest>
     {
         self.collect()
     }
 
     /// Fallibly collects into an array if possible, otherwise a vector (if feature "alloc" is enabled)
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
-    fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<<Self as TryNearest>::TryNearest>>::TryType
+    fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<Self::TryNearest>>::TryType
     where
-        Self: TryNearest<Item: Try<Residual: Residual<<Self as TryNearest>::TryNearest>>> + Sized,
-        <Self as TryNearest>::TryNearest: ~const TryNearestFrom<Self>
+        Self: Sized,
+        Self::TryNearest: ~const FromBulk<Self::Strategy<<Self::Item as Try>::Output, Self::TryNearest>>,
+        Self::Strategy<<Self::Item as Try>::Output, Self::TryNearest>: CollectionAdapter<Elem = <Self::Item as Try>::Output> + ~const TryCollectionAdapter<Self, Self::TryNearest>,
+        Self::Item: ~const Try<Residual: ~const Residual<Self::TryNearest, TryType: ~const Try>> + ~const Destruct
     {
         self.try_collect()
     }
@@ -1932,5 +1925,92 @@ mod test
 
         println!("mean = {mean}");
         println!("variance = {variance}");
+    }
+}
+
+mod private
+{
+    use core::ops::Try;
+
+    use array_trait::length::Length;
+
+    use crate::{Bulk, CollectionStrategy, CollectionAdapter, StaticBulk, option::MaybeBulk};
+
+    pub const trait BulkBase: IntoIterator
+    {
+        type Length: Length<Elem = ()> + ?Sized;
+        type Strategy<U, C>: CollectionAdapter<Elem = U> + ~const CollectionStrategy<Self, C> + ?Sized
+        where
+            Self: Bulk;
+        type Nearest: ?Sized;
+        type TryNearest: ?Sized
+        where
+            Self::Item: Try;
+    }
+    #[cfg(feature = "alloc")]
+    impl<T> BulkBase for T
+    where
+        T: Bulk + ?Sized
+    {
+        default type Length = [()];
+        default type Strategy<U, C> = <Self as AdapterSpec<U, C>>::Adapter;
+        default type Nearest = alloc::vec::Vec<T::Item>;
+        #[cfg(not(feature = "alloc"))]
+        default type Nearest = [T::Item];
+        #[cfg(feature = "alloc")]
+        default type TryNearest = alloc::vec::Vec<<T::Item as Try>::Output>
+        where
+            Self::Item: Try;
+        #[cfg(not(feature = "alloc"))]
+        default type TryNearest = [<T::Item as Try>::Output]
+        where
+            Self::Item: Try;
+    }
+    impl<T> BulkBase for T
+    where
+        T: StaticBulk
+    {
+        type Length = <Self as StaticBulk>::Array<()>;
+        type Strategy<U, C> = <Self as AdapterSpec<U, C>>::Adapter;
+        type Nearest = <Self as StaticBulk>::Array<T::Item>;
+        type TryNearest = <Self as StaticBulk>::Array<<T::Item as Try>::Output>
+        where
+            Self::Item: Try;
+    }
+
+    pub trait AdapterSpecSpec<U, C>: Bulk
+    {
+        type Strategy: CollectionAdapter<Elem = U> + CollectionStrategy<Self, C> + ?Sized;
+    }
+    impl<T, U, C> AdapterSpecSpec<U, C> for T
+    where
+        T: Bulk + ?Sized
+    {
+        default type Strategy = [U];
+    }
+    impl<T, U, C> AdapterSpecSpec<U, C> for T
+    where
+        T: MaybeBulk + ?Sized,
+        Option<U>: CollectionStrategy<Self, C>
+    {
+        type Strategy = Option<U>;
+    }
+
+    pub trait AdapterSpec<U, C>: Bulk
+    {
+        type Adapter: CollectionAdapter<Elem = U> + CollectionStrategy<Self, C> + ?Sized;
+    }
+    impl<T, U, C> AdapterSpec<U, C> for T
+    where
+        T: Bulk + ?Sized
+    {
+        default type Adapter = <T as AdapterSpecSpec<U, C>>::Strategy;
+    }
+    impl<T, U, C, const N: usize> AdapterSpec<U, C> for T
+    where
+        T: StaticBulk<Array<()> = [(); N]> + ?Sized,
+        [U; N]: CollectionStrategy<Self, C>
+    {
+        type Adapter = [U; N];
     }
 }

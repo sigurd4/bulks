@@ -1,8 +1,8 @@
 use core::marker::Destruct;
 
-use array_trait::length;
+use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, Length, SplitBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
 
 
 /// A bulk that links two bulks together, in a chain.
@@ -96,8 +96,8 @@ where
     A: ~const Bulk<Item = T> + ~const Destruct,
     B: ~const Bulk<Item = T> + ~const Destruct
 {
-    type MinLength<U> = length::Add<A::MinLength<U>, B::MinLength<U>>;
-    type MaxLength<U> = length::Add<A::MinLength<U>, B::MinLength<U>>;
+    type MinLength = length::Add<A::MinLength, B::MinLength>;
+    type MaxLength = length::Add<A::MinLength, B::MinLength>;
 
     fn len(&self) -> usize
     {
@@ -176,22 +176,13 @@ where
         a.try_rev_for_each(f)
     }
 }
-unsafe impl<A, B, T, const N: usize> StaticBulk for Chain<A, B>
-where
-    A: StaticBulk<Item = T>,
-    B: StaticBulk<Item = T>,
-    Self: Bulk<MinLength<Self::Item> = [Self::Item; N], MaxLength<Self::Item> = [Self::Item; N]>
-{
-    type Array<U> = [U; N];
-}
 impl<A, B, T, D, L, R> const SplitBulk<L> for Chain<A, B>
 where
-    A: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk> + ~const Bulk + ~const Destruct,
+    A: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk, Length: Length<Value = D>> + ~const Bulk + ~const Destruct,
     B: ~const SplitBulk<R, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
-    Length<A>: length::Length<Value = D>,
-    L: length::LengthValue<SaturatingSub<D> = R>,
-    R: length::LengthValue,
-    D: length::LengthValue
+    L: LengthValue<SaturatingSub<D> = R>,
+    R: LengthValue,
+    D: LengthValue
 {
     type Left = Chain<A::Left, B::Left>;
     type Right = Chain<A::Right, B::Right>;

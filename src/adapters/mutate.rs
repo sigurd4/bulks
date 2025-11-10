@@ -1,8 +1,8 @@
 use core::{fmt, marker::Destruct, ops::Try};
 
-use array_trait::length;
+use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, StaticBulk, util::Mutator};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, util::Mutator};
 
 /// A bulk that calls a function with a mutable reference to each element before
 /// yielding it.
@@ -65,8 +65,8 @@ where
     I: ~const Bulk,
     F: ~const FnMut(&mut I::Item) + ~const Destruct
 {
-    type MinLength<U> = I::MinLength<U>;
-    type MaxLength<U> = I::MaxLength<U>;
+    type MinLength = I::MinLength;
+    type MaxLength = I::MaxLength;
     
     fn len(&self) -> usize
     {
@@ -145,18 +145,11 @@ where
         })
     }
 }
-unsafe impl<I, F> StaticBulk for Mutate<I, F>
-where
-    I: StaticBulk,
-    F: FnMut(&mut I::Item)
-{
-    type Array<U> = I::Array<U>;
-}
 impl<I, F, L> const SplitBulk<L> for Mutate<I, F>
 where
     I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     F: FnMut(&mut I::Item) + ~const Clone,
-    L: length::LengthValue
+    L: LengthValue
 {
     type Left = Mutate<I::Left, F>;
     type Right = Mutate<I::Right, F>;

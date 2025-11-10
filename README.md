@@ -33,7 +33,7 @@ let b = a.bulk()
     .map(|x| (x - 1) as usize)
     .enumerate()
     .inspect(|(i, x)| assert_eq!(i, x))
-    .collect::<[_; _]>();
+    .collect::<[_; _], _>();
 
 assert_eq!(b, [(0, 0), (1, 1), (2, 2)]);
 ```
