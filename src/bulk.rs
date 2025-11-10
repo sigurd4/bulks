@@ -2025,7 +2025,7 @@ mod private
     }
     impl<T, U, C, const N: usize> AdapterSpec<U, C> for T
     where
-        T: StaticBulk<Array<()> = [(); N]> + ?Sized,
+        T: StaticBulk<Array<()> = [(); N]>,
         [U; N]: CollectionStrategy<Self, C>
     {
         type Adapter = [U; N];

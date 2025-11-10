@@ -276,7 +276,7 @@ where
 }
 impl<A, B, const N: usize> const CollectionStrategy<B, [A; N]> for [A; N]
 where
-    B: ~const Bulk<Item = A> + StaticBulk<Array<A> = [A; N]> + ?Sized
+    B: ~const Bulk<Item = A> + StaticBulk<Array<A> = [A; N]>
 {
     fn adapt(bulk: B) -> <Self as CollectionAdapter>::Strategy<B, [A; N]>
     where
@@ -287,7 +287,7 @@ where
 }
 impl<A, B, const N: usize> const CollectionStrategy<B, Option<[A; N]>> for [Option<A>; N]
 where
-    B: ~const Bulk<Item = Option<A>> + StaticBulk<Array<A> = [A; N]> + ?Sized,
+    B: ~const Bulk<Item = Option<A>> + StaticBulk<Array<A> = [A; N]>,
     A: ~const Destruct
 {
     fn adapt(bulk: B) -> <Self as CollectionAdapter>::Strategy<B, Option<[A; N]>>
@@ -299,7 +299,7 @@ where
 }
 impl<A, B, E, const N: usize> const CollectionStrategy<B, Result<[A; N], E>> for [Result<A, E>; N]
 where
-    B: ~const Bulk<Item = Result<A, E>> + StaticBulk<Array<A> = [A; N]> + ?Sized,
+    B: ~const Bulk<Item = Result<A, E>> + StaticBulk<Array<A> = [A; N]>,
     A: ~const Destruct,
     E: ~const Destruct
 {
