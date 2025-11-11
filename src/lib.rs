@@ -27,7 +27,6 @@
 #![feature(try_trait_v2_residual)]
 #![feature(maybe_uninit_slice)]
 #![feature(const_try)]
-#![feature(slice_as_array)]
 #![feature(const_drop_in_place)]
 #![feature(const_precise_live_drops)]
 #![feature(control_flow_into_value)]
