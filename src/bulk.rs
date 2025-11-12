@@ -1964,13 +1964,13 @@ mod private
         where
             Self::Item: Try;
     }
-    #[cfg(feature = "alloc")]
     impl<T> BulkBase for T
     where
         T: Bulk + ?Sized
     {
         default type Length = [()];
         default type Strategy<U, C> = <Self as AdapterSpec<U, C>>::Adapter;
+        #[cfg(feature = "alloc")]
         default type Nearest = alloc::vec::Vec<T::Item>;
         #[cfg(not(feature = "alloc"))]
         default type Nearest = [T::Item];

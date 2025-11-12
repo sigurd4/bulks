@@ -9,7 +9,7 @@ description = "Amazing bulks! They are like iterators, but in bulk, and therefor
 repository = "https://github.com/sigurd4/bulks"
 
 [features]
-default = ["alloc"]
+default = []
 alloc = ["array_trait/alloc"]
 
 [dependencies]
