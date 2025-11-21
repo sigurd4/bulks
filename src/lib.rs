@@ -14,6 +14,7 @@
 #![feature(ptr_metadata)]
 #![feature(range_bounds_is_empty)]
 #![feature(const_trait_impl)]
+#![feature(const_try_residual)]
 #![feature(const_cmp)]
 #![feature(core_intrinsics)]
 #![feature(const_default)]
