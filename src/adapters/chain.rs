@@ -2,7 +2,7 @@ use core::marker::Destruct;
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, RandomAccessBulkMut, SplitBulk};
 
 
 /// A bulk that links two bulks together, in a chain.
@@ -199,6 +199,35 @@ where
             a_left.chain(b_left),
             a_right.chain(b_right)
         )
+    }
+}
+impl<'a, A, B, T, TR> const RandomAccessBulk<'a> for Chain<A, B>
+where
+    A: ~const RandomAccessBulk<'a, Item = T, ItemRef = TR, EachRef: ~const Destruct> + ~const Destruct,
+    B: ~const RandomAccessBulk<'a, Item = T, ItemRef = TR, EachRef: ~const Destruct> + ~const Destruct,
+    TR: ~const Destruct + Copy + 'a
+{
+    type ItemRef = TR;
+    type EachRef = Chain<A::EachRef, B::EachRef>;
+
+    fn each_ref(Self { a, b }: &'a Self) -> Self::EachRef
+    {
+        a.each_ref().chain(b.each_ref())
+    }
+}
+impl<'a, A, B, T, TR, TM> const RandomAccessBulkMut<'a> for Chain<A, B>
+where
+    A: ~const RandomAccessBulkMut<'a, Item = T, ItemRef = TR, ItemMut = TM, EachRef: ~const Destruct, EachMut: ~const Destruct> + ~const Destruct,
+    B: ~const RandomAccessBulkMut<'a, Item = T, ItemRef = TR, ItemMut = TM, EachRef: ~const Destruct, EachMut: ~const Destruct> + ~const Destruct,
+    TR: ~const Destruct + Copy + 'a,
+    TM: ~const Destruct + 'a
+{
+    type ItemMut = TM;
+    type EachMut = Chain<A::EachMut, B::EachMut>;
+
+    fn each_mut(Self { a, b }: &'a mut Self) -> Self::EachMut
+    {
+        a.each_mut().chain(b.each_mut())
     }
 }
 

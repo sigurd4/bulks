@@ -2,7 +2,7 @@ use core::{marker::Destruct, mem::MaybeUninit, ops::Try};
 
 use array_trait::{length::{self, LengthValue}, same::Same};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk, util::{self, Guard}};
+use crate::{AsBulk, Bulk, DoubleEndedBulk, IntoBulk, RandomAccessBulkMut, RandomAccessBulk, SplitBulk, StaticBulk, util::{self, Guard}};
 
 pub mod array
 {
@@ -27,7 +27,7 @@ pub mod array
 
 macro_rules! impl_bulk {
     (
-        impl $bulk:ident<$($a:lifetime,)? $t:ident, const $n:ident: usize>; for $item:ty; in $array:ty;
+        impl $bulk:ident<$($a:lifetime,)? $t:ident, const $n:ident: usize>; for $item:ty; in $array:ty; $($mut:ident)?
         {
             fn for_each($self_for_each:ident, $f_for_each:ident) -> _
             $for_each:block
@@ -49,6 +49,7 @@ macro_rules! impl_bulk {
 
             $(fn nth($self_nth:ident, $n_nth:ident) -> _
             $nth:block)?
+
         }
         {
             $split:ident
@@ -113,6 +114,22 @@ macro_rules! impl_bulk {
                 Self: Sized,
                 L: LengthValue
             $nth)?
+
+            fn get<'b, L>(&'b self, i: L) -> Option<<Self as RandomAccessBulk<'b>>::ItemRef>
+            where
+                L: LengthValue,
+                Self: 'b
+            {
+                self.array.get(length::value::len(i))
+            }
+
+            $(fn ${concat(get_, $mut)}<'b, L>(&'b mut self, i: L) -> Option<<Self as RandomAccessBulkMut<'b>>::ItemMut>
+            where
+                L: LengthValue,
+                Self: 'b
+            {
+                self.array.get_mut(length::value::len(i))
+            })?
 
             #[inline]
             fn collect_array($self_collect_array) -> <Self as StaticBulk>::Array<Self::Item>
@@ -185,15 +202,49 @@ macro_rules! impl_bulk {
                 )
             }
         }
+        impl<$($a,)? 'b, T, const N: usize> RandomAccessBulk<'b> for array::$bulk<$($a,)? T, N>
+        where
+            Self: 'b
+        {
+            type ItemRef = &'b T;
+            type EachRef = array::Bulk<'b, T, N>;
+
+            fn each_ref(bulk: &'b Self) -> Self::EachRef
+            {
+                (&bulk.array as &[T; N]).bulk()
+            }
+        }
+        impl_bulk!(@extra impl $bulk<$($a,)? $t, const $n: usize>; for $item; in $array; $($mut)?);
+    };
+    (
+        @extra impl $bulk:ident<$($a:lifetime,)? $t:ident, const $n:ident: usize>; for $item:ty; in $array:ty; $mut:ident
+    ) => {
+        impl<$($a,)? 'b, T, const N: usize> RandomAccessBulkMut<'b> for array::$bulk<$($a,)? T, N>
+        where
+            Self: 'b
+        {
+            type ItemMut = &'b mut T;
+            type EachMut = array::BulkMut<'b, T, N>;
+
+            fn each_mut(bulk: &'b mut Self) -> Self::EachMut
+            {
+                (&mut bulk.array as &mut [T; N]).bulk_mut()
+            }
+        }
+    };
+    (
+        @extra impl $bulk:ident<$($a:lifetime,)? $t:ident, const $n:ident: usize>; for $item:ty; in $array:ty;
+    ) => {
+        
     };
 }
 impl_bulk!(
-    impl IntoBulk<T, const N: usize>; for T; in [T; N];
+    impl IntoBulk<T, const N: usize>; for T; in [T; N]; mut
     {
         fn for_each(self, f) -> _
         {
             let Self { array } = self;
-            let mut src_array = util::new_init_array(array);
+            let mut src_array = MaybeUninit::new(array).transpose();
             let mut src_guard = Guard { array_mut: &mut src_array, initialized: 0..N };
 
             while src_guard.initialized.start < src_guard.initialized.end
@@ -209,7 +260,7 @@ impl_bulk!(
         fn try_for_each(self, f) -> _
         {
             let Self { array } = self;
-            let mut src_array = util::new_init_array(array);
+            let mut src_array = MaybeUninit::new(array).transpose();
             let mut src_guard = Guard { array_mut: &mut src_array, initialized: 0..N };
 
             while src_guard.initialized.start < src_guard.initialized.end
@@ -226,7 +277,7 @@ impl_bulk!(
         fn rev_for_each(self, f) -> _
         {
             let Self { array } = self;
-            let mut src_array = util::new_init_array(array);
+            let mut src_array = MaybeUninit::new(array).transpose();
             let mut src_guard = Guard { array_mut: &mut src_array, initialized: 0..N };
 
             while src_guard.initialized.start < src_guard.initialized.end
@@ -242,7 +293,7 @@ impl_bulk!(
         fn try_rev_for_each(self, f) -> _
         {
             let Self { array } = self;
-            let mut src_array = util::new_init_array(array);
+            let mut src_array = MaybeUninit::new(array).transpose();
             let mut src_guard = Guard { array_mut: &mut src_array, initialized: 0..N };
 
             while src_guard.initialized.start < src_guard.initialized.end
@@ -357,7 +408,7 @@ impl_bulk!(
     }
 );
 impl_bulk!(
-    impl BulkMut<'a, T, const N: usize>; for &'a mut T; in &'a mut [T; N];
+    impl BulkMut<'a, T, const N: usize>; for &'a mut T; in &'a mut [T; N]; mut
     {
         fn for_each(self, f) -> _
         {

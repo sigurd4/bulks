@@ -2,7 +2,7 @@ use core::{fmt, marker::{Destruct, PhantomData}};
 
 use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, RandomAccessBulk, RandomAccessBulkMut, SplitBulk, StaticBulk, util::FlatRef};
 
 /// Creates a bulk that yields nothing.
 /// 
@@ -154,14 +154,43 @@ where
         (self.clone(), self)
     }
 }
+impl<'a, T> const RandomAccessBulk<'a> for Empty<T>
+where
+    Self: 'a,
+    T: FlatRef<'a>,
+    T::FlatRef: FlatRef<'a, FlatRef = T::FlatRef>
+{
+    type ItemRef = T::FlatRef;
+    type EachRef = Empty<T::FlatRef>;
 
-pub const trait EmptyBulk: ~const DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 0]>
+    fn each_ref(Self(PhantomData): &'a Self) -> Self::EachRef
+    {
+        crate::empty()
+    }
+}
+impl<'a, T> const RandomAccessBulkMut<'a> for Empty<T>
+where
+    Self: 'a,
+    T: FlatRef<'a>,
+    T::FlatRef: FlatRef<'a, FlatRef = T::FlatRef>,
+    T::FlatMut: FlatRef<'a, FlatRef = T::FlatRef, FlatMut = T::FlatMut>
+{
+    type ItemMut = T::FlatMut;
+    type EachMut = Empty<T::FlatMut>;
+
+    fn each_mut(Self(PhantomData): &'a mut Self) -> Self::EachMut
+    {
+        crate::empty()
+    }
+}
+
+pub const trait EmptyBulk: ~const DoubleEndedBulk + StaticBulk<Length = [(); 0]>
 {
 
 }
 impl<T> const EmptyBulk for T
 where
-    T: ~const DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 0]>
+    T: ~const DoubleEndedBulk + StaticBulk<Length = [(); 0]>
 {
 
 }

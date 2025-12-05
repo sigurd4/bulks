@@ -208,6 +208,7 @@ where
         )
     }
 }
+// TODO: random-access
 
 impl<A, B> fmt::Debug for Zip<A, B>
 where

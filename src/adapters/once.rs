@@ -1,8 +1,8 @@
-use core::marker::Destruct;
+use core::{borrow::Borrow, marker::Destruct};
 
 use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, OnceWith, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::{TakeOne, YieldOnce}};
+use crate::{Bulk, DoubleEndedBulk, OnceWith, RandomAccessBulk, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::{FlatRef, TakeOne, YieldOnce}};
 
 /// Creates a bulk that yields an element exactly once.
 /// 
@@ -121,6 +121,21 @@ where
         Self: Sized
     {
         OnceWith::from(self).split_at(n)
+    }
+}
+impl<'a, T, R> const RandomAccessBulk<'a> for Once<T>
+where
+    Self: 'a,
+    T: FlatRef<'a, FlatRef = R>,
+    &'a T: ~const Borrow<R>,
+    R: FlatRef<'a, FlatRef = R> + ~const Destruct + Copy + 'a,
+{
+    type ItemRef = R;
+    type EachRef = Once<R>;
+
+    fn each_ref(Self(value): &'a Self) -> Self::EachRef
+    {
+        crate::once(*(&value).borrow())
     }
 }
 

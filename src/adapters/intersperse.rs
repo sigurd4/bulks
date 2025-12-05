@@ -1,8 +1,8 @@
-use core::{marker::Destruct, ops::Try};
+use core::{borrow::Borrow, marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, Chain, DoubleEndedBulk, IntoContained, Once, SplitBulk};
+use crate::{Bulk, Chain, DoubleEndedBulk, IntoContained, Once, RandomAccessBulk, SplitBulk};
 
 /// A bulk adapter that places a separator between all elements.
 ///
@@ -163,6 +163,21 @@ where
         )
     }
 }
+impl<'a, I, T, R> const RandomAccessBulk<'a> for Intersperse<I>
+where
+    I: ~const RandomAccessBulk<'a, Item = T, ItemRef = &'a R>,
+    T: ~const Clone + ~const Destruct + ~const Borrow<R> + 'a,
+    R: 'a
+{
+    type ItemRef = I::ItemRef;
+    type EachRef = Intersperse<I::EachRef>;
+
+    fn each_ref(Self { bulk, separator }: &'a Self) -> Self::EachRef
+    {
+        bulk.each_ref()
+            .intersperse(separator.borrow())
+    }
+}
 
 struct Closure<F, T>
 {
@@ -254,8 +269,13 @@ mod test
     {
         let a = ['H', 'e', 'l', 'l', 'o'];
         let b = '_';
-        let c = a.into_bulk().intersperse(b).collect::<String, _>();
 
+        let bulk = a.into_bulk().intersperse(b);
+
+        let c_ref = bulk.each_ref().collect::<String, _>();
+        let c = bulk.collect::<String, _>();
+
+        assert_eq!(c, c_ref);
         println!("{:?}", c);
     }
 }

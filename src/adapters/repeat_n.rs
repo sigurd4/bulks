@@ -1,8 +1,8 @@
-use core::{fmt, marker::Destruct, ptr::Pointee};
+use core::{borrow::Borrow, fmt, marker::Destruct, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, util::YieldOnce};
+use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, RepeatNWith, SplitBulk, util::{FlatRef, YieldOnce}};
 
 /// Creates a new bulk that repeats a single element a given number of times.
 ///
@@ -192,6 +192,24 @@ where
     }
 }
 
+impl<'a, A, N> const RandomAccessBulk<'a> for RepeatN<A, N>
+where
+    Self: 'a,
+    A: FlatRef<'a> + ~const Clone + ~const Destruct,
+    &'a A: ~const Borrow<A::FlatRef>,
+    N: Length<Elem = ()> + ?Sized,
+    A::FlatRef: FlatRef<'a, FlatRef = A::FlatRef> + ~const Clone,
+    &'a A::FlatRef: ~const Borrow<A::FlatRef>
+{
+    type ItemRef = A::FlatRef;
+    type EachRef = RepeatN<A::FlatRef, N>;
+
+    fn each_ref(Self { element, n }: &'a Self) -> Self::EachRef
+    {
+        crate::repeat_n(*(&element).borrow(), length::value::from_metadata::<N::Value>(*n))
+    }
+}
+
 impl<A, N> const From<RepeatN<A, N>> for RepeatNWith<YieldOnce<A>, N>
 where
     A: Clone,
@@ -212,7 +230,8 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = crate::repeat_n(1, [(); _]).collect::<[_; _], _>();
+        let a = crate::repeat_n(1, [(); _])
+            .collect::<[_; _], _>();
         assert_eq!(a, [1, 1, 1, 1])
     }
 

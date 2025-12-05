@@ -1,8 +1,8 @@
 use core::{marker::Destruct, ops::Try};
 
-use array_trait::{AsArray, length};
+use array_trait::{AsArray, length::{self, LengthValue}};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, StaticBulk};
 
 /// A bulk that flattens one level of nesting in a of things
 /// that can be turned into bulks.
@@ -248,6 +248,67 @@ where
         bulk.try_rev_for_each(Closure {
             f
         })
+    }
+}
+impl<'a, I> const RandomAccessBulk<'a> for Flatten<I>
+where
+    I: ~const RandomAccessBulk<'a, Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct, ItemRef: ~const IntoBulk<IntoBulk: ~const Bulk<Item: ~const Destruct + Copy> + StaticBulk>>
+{
+    type ItemRef = <Flatten<I::EachRef> as IntoIterator>::Item;
+    type EachRef = Flatten<I::EachRef>;
+
+    fn each_ref(Self { bulk }: &'a Self) -> Self::EachRef
+    {
+        bulk.each_ref()
+            .flatten()
+    }
+}
+impl<'a, I> const RandomAccessBulkMut<'a> for Flatten<I>
+where
+    I: ~const RandomAccessBulkMut<'a, Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct, ItemRef: ~const IntoBulk<IntoBulk: ~const Bulk<Item: ~const Destruct + Copy> + StaticBulk>, ItemMut: ~const IntoBulk<IntoBulk: ~const Bulk<Item: ~const Destruct> + StaticBulk>>
+{
+    type ItemMut = <Flatten<I::EachMut> as IntoIterator>::Item;
+    type EachMut = Flatten<I::EachMut>;
+
+    fn each_mut(Self { bulk }: &'a mut Self) -> Self::EachMut
+    {
+        bulk.each_mut()
+            .flatten()
+    }
+}
+
+impl<'a, I, II, const M: usize> const RandomAccessBulkSpec<'a> for Flatten<I>
+where
+    I: ~const RandomAccessBulk<'a, Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct, ItemRef = &'a II>,
+    &'a II: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk<Length = [(); M]>, Item = II::ItemRef>,
+    II: ~const RandomAccessBulk<'a>
+{
+    fn _get<L>(Self { bulk }: &'a Self, i: L) -> Option<Self::ItemRef>
+    where
+        L: LengthValue
+    {
+        match bulk.get(length::value::div(i, [(); M]))
+        {
+            Some(item) => item.get(length::value::rem(i, [(); M])),
+            None => None
+        }
+    }
+}
+impl<'a, I, II, const M: usize> const RandomAccessBulkMutSpec<'a> for Flatten<I>
+where
+    I: ~const RandomAccessBulkMut<'a, Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct, ItemRef: ~const IntoBulk<IntoBulk: ~const Bulk<Item: ~const Destruct + Copy> + StaticBulk>, ItemMut = &'a mut II>,
+    &'a mut II: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk<Length = [(); M]>, Item = II::ItemMut>,
+    II: ~const RandomAccessBulkMut<'a>
+{
+    fn _get_mut<L>(Self { bulk }: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    where
+        L: LengthValue
+    {
+        match bulk.get_mut(length::value::div(i, [(); M]))
+        {
+            Some(item) => item.get_mut(length::value::rem(i, [(); M])),
+            None => None
+        }
     }
 }
 

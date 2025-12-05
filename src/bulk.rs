@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}, ra
 
 use array_trait::length::{Length, LengthValue};
 
-use crate::{ArrayChunks, Chain, Cloned, CollectionStrategy, CollectionAdapter, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, Rev, Skip, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
+use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, Rev, Skip, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -1107,7 +1107,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     #[inline]
     #[track_caller]
-    fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
+    fn flat_map<U, F>(self, f: F) -> FlatMap<Self, F>
     where
         Self: Sized,
         U: IntoBulk<IntoBulk: StaticBulk>,
@@ -1915,6 +1915,35 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         Self: Sized,
     {
         ArrayChunks::new(self)
+    }
+
+    fn each_ref<'a>(&'a self) -> Self::EachRef
+    where
+        Self: ~const RandomAccessBulk<'a>
+    {
+        RandomAccessBulk::each_ref(self)
+    }
+    fn each_mut<'a>(&'a mut self) -> Self::EachMut
+    where
+        Self: ~const RandomAccessBulkMut<'a>
+    {
+        RandomAccessBulkMut::each_mut(self)
+    }
+
+    fn get<'a, L>(&'a self, i: L) -> Option<Self::ItemRef>
+    where
+        Self: ~const RandomAccessBulk<'a>,
+        L: LengthValue
+    {
+        RandomAccessBulkSpec::_get(self, i)
+    }
+
+    fn get_mut<'a, L>(&'a mut self, i: L) -> Option<Self::ItemMut>
+    where
+        Self: ~const RandomAccessBulkMut<'a>,
+        L: LengthValue
+    {
+        RandomAccessBulkMutSpec::_get_mut(self, i)
     }
 }
 

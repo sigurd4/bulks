@@ -1,6 +1,6 @@
 use core::{marker::Destruct, ops::Try};
 
-use crate::{util::ArrayBuffer, ArrayChunks, Bulk};
+use crate::{ArrayChunks, Bulk, util::ArrayBuffer};
 
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 pub struct ArrayChunksWithRemainder<'a, I, const N: usize, const REV: bool>
@@ -259,7 +259,7 @@ mod iter
     {
         fn drop(&mut self)
         {
-            if let Some(mut iter) = self.iter.take().and_then(|iter| iter.into_remainder())
+            if let Some(mut iter) = self.iter.take().map(|iter| iter.into_remainder())
             {
                 while !self.remainder.is_full() && let Some(value) = iter.next()
                 {

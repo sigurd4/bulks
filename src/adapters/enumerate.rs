@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, EnumerateFrom, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, EnumerateFrom, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, SplitBulk};
 
 /// A bulk that yields the element's index and the element.
 ///
@@ -223,6 +223,58 @@ where
             self.i += 1;
         }
         result
+    }
+}
+impl<'a, I, T> const RandomAccessBulk<'a> for Enumerate<I>
+where
+    I: ~const RandomAccessBulk<'a, Item = T>,
+    T: ~const Destruct
+{
+    type ItemRef = (usize, I::ItemRef);
+    type EachRef = Enumerate<I::EachRef>;
+
+    fn each_ref(Self { bulk }: &'a Self) -> Self::EachRef
+    {
+        bulk.each_ref().enumerate()
+    }
+}
+impl<'a, I, T> const RandomAccessBulkSpec<'a> for Enumerate<I>
+where
+    I: ~const RandomAccessBulk<'a, Item = T>,
+    T: ~const Destruct
+{
+    fn _get<L>(Self { bulk }: &'a Self, i: L) -> Option<Self::ItemRef>
+    where
+        L: LengthValue
+    {
+        let x = bulk.get(i)?;
+        Some((length::value::len(i), x))
+    }
+}
+impl<'a, I, T> const RandomAccessBulkMut<'a> for Enumerate<I>
+where
+    I: ~const RandomAccessBulkMut<'a, Item = T>,
+    T: ~const Destruct
+{
+    type ItemMut = (usize, I::ItemMut);
+    type EachMut = Enumerate<I::EachMut>;
+
+    fn each_mut(Self { bulk }: &'a mut Self) -> Self::EachMut
+    {
+        bulk.each_mut().enumerate()
+    }
+}
+impl<'a, I, T> const RandomAccessBulkMutSpec<'a> for Enumerate<I>
+where
+    I: ~const RandomAccessBulkMut<'a, Item = T>,
+    T: ~const Destruct
+{
+    fn _get_mut<L>(Self { bulk }: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    where
+        L: LengthValue
+    {
+        let x = bulk.get_mut(i)?;
+        Some((length::value::len(i), x))
     }
 }
 

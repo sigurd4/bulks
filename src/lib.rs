@@ -6,6 +6,8 @@
 #![feature(const_range)]
 #![feature(exact_size_is_empty)]
 #![feature(iter_array_chunks)]
+#![feature(inplace_iteration)]
+#![feature(const_try_residual)]
 #![feature(iter_intersperse)]
 #![feature(ascii_char)]
 #![feature(iter_map_windows)]
@@ -14,7 +16,7 @@
 #![feature(ptr_metadata)]
 #![feature(range_bounds_is_empty)]
 #![feature(const_trait_impl)]
-#![feature(const_try_residual)]
+#![feature(trusted_len)]
 #![feature(const_cmp)]
 #![feature(core_intrinsics)]
 #![feature(const_default)]
@@ -26,7 +28,6 @@
 #![feature(impl_trait_in_assoc_type)]
 #![feature(const_index)]
 #![feature(try_trait_v2_residual)]
-#![feature(maybe_uninit_slice)]
 #![feature(const_try)]
 #![feature(const_drop_in_place)]
 #![feature(const_precise_live_drops)]
@@ -47,6 +48,7 @@
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(const_result_trait_fn)]
 #![feature(associated_type_defaults)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(const_closures)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
@@ -360,6 +362,7 @@ moddef::moddef!(
         from_bulk,
         into_bulk,
         split_bulk,
+        random_access_bulk,
         static_bulk
     },
     mod util

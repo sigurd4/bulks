@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, IntoBulk};
+use crate::{AsBulk, Bulk, IntoBulk, RandomAccessBulkMut, RandomAccessBulk};
 
 pub mod option
 {
@@ -67,7 +67,7 @@ pub mod option
 
 macro_rules! impl_option {
     (
-        impl $bulk:ident<$($a:lifetime,)? $t:ident>; for $item:ty; in $option:ty;
+        impl $bulk:ident<$($a:lifetime,)? $t:ident>; for $item:ty; in $option:ty; $($mut:ident)?
         {
             fn first($self_first:ident) -> _
             $first:block
@@ -169,10 +169,44 @@ macro_rules! impl_option {
                 self.first()
             }
         }
+        impl<$($a,)? 'b, T> RandomAccessBulk<'b> for option::$bulk<$($a,)? $t>
+        where
+            Self: 'b
+        {
+            type ItemRef = &'b T;
+            type EachRef = option::Bulk<'b, T>;
+
+            fn each_ref(bulk: &'b Self) -> Self::EachRef
+            {
+                (&bulk.option as &Option<T>).bulk()
+            }
+        }
+        impl_option!(@extra impl $bulk<$($a,)? $t>; for $item; in $option; $($mut)?);
+    };
+    (
+        @extra impl $bulk:ident<$($a:lifetime,)? $t:ident>; for $item:ty; in $option:ty; $mut:ident
+    ) => {
+        impl<$($a,)? 'b, T> RandomAccessBulkMut<'b> for option::$bulk<$($a,)? T>
+        where
+            Self: 'b
+        {
+            type ItemMut = &'b mut T;
+            type EachMut = option::BulkMut<'b, T>;
+
+            fn each_mut(bulk: &'b mut Self) -> Self::EachMut
+            {
+                (&mut bulk.option as &mut Option<T>).bulk_mut()
+            }
+        }
+    };
+    (
+        @extra impl $bulk:ident<$($a:lifetime,)? $t:ident>; for $item:ty; in $option:ty;
+    ) => {
+        
     };
 }
 impl_option!(
-    impl IntoBulk<T>; for T; in Option<T>;
+    impl IntoBulk<T>; for T; in Option<T>; mut
     {
         fn first(self) -> _
         {
@@ -190,7 +224,7 @@ impl_option!(
     }
 );
 impl_option!(
-    impl BulkMut<'a, T>; for &'a mut T; in &'a mut Option<T>;
+    impl BulkMut<'a, T>; for &'a mut T; in &'a mut Option<T>; mut
     {
         fn first(self) -> _
         {

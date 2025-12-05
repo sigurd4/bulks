@@ -247,6 +247,7 @@ where
         )
     }
 }
+// TODO: random-access
 
 #[cfg(test)]
 mod test

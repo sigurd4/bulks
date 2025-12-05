@@ -1,4 +1,4 @@
-use core::mem::{ManuallyDrop, MaybeUninit};
+use core::{marker::Destruct, mem::{ManuallyDrop, MaybeUninit}, ops::{Deref, DerefMut}};
 
 moddef::moddef!(
     flat(pub) mod {
@@ -12,6 +12,33 @@ moddef::moddef!(
         yield_once
     }
 );
+
+pub trait FlatRef<'a>: 'a
+{
+    type FlatRef: Deref + Copy + 'a + const Destruct + FlatRef<'a, FlatRef: Deref<Target = <Self::FlatRef as Deref>::Target>>;
+    type FlatMut: DerefMut + 'a + const Destruct + FlatRef<'a, FlatRef: Deref<Target = <Self::FlatRef as Deref>::Target>>;
+}
+impl<'a, T> FlatRef<'a> for T
+where
+    T: ?Sized + 'a
+{
+    default type FlatRef = &'a T;
+    default type FlatMut = &'a mut T;
+}
+impl<'a, T> FlatRef<'a> for &'a T
+where
+    T: ?Sized + 'a
+{
+    type FlatRef = <T as FlatRef<'a>>::FlatRef;
+    type FlatMut = &'a mut <T as FlatRef<'a>>::FlatRef;
+}
+impl<'a, T> FlatRef<'a> for &'a mut T
+where
+    T: ?Sized + 'a
+{
+    type FlatRef = <T as FlatRef<'a>>::FlatRef;
+    type FlatMut = <T as FlatRef<'a>>::FlatMut;
+}
 
 pub(crate) const fn split_array_ref<T, const N: usize, const M: usize>(array: &[T; N]) -> (&[T; N.min(M)], &[T; N.saturating_sub(M)])
 {
@@ -51,13 +78,6 @@ pub(crate) const fn split_array<T, const N: usize, const M: usize>(array: [T; N]
     };
 
     (left, right)
-}
-
-pub(crate) const fn new_init_array<T, const N: usize>(array: [T; N]) -> [MaybeUninit<T>; N]
-{
-    unsafe {
-        core::intrinsics::transmute_unchecked(array)
-    }
 }
 
 pub(crate) macro collect_array_with {

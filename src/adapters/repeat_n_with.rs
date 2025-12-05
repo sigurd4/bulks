@@ -138,7 +138,7 @@ where
         Self: Sized,
         F: ~const FnMut(Self::Item) + ~const Destruct
     {
-        self.for_each(f);
+        self.for_each(f)
     }
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where

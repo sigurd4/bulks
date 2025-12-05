@@ -12,17 +12,16 @@ use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, StaticBulk};
 /// for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug)]
-pub struct FlatMap<I, U, F>
+pub struct FlatMap<I, F>
 where
     I: Bulk,
-    F: FnMut(I::Item) -> U,
-    U: IntoBulk<IntoBulk: StaticBulk>
+    F: FnMut<(I::Item,), Output: IntoBulk<IntoBulk: StaticBulk>>
 {
     bulk: I,
     map: F
 }
 
-impl<I, U, F> FlatMap<I, U, F>
+impl<I, U, F> FlatMap<I, F>
 where
     I: Bulk,
     F: FnMut(I::Item) -> U,
@@ -42,7 +41,7 @@ where
     }
 }
 
-impl<I, U, F> IntoIterator for FlatMap<I, U, F>
+impl<I, U, F> IntoIterator for FlatMap<I, F>
 where
     I: Bulk,
     F: FnMut(I::Item) -> U,
@@ -62,7 +61,7 @@ where
         }
     }
 }
-impl<I, U, F> const Bulk for FlatMap<I, U, F>
+impl<I, U, F> const Bulk for FlatMap<I, F>
 where
     I: ~const Bulk<Item: ~const Destruct>,
     F: ~const FnMut(I::Item) -> U + ~const Destruct,
@@ -186,7 +185,7 @@ where
         })
     }
 }
-impl<I, U, F> const DoubleEndedBulk for FlatMap<I, U, F>
+impl<I, U, F> const DoubleEndedBulk for FlatMap<I, F>
 where
     I: ~const DoubleEndedBulk<Item: ~const Destruct>,
     F: ~const FnMut(I::Item) -> U + ~const Destruct,
