@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, SplitBulk};
 
 /// A bulk that steps by a custom amount.
 ///
@@ -206,9 +206,9 @@ where
         bulk.each_ref().step_by(length::value::from_metadata::<N::Value>(*step))
     }
 }
-impl<'a, T, N> const RandomAccessBulkMut<'a> for StepBy<T, N>
+impl<'a, T, N> const InplaceBulk<'a> for StepBy<T, N>
 where
-    T: ~const RandomAccessBulkMut<'a, Item: ~const Destruct>,
+    T: ~const InplaceBulk<'a, Item: ~const Destruct>,
     N: Length<Elem = ()> + ?Sized + 'a
 {
     type ItemMut = T::ItemMut;
@@ -232,9 +232,9 @@ where
         bulk.get(length::value::mul(length::value::from_metadata::<N::Value>(*step), i))
     }
 }
-impl<'a, T, N> const RandomAccessBulkMutSpec<'a> for StepBy<T, N>
+impl<'a, T, N> const InplaceMutSpec<'a> for StepBy<T, N>
 where
-    T: ~const RandomAccessBulkMut<'a, Item: ~const Destruct>,
+    T: ~const InplaceBulk<'a, Item: ~const Destruct>,
     N: Length<Elem = ()> + ?Sized + 'a
 {
     fn _get_mut<L>(Self { bulk, step }: &'a mut Self, i: L) -> Option<Self::ItemMut>

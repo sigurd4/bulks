@@ -49,6 +49,7 @@
 #![feature(const_result_trait_fn)]
 #![feature(associated_type_defaults)]
 #![feature(macro_metavar_expr_concat)]
+#![feature(const_eval_select)]
 #![feature(const_closures)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
@@ -404,5 +405,23 @@ mod tests
         maybe(Some(1));
         maybe([1; 0]);
         maybe([1]);
+    }
+
+    #[test]
+    fn test_swap() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let a = [1, 2, 3, 4];
+
+        let mut bulk = a.into_bulk();
+
+        bulk.try_swap_inplace(0, 3)?;
+        bulk.try_swap_inplace(1, 2)?;
+
+        let b = bulk.rev().collect_array();
+
+        assert_eq!(a, b);
+        println!("{a:?}");
+
+        Ok(())
     }
 }

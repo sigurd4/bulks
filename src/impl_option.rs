@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{AsBulk, Bulk, IntoBulk, RandomAccessBulkMut, RandomAccessBulk};
+use crate::{AsBulk, Bulk, IntoBulk, InplaceBulk, RandomAccessBulk};
 
 pub mod option
 {
@@ -186,7 +186,7 @@ macro_rules! impl_option {
     (
         @extra impl $bulk:ident<$($a:lifetime,)? $t:ident>; for $item:ty; in $option:ty; $mut:ident
     ) => {
-        impl<$($a,)? 'b, T> RandomAccessBulkMut<'b> for option::$bulk<$($a,)? T>
+        impl<$($a,)? 'b, T> InplaceBulk<'b> for option::$bulk<$($a,)? T>
         where
             Self: 'b
         {

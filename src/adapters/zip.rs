@@ -2,7 +2,7 @@ use core::fmt;
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, SplitBulk};
 
 /// Converts the arguments to bulks and zips them.
 ///
@@ -238,11 +238,11 @@ where
             .zip(b.each_ref())
     }
 }
-impl<'a, A, B> const RandomAccessBulkMut<'a> for Zip<A, B>
+impl<'a, A, B> const InplaceBulk<'a> for Zip<A, B>
 where
     Self: ~const Bulk,
-    A: ~const RandomAccessBulkMut<'a>,
-    B: ~const RandomAccessBulkMut<'a>,
+    A: ~const InplaceBulk<'a>,
+    B: ~const InplaceBulk<'a>,
     Zip<A::EachRef, B::EachRef>: ~const Bulk<Item = (A::ItemRef, B::ItemRef)>,
     Zip<A::EachMut, B::EachMut>: ~const Bulk<Item = (A::ItemMut, B::ItemMut)>
 {
@@ -270,11 +270,11 @@ where
         Some((a.get(i)?, b.get(i)?))
     }
 }
-impl<'a, A, B> const RandomAccessBulkMutSpec<'a> for Zip<A, B>
+impl<'a, A, B> const InplaceMutSpec<'a> for Zip<A, B>
 where
     Self: ~const Bulk,
-    A: ~const RandomAccessBulkMut<'a>,
-    B: ~const RandomAccessBulkMut<'a>,
+    A: ~const InplaceBulk<'a>,
+    B: ~const InplaceBulk<'a>,
     Zip<A::EachRef, B::EachRef>: ~const Bulk<Item = (A::ItemRef, B::ItemRef)>,
     Zip<A::EachMut, B::EachMut>: ~const Bulk<Item = (A::ItemMut, B::ItemMut)>
 {

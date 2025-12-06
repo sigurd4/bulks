@@ -2,7 +2,7 @@ use core::{marker::Destruct, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, SplitBulk};
 
 
 /// A double-ended bulk with the direction inverted.
@@ -167,12 +167,12 @@ where
         bulk.each_ref().rev()
     }
 }
-impl<'a, I> const RandomAccessBulkMut<'a> for Rev<I>
+impl<'a, I> const InplaceBulk<'a> for Rev<I>
 where
-    I: ~const RandomAccessBulkMut<'a, EachRef: ~const DoubleEndedBulk, EachMut: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
+    I: ~const InplaceBulk<'a, EachRef: ~const DoubleEndedBulk, EachMut: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
 {
-    type ItemMut = <I as RandomAccessBulkMut<'a>>::ItemMut;
-    type EachMut = Rev<<I as RandomAccessBulkMut<'a>>::EachMut>;
+    type ItemMut = <I as InplaceBulk<'a>>::ItemMut;
+    type EachMut = Rev<<I as InplaceBulk<'a>>::EachMut>;
 
     fn each_mut(Self { bulk }: &'a mut Self) -> Self::EachMut
     {
@@ -199,9 +199,9 @@ where
         }
     }
 }
-impl<'a, I> const RandomAccessBulkMutSpec<'a> for Rev<I>
+impl<'a, I> const InplaceMutSpec<'a> for Rev<I>
 where
-    I: ~const RandomAccessBulkMut<'a, EachRef: ~const DoubleEndedBulk, EachMut: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
+    I: ~const InplaceBulk<'a, EachRef: ~const DoubleEndedBulk, EachMut: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
 {
     fn _get_mut<L>(bulk: &'a mut Self, i: L) -> Option<Self::ItemMut>
     where

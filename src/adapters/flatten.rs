@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::{AsArray, length::{self, LengthValue}};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, StaticBulk};
 
 /// A bulk that flattens one level of nesting in a of things
 /// that can be turned into bulks.
@@ -263,9 +263,9 @@ where
             .flatten()
     }
 }
-impl<'a, I> const RandomAccessBulkMut<'a> for Flatten<I>
+impl<'a, I> const InplaceBulk<'a> for Flatten<I>
 where
-    I: ~const RandomAccessBulkMut<'a, Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct, ItemRef: ~const IntoBulk<IntoBulk: ~const Bulk<Item: ~const Destruct + Copy> + StaticBulk>, ItemMut: ~const IntoBulk<IntoBulk: ~const Bulk<Item: ~const Destruct> + StaticBulk>>
+    I: ~const InplaceBulk<'a, Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct, ItemRef: ~const IntoBulk<IntoBulk: ~const Bulk<Item: ~const Destruct + Copy> + StaticBulk>, ItemMut: ~const IntoBulk<IntoBulk: ~const Bulk<Item: ~const Destruct> + StaticBulk>>
 {
     type ItemMut = <Flatten<I::EachMut> as IntoIterator>::Item;
     type EachMut = Flatten<I::EachMut>;
@@ -294,11 +294,11 @@ where
         }
     }
 }
-impl<'a, I, II, const M: usize> const RandomAccessBulkMutSpec<'a> for Flatten<I>
+impl<'a, I, II, const M: usize> const InplaceMutSpec<'a> for Flatten<I>
 where
-    I: ~const RandomAccessBulkMut<'a, Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct, ItemRef: ~const IntoBulk<IntoBulk: ~const Bulk<Item: ~const Destruct + Copy> + StaticBulk>, ItemMut = &'a mut II>,
+    I: ~const InplaceBulk<'a, Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct, ItemRef: ~const IntoBulk<IntoBulk: ~const Bulk<Item: ~const Destruct + Copy> + StaticBulk>, ItemMut = &'a mut II>,
     &'a mut II: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk<Length = [(); M]>, Item = II::ItemMut>,
-    II: ~const RandomAccessBulkMut<'a>
+    II: ~const InplaceBulk<'a>
 {
     fn _get_mut<L>(Self { bulk }: &'a mut Self, i: L) -> Option<Self::ItemMut>
     where

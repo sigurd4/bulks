@@ -2,7 +2,7 @@ use core::marker::Destruct;
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, RandomAccessBulkMut, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, InplaceBulk, SplitBulk};
 
 
 /// A bulk that links two bulks together, in a chain.
@@ -214,10 +214,10 @@ where
         a.each_ref().chain(b.each_ref())
     }
 }
-impl<'a, A, B, T, TR, TM> const RandomAccessBulkMut<'a> for Chain<A, B>
+impl<'a, A, B, T, TR, TM> const InplaceBulk<'a> for Chain<A, B>
 where
-    A: ~const RandomAccessBulkMut<'a, Item = T, ItemRef = TR, ItemMut = TM, EachRef: ~const Destruct, EachMut: ~const Destruct> + ~const Destruct,
-    B: ~const RandomAccessBulkMut<'a, Item = T, ItemRef = TR, ItemMut = TM, EachRef: ~const Destruct, EachMut: ~const Destruct> + ~const Destruct,
+    A: ~const InplaceBulk<'a, Item = T, ItemRef = TR, ItemMut = TM, EachRef: ~const Destruct, EachMut: ~const Destruct> + ~const Destruct,
+    B: ~const InplaceBulk<'a, Item = T, ItemRef = TR, ItemMut = TM, EachRef: ~const Destruct, EachMut: ~const Destruct> + ~const Destruct,
     TR: ~const Destruct + Copy + 'a,
     TM: ~const Destruct + 'a
 {

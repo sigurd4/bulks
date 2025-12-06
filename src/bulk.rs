@@ -1,8 +1,8 @@
-use core::{marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}, range::Step};
+use core::{fmt::Display, marker::Destruct, ops::{ControlFlow, Deref, DerefMut, FromResidual, Residual, Try}, range::Step};
 
-use array_trait::length::{self, Length, LengthValue};
+use array_trait::length::{self, Length, LengthValue, Value};
 
-use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
+use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -1984,9 +1984,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     }
     fn each_mut<'a>(&'a mut self) -> Self::EachMut
     where
-        Self: ~const RandomAccessBulkMut<'a>
+        Self: ~const InplaceBulk<'a>
     {
-        RandomAccessBulkMut::each_mut(self)
+        InplaceBulk::each_mut(self)
     }
 
     fn get<'a, L>(&'a self, i: L) -> Option<Self::ItemRef>
@@ -1999,10 +1999,168 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
     fn get_mut<'a, L>(&'a mut self, i: L) -> Option<Self::ItemMut>
     where
-        Self: ~const RandomAccessBulkMut<'a>,
+        Self: ~const InplaceBulk<'a>,
         L: LengthValue
     {
-        RandomAccessBulkMutSpec::_get_mut(self, i)
+        InplaceMutSpec::_get_mut(self, i)
+    }
+
+    fn try_get<'a, L>(&'a self, i: L) -> Result<Self::ItemRef, OutOfRange>
+    where
+        Self: ~const RandomAccessBulk<'a>,
+        L: LengthValue
+    {
+        match self.get(i)
+        {
+            Some(x) => Ok(x),
+            None => {
+                let len = self.len();
+                let i = length::value::len(i);
+                assert!(i >= len, "Malformed bulk length");
+                Err(OutOfRange { i, len })
+            }
+        }
+    }
+
+    fn try_get_mut<'a, L>(&'a mut self, i: L) -> Result<Self::ItemMut, OutOfRange>
+    where
+        Self: ~const InplaceBulk<'a>,
+        L: LengthValue
+    {
+        let len = self.len();
+        match self.get_mut(i)
+        {
+            Some(x) => Ok(x),
+            None => {
+                let i = length::value::len(i);
+                assert!(i >= len, "Malformed bulk length");
+                Err(OutOfRange { i, len })
+            }
+        }
+    }
+
+    fn swap_inplace<'a, L, R, T>(&'a mut self, lhs: L, rhs: R)
+    where
+        Self: ~const InplaceBulk<'a, ItemMut = &'a mut T>,
+        L: LengthValue,
+        R: LengthValue,
+        T: 'a
+    {
+        match self.try_swap_inplace(lhs, rhs)
+        {
+            Ok(()) => (),
+            Err(err) => err.halt()
+        }
+    }
+
+    fn try_swap_inplace<'a, L, R, T>(&'a mut self, lhs: L, rhs: R) -> Result<(), OutOfRange>
+    where
+        Self: ~const InplaceBulk<'a, ItemMut = &'a mut T>,
+        L: LengthValue,
+        R: LengthValue,
+        T: 'a
+    {
+        let n = length::value::or_len::<Value<Self::Length>>(self.len());
+
+        let bulk = self.each_mut();
+
+        let j = length::value::min(lhs, rhs);
+        let i = length::value::max(lhs, rhs);
+
+        struct Closure<T>
+        {
+            first: Option<T>,
+            last: Option<T>
+        }
+        impl<T> const FnOnce<(T,)> for Closure<T>
+        where
+            T: ~const Destruct
+        {
+            type Output = ();
+            
+            extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        impl<T> const FnMut<(T,)> for Closure<T>
+        where
+            T: ~const Destruct
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                if self.first.is_none()
+                {
+                    self.first.insert(x);
+                }
+                else
+                {
+                    self.last.insert(x);
+                }
+            }
+        }
+
+        let mut closure = Closure {
+            first: None,
+            last: None
+        };
+
+        bulk.take(length::value::add(i, [(); 1]))
+            .skip(j)
+            .for_each(&mut closure);
+
+        match if length::value::ge(i, n)
+        {
+            Err(length::value::len(i))
+        }
+        else
+        {
+            match (closure.first, closure.last)
+            {
+                (Some(first), Some(last)) => Ok(core::mem::swap(first, last)),
+                (Some(first), None) if length::value::eq(i, j) => Ok(()),
+                (Some(_), None) => Err(length::value::len(j)),
+                (None, None) | (None, Some(_)) => Err(length::value::len(i))
+            }
+        }
+        {
+            Ok(()) => Ok(()),
+            Err(i) => Err(OutOfRange { i, len: length::value::len(n) })
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, thiserror::Error)]
+pub struct OutOfRange
+{
+    pub i: usize,
+    pub len: usize
+}
+
+impl OutOfRange
+{
+    const fn halt(self) -> !
+    {
+        fn rt(oor: OutOfRange) -> !
+        {
+            panic!("{oor}")
+        }
+
+        const fn ct(_: OutOfRange) -> !
+        {
+            panic!("Index out of bounds.")
+        }
+
+        core::intrinsics::const_eval_select((self,), ct, rt)
+    }
+}
+
+impl Display for OutOfRange
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+    {
+        let Self { i, len } = self;
+        write!(f, "Index out of bounds. Index {i} can't be larger than {len}.")
     }
 }
 

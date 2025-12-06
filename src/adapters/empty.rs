@@ -2,7 +2,7 @@ use core::{fmt, marker::{Destruct, PhantomData}};
 
 use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, RandomAccessBulk, RandomAccessBulkMut, SplitBulk, StaticBulk, util::FlatRef};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, RandomAccessBulk, InplaceBulk, SplitBulk, StaticBulk, util::FlatRef};
 
 /// Creates a bulk that yields nothing.
 /// 
@@ -168,7 +168,7 @@ where
         crate::empty()
     }
 }
-impl<'a, T> const RandomAccessBulkMut<'a> for Empty<T>
+impl<'a, T> const InplaceBulk<'a> for Empty<T>
 where
     Self: 'a,
     T: FlatRef<'a>,

@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::{Residual, Try}};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, CollectionAdapter, CollectionStrategy, DoubleEndedBulk, FromBulk, IntoBulk, RandomAccessBulk, RandomAccessBulkMut, Rev, SplitBulk, adapters::array_chunks_with_remainder::ArrayChunksWithRemainder, util::{self, ArrayBuffer}};
+use crate::{Bulk, CollectionAdapter, CollectionStrategy, DoubleEndedBulk, FromBulk, IntoBulk, RandomAccessBulk, InplaceBulk, Rev, SplitBulk, adapters::array_chunks_with_remainder::ArrayChunksWithRemainder, util::{self, ArrayBuffer}};
 
 /// A bulk over `N` elements of the bulk at a time.
 ///
@@ -256,9 +256,9 @@ where
         bulk.each_ref().array_chunks()
     }
 }
-impl<'a, I, const N: usize> const RandomAccessBulkMut<'a> for ArrayChunks<I, N>
+impl<'a, I, const N: usize> const InplaceBulk<'a> for ArrayChunks<I, N>
 where
-    I: ~const RandomAccessBulkMut<'a, Item: ~const Destruct>
+    I: ~const InplaceBulk<'a, Item: ~const Destruct>
 {
     type ItemMut = [I::ItemMut; N];
     type EachMut = ArrayChunks<I::EachMut, N>;

@@ -2,7 +2,7 @@ use core::{marker::Destruct, mem::MaybeUninit, ops::Try};
 
 use array_trait::{length::{self, LengthValue}, same::Same};
 
-use crate::{AsBulk, Bulk, DoubleEndedBulk, IntoBulk, RandomAccessBulkMut, RandomAccessBulk, SplitBulk, StaticBulk, util::{self, Guard}};
+use crate::{AsBulk, Bulk, DoubleEndedBulk, IntoBulk, InplaceBulk, RandomAccessBulk, SplitBulk, StaticBulk, util::{self, Guard}};
 
 pub mod array
 {
@@ -123,7 +123,7 @@ macro_rules! impl_bulk {
                 self.array.get(length::value::len(i))
             }
 
-            $(fn ${concat(get_, $mut)}<'b, L>(&'b mut self, i: L) -> Option<<Self as RandomAccessBulkMut<'b>>::ItemMut>
+            $(fn ${concat(get_, $mut)}<'b, L>(&'b mut self, i: L) -> Option<<Self as InplaceBulk<'b>>::ItemMut>
             where
                 L: LengthValue,
                 Self: 'b
@@ -219,7 +219,7 @@ macro_rules! impl_bulk {
     (
         @extra impl $bulk:ident<$($a:lifetime,)? $t:ident, const $n:ident: usize>; for $item:ty; in $array:ty; $mut:ident
     ) => {
-        impl<$($a,)? 'b, T, const N: usize> RandomAccessBulkMut<'b> for array::$bulk<$($a,)? T, N>
+        impl<$($a,)? 'b, T, const N: usize> InplaceBulk<'b> for array::$bulk<$($a,)? T, N>
         where
             Self: 'b
         {

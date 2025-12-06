@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, SplitBulk, Step, util::Stepper};
+use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, SplitBulk, Step, util::Stepper};
 
 /// A bulk that yields the element's index counting from a given initial index and the element.
 ///
@@ -234,9 +234,9 @@ where
         Some((Step::forward(*initial_count, length::value::len(i)), x))
     }
 }
-impl<'a, I, T, U> const RandomAccessBulkMut<'a> for EnumerateFrom<I, U>
+impl<'a, I, T, U> const InplaceBulk<'a> for EnumerateFrom<I, U>
 where
-    I: ~const RandomAccessBulkMut<'a, Item = T>,
+    I: ~const InplaceBulk<'a, Item = T>,
     T: ~const Destruct,
     U: ~const Step + Copy + ~const Destruct + 'a
 {
@@ -248,9 +248,9 @@ where
         bulk.each_mut().enumerate_from(*initial_count)
     }
 }
-impl<'a, I, T, U> const RandomAccessBulkMutSpec<'a> for EnumerateFrom<I, U>
+impl<'a, I, T, U> const InplaceMutSpec<'a> for EnumerateFrom<I, U>
 where
-    I: ~const RandomAccessBulkMut<'a, Item = T>,
+    I: ~const InplaceBulk<'a, Item = T>,
     T: ~const Destruct,
     U: ~const Step + Copy + ~const Destruct + 'a
 {
