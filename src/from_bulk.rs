@@ -165,7 +165,7 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
         label = "value of type `{Self}` cannot be collected from dynamically sized bulk"
     ),
     message = "a value of type `{Self}` cannot be collected from a bulk \
-               of elements of type `{A}`",
+               of structure `{A}`",
     label = "value of type `{Self}` cannot be collected from bulk"
 )]
 pub const trait FromBulk<A>: Sized
