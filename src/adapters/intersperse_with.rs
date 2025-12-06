@@ -151,11 +151,10 @@ where
     type Left = Chain<IntersperseWith<I::Left, G>, <OnceWith<G> as SplitBulk<usize>>::Left>;
     type Right = Chain<<OnceWith<G> as SplitBulk<usize>>::Right, IntersperseWith<I::Right, G>>;
 
-    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn split_at(Self { bulk, separator }: Self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let Self { bulk, separator } = self;
         let n = length::value::len(n);
         let m = n.div_ceil(2);
         let (left, right) = bulk.split_at(m);

@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, SplitBulk};
+use crate::{Bulk, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, SplitBulk};
 
 /// A bulk that steps by a custom amount.
 ///
@@ -171,7 +171,7 @@ where
 }
 impl<T, N, NN, M, L> const SplitBulk<M> for StepBy<T, N>
 where
-    T: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
+    T: ~const SplitBulk<L, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
     N: Length<Elem = (), Value = NN> + ?Sized,
     NN: LengthValue<Metadata = <N as Pointee>::Metadata, Length<()> = N, SaturatingMul<M> = L>,
     M: LengthValue,
@@ -180,11 +180,10 @@ where
     type Left = StepBy<T::Left, N>;
     type Right = StepBy<T::Right, N>;
 
-    fn split_at(self, m: M) -> (Self::Left, Self::Right)
+    fn split_at(Self { bulk, step }: Self, m: M) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let Self { bulk, step } = self;
         let n = NN::from_metadata(step);
         let (left, right) = bulk.split_at(length::value::saturating_mul(n, m));
         (
@@ -193,7 +192,58 @@ where
         )
     }
 }
-// TODO: random-access
+
+impl<'a, T, N> const RandomAccessBulk<'a> for StepBy<T, N>
+where
+    T: ~const RandomAccessBulk<'a, Item: ~const Destruct>,
+    N: Length<Elem = ()> + ?Sized + 'a
+{
+    type ItemRef = T::ItemRef;
+    type EachRef = StepBy<T::EachRef, N>;
+
+    fn each_ref(Self { bulk, step }: &'a Self) -> Self::EachRef
+    {
+        bulk.each_ref().step_by(length::value::from_metadata::<N::Value>(*step))
+    }
+}
+impl<'a, T, N> const RandomAccessBulkMut<'a> for StepBy<T, N>
+where
+    T: ~const RandomAccessBulkMut<'a, Item: ~const Destruct>,
+    N: Length<Elem = ()> + ?Sized + 'a
+{
+    type ItemMut = T::ItemMut;
+    type EachMut = StepBy<T::EachMut, N>;
+
+    fn each_mut(Self { bulk, step }: &'a mut Self) -> Self::EachMut
+    {
+        bulk.each_mut().step_by(length::value::from_metadata::<N::Value>(*step))
+    }
+}
+
+impl<'a, T, N> const RandomAccessBulkSpec<'a> for StepBy<T, N>
+where
+    T: ~const RandomAccessBulk<'a, Item: ~const Destruct>,
+    N: Length<Elem = ()> + ?Sized + 'a
+{
+    fn _get<L>(Self { bulk, step }: &'a Self, i: L) -> Option<Self::ItemRef>
+    where
+        L: LengthValue
+    {
+        bulk.get(length::value::mul(length::value::from_metadata::<N::Value>(*step), i))
+    }
+}
+impl<'a, T, N> const RandomAccessBulkMutSpec<'a> for StepBy<T, N>
+where
+    T: ~const RandomAccessBulkMut<'a, Item: ~const Destruct>,
+    N: Length<Elem = ()> + ?Sized + 'a
+{
+    fn _get_mut<L>(Self { bulk, step }: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    where
+        L: LengthValue
+    {
+        bulk.get_mut(length::value::mul(length::value::from_metadata::<N::Value>(*step), i))
+    }
+}
 
 #[cfg(test)]
 mod test

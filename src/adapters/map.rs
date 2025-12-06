@@ -191,18 +191,17 @@ where
 }
 impl<I, F, L> const SplitBulk<L> for Map<I, F>
 where
-    I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
-    F: FnMut<(I::Item,)> + ~const Clone,
+    I: ~const SplitBulk<L, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
+    F: ~const FnMut<(I::Item,)> + ~const Clone + ~const Destruct,
     L: LengthValue
 {
     type Left = Map<I::Left, F>;
     type Right = Map<I::Right, F>;
 
-    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn split_at(Self { bulk, f }: Self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let Self { bulk, f } = self;
         let (left, right) = bulk.split_at(n);
         (
             left.map(f.clone()),

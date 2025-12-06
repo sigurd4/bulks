@@ -179,7 +179,7 @@ where
 impl<A, B, T, D, L, R> const SplitBulk<L> for Chain<A, B>
 where
     A: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk, Length: Length<Value = D>> + ~const Bulk + ~const Destruct,
-    B: ~const SplitBulk<R, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
+    B: ~const SplitBulk<R, Item = T, Left: ~const Bulk, Right: ~const Bulk> + ~const Destruct,
     L: LengthValue<SaturatingSub<D> = R>,
     R: LengthValue,
     D: LengthValue
@@ -187,11 +187,10 @@ where
     type Left = Chain<A::Left, B::Left>;
     type Right = Chain<A::Right, B::Right>;
 
-    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn split_at(Self { a, b }: Self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let Self { a, b } = self;
         let m = length::value::saturating_sub(n, length::value::or_len::<D>(a.len()));
         let (a_left, a_right) = a.split_at(n);
         let (b_left, b_right) = b.split_at(m);

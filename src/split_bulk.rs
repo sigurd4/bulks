@@ -2,7 +2,7 @@ use array_trait::length::LengthValue;
 
 use crate::Bulk;
 
-pub const trait SplitBulk<L>: Bulk
+pub const trait SplitBulk<L>: ~const Bulk
 where
     L: LengthValue
 {
@@ -30,7 +30,7 @@ where
     /// assert_eq!(&right, b"right");
     /// ```
     #[track_caller]
-    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn split_at(bulk: Self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized;
 }

@@ -147,11 +147,11 @@ where
     type Left = Self;
     type Right = Self;
 
-    fn split_at(self, _n: L) -> (Self::Left, Self::Right)
+    fn split_at(Self(PhantomData): Self, _n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        (self.clone(), self)
+        (crate::empty(), crate::empty())
     }
 }
 impl<'a, T> const RandomAccessBulk<'a> for Empty<T>

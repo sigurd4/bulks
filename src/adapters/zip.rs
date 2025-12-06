@@ -2,7 +2,7 @@ use core::fmt;
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, SplitBulk};
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, SplitBulk};
 
 /// Converts the arguments to bulks and zips them.
 ///
@@ -88,6 +88,17 @@ where
     pub(crate) const fn new(a: A, b: B) -> Zip<A, B>
     {
         Self { a, b }
+    }
+}
+
+impl<A, B> fmt::Debug for Zip<A, B>
+where
+    A: Bulk + fmt::Debug,
+    B: Bulk + fmt::Debug
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
+    {
+        f.debug_struct("Zip").field("a", &self.a).field("b", &self.b).finish()
     }
 }
 
@@ -189,16 +200,18 @@ impl<A, B, L> const SplitBulk<L> for Zip<A, B>
 where
     A: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     B: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
+    Self: ~const Bulk,
+    Zip<A::Left, B::Left>: ~const Bulk<Item = Self::Item>,
+    Zip<A::Right, B::Right>: ~const Bulk<Item = Self::Item>,
     L: LengthValue
 {
     type Left = Zip<A::Left, B::Left>;
     type Right = Zip<A::Right, B::Right>;
 
-    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn split_at(Self { a, b }: Self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let Self { a, b } = self;
         let (a_left, a_right) = a.split_at(n);
         let (b_left, b_right) = b.split_at(n);
         
@@ -208,16 +221,68 @@ where
         )
     }
 }
-// TODO: random-access
 
-impl<A, B> fmt::Debug for Zip<A, B>
+impl<'a, A, B> const RandomAccessBulk<'a> for Zip<A, B>
 where
-    A: Bulk + fmt::Debug,
-    B: Bulk + fmt::Debug
+    Self: ~const Bulk,
+    A: ~const RandomAccessBulk<'a>,
+    B: ~const RandomAccessBulk<'a>,
+    Zip<A::EachRef, B::EachRef>: ~const Bulk<Item = (A::ItemRef, B::ItemRef)>
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
+    type ItemRef = (A::ItemRef, B::ItemRef);
+    type EachRef = Zip<A::EachRef, B::EachRef>;
+
+    fn each_ref(Self { a, b }: &'a Self) -> Self::EachRef
     {
-        f.debug_struct("Zip").field("a", &self.a).field("b", &self.b).finish()
+        a.each_ref()
+            .zip(b.each_ref())
+    }
+}
+impl<'a, A, B> const RandomAccessBulkMut<'a> for Zip<A, B>
+where
+    Self: ~const Bulk,
+    A: ~const RandomAccessBulkMut<'a>,
+    B: ~const RandomAccessBulkMut<'a>,
+    Zip<A::EachRef, B::EachRef>: ~const Bulk<Item = (A::ItemRef, B::ItemRef)>,
+    Zip<A::EachMut, B::EachMut>: ~const Bulk<Item = (A::ItemMut, B::ItemMut)>
+{
+    type ItemMut = (A::ItemMut, B::ItemMut);
+    type EachMut = Zip<A::EachMut, B::EachMut>;
+
+    fn each_mut(Self { a, b }: &'a mut Self) -> Self::EachMut
+    {
+        a.each_mut()
+            .zip(b.each_mut())
+    }
+}
+
+impl<'a, A, B> const RandomAccessBulkSpec<'a> for Zip<A, B>
+where
+    Self: ~const Bulk,
+    A: ~const RandomAccessBulk<'a>,
+    B: ~const RandomAccessBulk<'a>,
+    Zip<A::EachRef, B::EachRef>: ~const Bulk<Item = (A::ItemRef, B::ItemRef)>
+{
+    fn _get<L>(Self { a, b }: &'a Self, i: L) -> Option<Self::ItemRef>
+    where
+        L: LengthValue
+    {
+        Some((a.get(i)?, b.get(i)?))
+    }
+}
+impl<'a, A, B> const RandomAccessBulkMutSpec<'a> for Zip<A, B>
+where
+    Self: ~const Bulk,
+    A: ~const RandomAccessBulkMut<'a>,
+    B: ~const RandomAccessBulkMut<'a>,
+    Zip<A::EachRef, B::EachRef>: ~const Bulk<Item = (A::ItemRef, B::ItemRef)>,
+    Zip<A::EachMut, B::EachMut>: ~const Bulk<Item = (A::ItemMut, B::ItemMut)>
+{
+    fn _get_mut<L>(Self { a, b }: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    where
+        L: LengthValue
+    {
+        Some((a.get_mut(i)?, b.get_mut(i)?))
     }
 }
 

@@ -2,7 +2,7 @@ use core::{marker::Destruct, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, SplitBulk};
 
 
 /// A double-ended bulk with the direction inverted.
@@ -134,7 +134,7 @@ where
 }
 impl<I, N, L, R> const SplitBulk<L> for Rev<I>
 where
-    I: ~const SplitBulk<R, Left: ~const Bulk + DoubleEndedBulk, Right: ~const Bulk + DoubleEndedBulk> + ~const Bulk<Length: Length<Value = N> + Pointee<Metadata = N::Metadata>> + DoubleEndedBulk,
+    I: ~const SplitBulk<R, Left: ~const Bulk + DoubleEndedBulk, Right: ~const Bulk + DoubleEndedBulk> + ~const Bulk<Length: Length<Value = N> + Pointee<Metadata = N::Metadata>> + ~const DoubleEndedBulk,
     N: LengthValue<SaturatingSub<L> = R>,
     L: LengthValue,
     R: LengthValue
@@ -142,11 +142,10 @@ where
     type Left = Rev<I::Right>;
     type Right = Rev<I::Left>;
 
-    fn split_at(self, m: L) -> (Self::Left, Self::Right)
+    fn split_at(Self { bulk }: Self, m: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let Self { bulk } = self;
         let n = N::or_len(bulk.len());
         let (left, right) = bulk.split_at(length::value::saturating_sub(n, m));
         (
@@ -155,7 +154,70 @@ where
         )
     }
 }
-// TODO: random-access
+
+impl<'a, I> const RandomAccessBulk<'a> for Rev<I>
+where
+    I: ~const RandomAccessBulk<'a, EachRef: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
+{
+    type ItemRef = <I as RandomAccessBulk<'a>>::ItemRef;
+    type EachRef = Rev<<I as RandomAccessBulk<'a>>::EachRef>;
+
+    fn each_ref(Self { bulk }: &'a Self) -> Self::EachRef
+    {
+        bulk.each_ref().rev()
+    }
+}
+impl<'a, I> const RandomAccessBulkMut<'a> for Rev<I>
+where
+    I: ~const RandomAccessBulkMut<'a, EachRef: ~const DoubleEndedBulk, EachMut: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
+{
+    type ItemMut = <I as RandomAccessBulkMut<'a>>::ItemMut;
+    type EachMut = Rev<<I as RandomAccessBulkMut<'a>>::EachMut>;
+
+    fn each_mut(Self { bulk }: &'a mut Self) -> Self::EachMut
+    {
+        bulk.each_mut().rev()
+    }
+}
+
+impl<'a, I> const RandomAccessBulkSpec<'a> for Rev<I>
+where
+    I: ~const RandomAccessBulk<'a, EachRef: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
+{
+    fn _get<L>(Self { bulk }: &'a Self, i: L) -> Option<Self::ItemRef>
+    where
+        L: LengthValue
+    {
+        let n = length::value::or_len::<<I::Length as Length>::Value>(bulk.len());
+        if let Some(ip1) = length::value::checked_add(i, [(); 1]) && let Some(j) = length::value::checked_sub(n, ip1)
+        {
+            bulk.get(j)
+        }
+        else
+        {
+            None
+        }
+    }
+}
+impl<'a, I> const RandomAccessBulkMutSpec<'a> for Rev<I>
+where
+    I: ~const RandomAccessBulkMut<'a, EachRef: ~const DoubleEndedBulk, EachMut: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
+{
+    fn _get_mut<L>(bulk: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    where
+        L: LengthValue
+    {
+        let n = length::value::or_len::<<I::Length as Length>::Value>(bulk.len());
+        if let Some(ip1) = length::value::checked_add(i, [(); 1]) && let Some(j) = length::value::checked_sub(n, ip1)
+        {
+            bulk.get_mut(j)
+        }
+        else
+        {
+            None
+        }
+    }
+}
 
 #[cfg(test)]
 mod test
@@ -166,9 +228,13 @@ mod test
     fn it_works()
     {
         let a = [1, 2, 3, 4, 5, 6];
-        let (a, b) = a.into_bulk()
+        let (mut a, mut b) = a.into_bulk()
             .rev()
             .split_at([(); 2]);
+        a.each_mut()
+            .for_each(|x| *x = 7 - *x);
+        b.each_mut()
+            .for_each(|x| *x = 7 - *x);
         let a = a.collect_array();
         let b = b.collect_array();
 

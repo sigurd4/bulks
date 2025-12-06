@@ -173,7 +173,7 @@ macro_rules! impl_bulk {
             default type Right = <<$array as IntoIterator>::IntoIter as IntoBulk>::IntoBulk;
 
             #[track_caller]
-            default fn split_at($self_split_at_dyn, $n_split_at_dyn: L) -> (Self::Left, Self::Right)
+            default fn split_at($self_split_at_dyn: Self, $n_split_at_dyn: L) -> (Self::Left, Self::Right)
             where
                 Self: Sized
             $split_at_dyn
@@ -187,11 +187,11 @@ macro_rules! impl_bulk {
             type Right = array::$bulk<$($a,)? T, {N.saturating_sub(M)}>;
 
             #[track_caller]
-            fn split_at(self, _n: [(); M]) -> (Self::Left, Self::Right)
+            fn split_at(bulk: Self, _n: [(); M]) -> (Self::Left, Self::Right)
             where
                 Self: Sized
             {
-                let (left, right) = util::$split(self.array);
+                let (left, right) = util::$split(bulk.array);
                 (
                     array::$bulk {
                         array: left
@@ -313,10 +313,10 @@ impl_bulk!(
             array
         }
 
-        fn split_at(self, n) -> _
+        fn split_at(bulk, n) -> _
         {
             let n = length::value::len(n);
-            let Self {array} = self;
+            let Self {array} = bulk;
             let array = MaybeUninit::new(array).transpose();
             let mut left = array.into_iter();
             let mut right = unsafe {
@@ -389,10 +389,10 @@ impl_bulk!(
             array.each_ref()
         }
 
-        fn split_at(self, n) -> _
+        fn split_at(bulk, n) -> _
         {
             let n = length::value::len(n);
-            let Self {array} = self;
+            let Self {array} = bulk;
             let (left, right) = array.split_at(n);
             (left.into_bulk(), right.into_bulk()).same().ok().unwrap()
         }
@@ -462,10 +462,10 @@ impl_bulk!(
             array.each_mut()
         }
 
-        fn split_at(self, n) -> _
+        fn split_at(bulk, n) -> _
         {
             let n = length::value::len(n);
-            let Self {array} = self;
+            let Self {array} = bulk;
             let (left, right) = array.split_at_mut(n);
             (left.into_bulk(), right.into_bulk()).same().ok().unwrap()
         }

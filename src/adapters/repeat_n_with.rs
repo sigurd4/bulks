@@ -154,7 +154,7 @@ impl<A, G, N, M, L, R, NN> const SplitBulk<M> for RepeatNWith<G, N>
 where
     N: Length<Elem = (), Value = NN>,
     NN: LengthValue<Min<M> = L, SaturatingSub<M> = R, Metadata = N::Metadata>,
-    G: FnMut() -> A + ~const Clone,
+    G: ~const FnMut() -> A + ~const Clone + ~const Destruct,
     M: LengthValue,
     L: LengthValue,
     R: LengthValue
@@ -162,11 +162,10 @@ where
     type Left = RepeatNWith<G, L::Length<()>>;
     type Right = RepeatNWith<G, R::Length<()>>;
 
-    fn split_at(self, m: M) -> (Self::Left, Self::Right)
+    fn split_at(Self { repeater, n }: Self, m: M) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let Self { repeater, n } = self;
         let n = NN::from_metadata(n);
         (
             repeat_n_with(repeater.clone(), length::value::min(n, m)),

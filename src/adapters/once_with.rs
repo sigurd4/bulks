@@ -132,18 +132,18 @@ where
 }
 impl<F, A, L> const SplitBulk<L> for OnceWith<F>
 where
-    F: FnOnce() -> A,
+    F: ~const FnOnce() -> A,
     L: LengthValue,
     RepeatNWith<TakeOne<F>, [(); 1]>: ~const SplitBulk<L, Item = A>
 {
     type Left = <RepeatNWith<TakeOne<F>, [(); 1]> as SplitBulk<L>>::Left;
     type Right = <RepeatNWith<TakeOne<F>, [(); 1]> as SplitBulk<L>>::Right;
 
-    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn split_at(bulk: Self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        RepeatNWith::from(self).split_at(n)
+        RepeatNWith::from(bulk).split_at(n)
     }
 }
 

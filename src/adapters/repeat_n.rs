@@ -2,7 +2,7 @@ use core::{borrow::Borrow, fmt, marker::Destruct, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, RepeatNWith, SplitBulk, util::{FlatRef, YieldOnce}};
+use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, RandomAccessBulkSpec, RepeatNWith, SplitBulk, util::{FlatRef, YieldOnce}};
 
 /// Creates a new bulk that repeats a single element a given number of times.
 ///
@@ -171,7 +171,7 @@ where
 impl<A, N, M, L, R> const SplitBulk<M> for RepeatN<A, N>
 where
     N: Length<Elem = (), Value: LengthValue<Min<M> = L, SaturatingSub<M> = R>>,
-    A: ~const Clone,
+    A: ~const Clone + ~const Destruct,
     M: LengthValue,
     L: LengthValue,
     R: LengthValue
@@ -179,11 +179,10 @@ where
     type Left = RepeatN<A, L::Length<()>>;
     type Right = RepeatN<A, R::Length<()>>;
 
-    fn split_at(self, m: M) -> (Self::Left, Self::Right)
+    fn split_at(Self { element, n }: Self, m: M) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let Self { element, n } = self;
         let n = length::value::from_metadata::<N::Value>(n);
         (
             repeat_n(element.clone(), length::value::min(n, m)),
@@ -207,6 +206,27 @@ where
     fn each_ref(Self { element, n }: &'a Self) -> Self::EachRef
     {
         crate::repeat_n(*(&element).borrow(), length::value::from_metadata::<N::Value>(*n))
+    }
+}
+impl<'a, A, N> const RandomAccessBulkSpec<'a> for RepeatN<A, N>
+where
+    Self: 'a,
+    A: FlatRef<'a> + ~const Clone + ~const Destruct,
+    &'a A: ~const Borrow<A::FlatRef>,
+    N: Length<Elem = ()> + ?Sized,
+    A::FlatRef: FlatRef<'a, FlatRef = A::FlatRef> + ~const Clone,
+    &'a A::FlatRef: ~const Borrow<A::FlatRef>
+{
+    fn _get<L>(Self { element, n }: &'a Self, i: L) -> Option<A::FlatRef>
+    where
+        Self: ~const RandomAccessBulk<'a>,
+        L: LengthValue
+    {
+        if length::value::ge(i, length::value::from_metadata::<N::Value>(*n))
+        {
+            return None
+        }
+        Some(*(&element).borrow())
     }
 }
 

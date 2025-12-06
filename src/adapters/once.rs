@@ -116,11 +116,11 @@ where
     type Left = <OnceWith<YieldOnce<A>> as SplitBulk<L>>::Left;
     type Right = <OnceWith<YieldOnce<A>> as SplitBulk<L>>::Right;
 
-    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn split_at(bulk: Self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        OnceWith::from(self).split_at(n)
+        OnceWith::from(bulk).split_at(n)
     }
 }
 impl<'a, T, R> const RandomAccessBulk<'a> for Once<T>

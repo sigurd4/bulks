@@ -1,8 +1,8 @@
 use core::{marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}, range::Step};
 
-use array_trait::length::{Length, LengthValue};
+use array_trait::length::{self, Length, LengthValue};
 
-use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, Rev, Skip, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
+use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -1915,6 +1915,65 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         Self: Sized,
     {
         ArrayChunks::new(self)
+    }
+
+    /// Splits a bulk in two at a specified index.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # #![feature(generic_const_exprs)]
+    /// use bulks::*;
+    /// 
+    /// let a = b"leftright";
+    /// 
+    /// let (a1, a2) = a.bulk()
+    ///     .copied()
+    ///     .split_at([(); 4]);
+    /// 
+    /// let left: [_; _] = a1.collect();
+    /// let right: [_; _] = a2.collect();
+    /// 
+    /// assert_eq!(&left, b"left");
+    /// assert_eq!(&right, b"right");
+    /// ```
+    #[track_caller]
+    fn split_at<L>(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: ~const SplitBulk<L> + Sized,
+        L: LengthValue
+    {
+        SplitBulk::split_at(self, n)
+    }
+
+    /// Splits a bulk in two at a specified reversed index.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # #![feature(generic_const_exprs)]
+    /// use bulks::*;
+    /// 
+    /// let a = b"leftright";
+    /// 
+    /// let (a1, a2) = a.bulk()
+    ///     .copied()
+    ///     .rsplit_at([(); 5]);
+    /// 
+    /// let left: [_; _] = a1.collect();
+    /// let right: [_; _] = a2.collect();
+    /// 
+    /// assert_eq!(&left, b"left");
+    /// assert_eq!(&right, b"right");
+    /// ```
+    #[track_caller]
+    fn rsplit_at<L>(self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: ~const SplitBulk<length::value::SaturatingSub<<<Self as Bulk>::Length as Length>::Value, L>> + Sized,
+        L: LengthValue
+    {
+        let l = length::value::or_len::<<<Self as Bulk>::Length as Length>::Value>(self.len());
+        SplitBulk::split_at(self, length::value::saturating_sub(l, n))
     }
 
     fn each_ref<'a>(&'a self) -> Self::EachRef

@@ -162,11 +162,11 @@ where
     type Left = Copied<I::Left>;
     type Right = Copied<I::Right>;
 
-    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn split_at(Self { bulk }: Self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let (left, right) = self.bulk.split_at(n);
+        let (left, right) = bulk.split_at(n);
         (
             left.copied(),
             right.copied()

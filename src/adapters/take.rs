@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::{ControlFlow, Try}, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, RandomAccessBulkMut, RandomAccessBulkMutSpec, RandomAccessBulkSpec, SplitBulk};
 
 /// Creates a bulk that only delivers the first `n` iterations of `iterable`.
 pub const fn take<I, L>(iterable: I, n: L) -> Take<
@@ -225,7 +225,7 @@ where
 }
 impl<T, N, NN, M, R> const SplitBulk<M> for Take<T, N>
 where
-    T: ~const SplitBulk<M, Left: ~const Bulk, Right: ~const Bulk>,
+    T: ~const SplitBulk<M, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
     N: Length<Elem = (), Value = NN> + ?Sized,
     NN: LengthValue<Metadata = N::Metadata, Length<()> = N, SaturatingSub<M> = R>,
     M: LengthValue,
@@ -234,11 +234,10 @@ where
     type Left = Take<T::Left, N>;
     type Right = Take<T::Right, R::Length<()>>;
 
-    fn split_at(self, m: M) -> (Self::Left, Self::Right)
+    fn split_at(Self { bulk, n }: Self, m: M) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let Self { bulk, n } = self;
         let n = NN::from_metadata(n);
         let (left, right) = bulk.split_at(m);
         (
@@ -247,7 +246,65 @@ where
         )
     }
 }
-// TODO: random-access
+
+impl<'a, T, N> const RandomAccessBulk<'a> for Take<T, N>
+where
+    T: ~const RandomAccessBulk<'a, Item: ~const Destruct>,
+    N: Length<Elem = ()> + ?Sized + 'a
+{
+    type ItemRef = T::ItemRef;
+    type EachRef = Take<T::EachRef, N>;
+
+    fn each_ref(Self { bulk, n }: &'a Self) -> Self::EachRef
+    {
+        bulk.each_ref().take(length::value::from_metadata::<N::Value>(*n))
+    }
+}
+impl<'a, T, N> const RandomAccessBulkMut<'a> for Take<T, N>
+where
+    T: ~const RandomAccessBulkMut<'a, Item: ~const Destruct>,
+    N: Length<Elem = ()> + ?Sized + 'a
+{
+    type ItemMut = T::ItemMut;
+    type EachMut = Take<T::EachMut, N>;
+
+    fn each_mut(Self { bulk, n }: &'a mut Self) -> Self::EachMut
+    {
+        bulk.each_mut().take(length::value::from_metadata::<N::Value>(*n))
+    }
+}
+impl<'a, T, N> const RandomAccessBulkSpec<'a> for Take<T, N>
+where
+    T: ~const RandomAccessBulk<'a, Item: ~const Destruct>,
+    N: Length<Elem = ()> + ?Sized + 'a
+{
+    fn _get<L>(Self { bulk, n }: &'a Self, i: L) -> Option<Self::ItemRef>
+    where
+        L: LengthValue
+    {
+        if length::value::le(length::value::from_metadata::<N::Value>(*n), i)
+        {
+            return None
+        }
+        bulk.get(i)
+    }
+}
+impl<'a, T, N> const RandomAccessBulkMutSpec<'a> for Take<T, N>
+where
+    T: ~const RandomAccessBulkMut<'a, Item: ~const Destruct>,
+    N: Length<Elem = ()> + ?Sized + 'a
+{
+    fn _get_mut<L>(Self { bulk, n }: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    where
+        L: LengthValue
+    {
+        if length::value::le(length::value::from_metadata::<N::Value>(*n), i)
+        {
+            return None
+        }
+        bulk.get_mut(i)
+    }
+}
 
 #[cfg(test)]
 mod test

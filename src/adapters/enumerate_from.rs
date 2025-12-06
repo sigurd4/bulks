@@ -153,17 +153,17 @@ where
 impl<I, T, U, L> const SplitBulk<L> for EnumerateFrom<I, U>
 where
     I: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
-    U: ~const Step + Copy,
+    T: ~const Destruct,
+    U: ~const Step + Copy + ~const Destruct,
     L: LengthValue
 {
     type Left = EnumerateFrom<I::Left, U>;
     type Right = EnumerateFrom<I::Right, U>;
 
-    fn split_at(self, n: L) -> (Self::Left, Self::Right)
+    fn split_at(Self { bulk, initial_count }: Self, n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        let Self { bulk, initial_count } = self;
         let (left, right) = bulk.split_at(n);
         let following_count = Step::forward(initial_count, left.len());
         (
