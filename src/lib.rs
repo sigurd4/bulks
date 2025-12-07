@@ -379,8 +379,7 @@ pub mod asm
     #[unsafe(no_mangle)]
     pub fn asm_bulk(a: [u8; 4]) -> [u8; 4]
     {
-        a.into_bulk()
-            .collect()
+        a.into_bulk().collect()
     }
 
     #[unsafe(no_mangle)]
@@ -389,7 +388,7 @@ pub mod asm
         let mut bulk = a.into_bulk();
 
         bulk.swap_inplace(0, 1);
-            
+
         bulk.collect()
     }
 
