@@ -371,6 +371,38 @@ moddef::moddef!(
 
 pub use util::ConstStep as Step;
 
+#[cfg(false)]
+pub mod asm
+{
+    use crate::{Bulk, IntoBulk};
+
+    #[unsafe(no_mangle)]
+    pub fn asm_bulk(a: [u8; 4]) -> [u8; 4]
+    {
+        a.into_bulk()
+            .collect()
+    }
+
+    #[unsafe(no_mangle)]
+    pub fn asm_swap(a: [u8; 4]) -> [u8; 4]
+    {
+        let mut bulk = a.into_bulk();
+
+        bulk.swap_inplace(0, 1);
+            
+        bulk.collect()
+    }
+
+    #[unsafe(no_mangle)]
+    #[inline(never)]
+    pub fn asm_bench_swap(mut a: [u8; 4]) -> [u8; 4]
+    {
+        a.swap(0, 1);
+
+        a
+    }
+}
+
 #[cfg(test)]
 mod tests
 {

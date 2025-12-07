@@ -2107,6 +2107,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
         bulk.take(length::value::add(i, [(); 1]))
             .skip(j)
+            .step_by(length::value::sub(i, j))
             .for_each(&mut closure);
 
         match if length::value::ge(i, n)
