@@ -1,6 +1,6 @@
-use core::{alloc::Allocator, marker::Destruct, ops::Try};
+use core::{alloc::Allocator, ops::Try};
 
-use alloc::{vec::Vec, alloc::Global};
+use alloc::vec::Vec;
 use array_trait::length::{self, LengthValue};
 
 use crate::{AsBulk, Bulk, DoubleEndedBulk, InplaceBulk, IntoBulk, RandomAccessBulk, SplitBulk, slice};

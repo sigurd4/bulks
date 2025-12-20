@@ -190,7 +190,7 @@ impl<'a, I> const RandomAccessBulkSpec<'a> for Rev<I>
 where
     I: ~const RandomAccessBulk<'a, EachRef: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
 {
-    fn _get<L>(Self { bulk }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk>::ItemRef>
+    fn _get<L>(Self { bulk }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk<'a>>::ItemRef>
     where
         L: LengthValue,
         Self: 'a

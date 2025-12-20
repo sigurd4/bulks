@@ -255,7 +255,7 @@ where
     T: ~const Destruct,
     U: ~const Step + Copy + ~const Destruct
 {
-    fn _get_mut<L>(Self { bulk, initial_count }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk>::ItemMut>
+    fn _get_mut<L>(Self { bulk, initial_count }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk<'a>>::ItemMut>
     where
         L: LengthValue,
         Self: 'a

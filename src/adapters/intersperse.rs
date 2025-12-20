@@ -1,4 +1,4 @@
-use core::{borrow::Borrow, marker::Destruct, ops::Try};
+use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 

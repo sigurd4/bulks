@@ -278,7 +278,7 @@ where
     T: ~const RandomAccessBulk<'a, Item: ~const Destruct>,
     N: Length<Elem = ()> + ?Sized
 {
-    fn _get<L>(Self { bulk, n }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk>::ItemRef>
+    fn _get<L>(Self { bulk, n }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk<'a>>::ItemRef>
     where
         L: LengthValue,
         Self: 'a
@@ -295,7 +295,7 @@ where
     T: ~const InplaceBulk<'a, Item: ~const Destruct>,
     N: Length<Elem = ()> + ?Sized
 {
-    fn _get_mut<L>(Self { bulk, n }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk>::ItemMut>
+    fn _get_mut<L>(Self { bulk, n }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk<'a>>::ItemMut>
     where
         L: LengthValue,
         Self: 'a

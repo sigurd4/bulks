@@ -1,12 +1,10 @@
 use core::borrow::{Borrow, BorrowMut};
 use core::{marker::Destruct, ops::Residual};
-use core::ops::{Deref, DerefMut, Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive, Try};
+use core::ops::{Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive, Try};
 
 use array_trait::AsSlice;
-use array_trait::length::Length;
-use array_trait::same::Same;
 
-use crate::{AsBulk, Bulk, FromBulk, IntoBulk, RandomAccessBulk, StaticBulk};
+use crate::{AsBulk, Bulk, IntoBulk};
 
 pub(crate) const trait Collection<T> = ~const IntoBulk<Item = T/*, IntoBulk: for<'a> ~const RandomAccessBulk<'a>*/>
     + ~const AsBulk
@@ -25,7 +23,9 @@ pub(crate) const trait Collection<T> = ~const IntoBulk<Item = T/*, IntoBulk: for
 
 pub const trait CollectNearest: ~const Bulk
 {
+    #[allow(private_bounds)]
     type Nearest: ~const Collection<Self::Item>;
+    #[allow(private_bounds)]
     type TryNearest: ~const Collection<<Self::Item as Try>::Output>
     where
         Self::Item: ~const Try;
@@ -82,7 +82,9 @@ mod private
     where
         L: Length<Elem = ()> + ?Sized
     {
+        #[allow(private_bounds)]
         type _Nearest: ~const Collection<Self::Item>;
+        #[allow(private_bounds)]
         type _TryNearest: ~const Collection<<Self::Item as Try>::Output>
         where
             Self::Item: ~const Try;

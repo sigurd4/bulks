@@ -217,7 +217,7 @@ where
     N: Length<Elem = ()> + ?Sized + 'a,
     R: 'a
 {
-    fn _get<L>(Self { element, n, marker: _ }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk>::ItemRef>
+    fn _get<L>(Self { element, n, marker: _ }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk<'a>>::ItemRef>
     where
         L: LengthValue
     {

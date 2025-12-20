@@ -1,4 +1,4 @@
-use core::{borrow::Borrow, marker::Destruct, mem::{ManuallyDrop, MaybeUninit}, ops::{Deref, DerefMut}};
+use core::{borrow::Borrow, mem::{ManuallyDrop, MaybeUninit}};
 
 moddef::moddef!(
     flat(pub) mod {
@@ -12,49 +12,6 @@ moddef::moddef!(
         yield_once
     }
 );
-
-/*pub trait FlatRef
-{
-    type FlatRef<'a>: Deref + Copy + 'a + const Destruct + FlatRef<FlatRef<'a>: Deref<Target = <Self::FlatRef<'a> as Deref>::Target>>
-    where
-        Self: 'a;
-    type FlatMut<'a>: DerefMut + 'a + const Destruct + FlatRef<FlatRef<'a>: Deref<Target = <Self::FlatRef<'a> as Deref>::Target>>
-    where
-        Self: 'a;
-}
-impl<T> FlatRef for T
-where
-    T: ?Sized
-{
-    default type FlatRef<'a> = &'a T
-    where
-        Self: 'a;
-    default type FlatMut<'a> = &'a mut T
-    where
-        Self: 'a;
-}
-impl<T> FlatRef for &T
-where
-    T: ?Sized
-{
-    type FlatRef<'a> = <T as FlatRef>::FlatRef<'a>
-    where
-        Self: 'a;
-    type FlatMut<'a> = &'a mut <T as FlatRef>::FlatRef<'a>
-    where
-        Self: 'a;
-}
-impl<T> FlatRef for &mut T
-where
-    T: ?Sized
-{
-    type FlatRef<'a> = <T as FlatRef>::FlatRef<'a>
-    where
-        Self: 'a;
-    type FlatMut<'a> = <T as FlatRef>::FlatMut<'a>
-    where
-        Self: 'a;
-}*/
 
 pub const trait BorrowAt<'a, T>
 where
