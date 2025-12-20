@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk};
 
 /// A bulk that skips over `n` elements of `bulk`.
 ///
@@ -250,23 +250,25 @@ where
 impl<'a, T, N> const RandomAccessBulkSpec<'a> for Skip<T, N>
 where
     T: ~const RandomAccessBulk<'a, Item: ~const Destruct>,
-    N: Length<Elem = ()> + ?Sized + 'a
+    N: Length<Elem = ()> + ?Sized
 {
-    fn _get<L>(Self { bulk, n }: &'a Self, i: L) -> Option<Self::ItemRef>
+    fn _get<L>(Self { bulk, n }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk>::ItemRef>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         bulk.get(length::value::add(length::value::from_metadata::<N::Value>(*n), i))
     }
 }
-impl<'a, T, N> const InplaceMutSpec<'a> for Skip<T, N>
+impl<'a, T, N> const InplaceBulkSpec<'a> for Skip<T, N>
 where
     T: ~const InplaceBulk<'a, Item: ~const Destruct>,
-    N: Length<Elem = ()> + ?Sized + 'a
+    N: Length<Elem = ()> + ?Sized
 {
-    fn _get_mut<L>(Self { bulk, n }: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    fn _get_mut<L>(Self { bulk, n }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk>::ItemMut>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         bulk.get_mut(length::value::add(length::value::from_metadata::<N::Value>(*n), i))
     }

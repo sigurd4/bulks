@@ -6,6 +6,7 @@
 #![feature(const_range)]
 #![feature(exact_size_is_empty)]
 #![feature(iter_array_chunks)]
+#![feature(allocator_api)]
 #![feature(inplace_iteration)]
 #![feature(const_try_residual)]
 #![feature(iter_intersperse)]
@@ -357,8 +358,11 @@ moddef::moddef!(
         impl_array,
         impl_iter,
         impl_range,
+        impl_slice,
+        impl_vec for cfg(feature = "alloc"),
         impl_option,
         bulk,
+        collect_nearest,
         double_ended_bulk,
         from_bulk,
         into_bulk,
@@ -414,7 +418,7 @@ mod tests
 
         let f = |x| (x - 1) as usize;
 
-        let b: [(usize, usize); _] = a.bulk().copied().map(f).enumerate().inspect(|(i, x)| assert_eq!(i, x)).collect_nearest();
+        let b = a.bulk().copied().map(f).enumerate().inspect(|(i, x)| assert_eq!(i, x)).collect_nearest();
 
         assert_eq!(b, [(0, 0), (1, 1), (2, 2)] as [(usize, usize); _]);
     }

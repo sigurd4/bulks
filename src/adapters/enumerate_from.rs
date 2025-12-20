@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, SplitBulk, Step, util::Stepper};
+use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk, Step, util::Stepper};
 
 /// A bulk that yields the element's index counting from a given initial index and the element.
 ///
@@ -224,11 +224,12 @@ impl<'a, I, T, U> const RandomAccessBulkSpec<'a> for EnumerateFrom<I, U>
 where
     I: ~const RandomAccessBulk<'a, Item = T>,
     T: ~const Destruct,
-    U: ~const Step + Copy + ~const Destruct + 'a
+    U: ~const Step + Copy + ~const Destruct
 {
-    fn _get<L>(Self { bulk, initial_count }: &'a Self, i: L) -> Option<Self::ItemRef>
+    fn _get<L>(Self { bulk, initial_count }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk<'a>>::ItemRef>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         let x = bulk.get(i)?;
         Some((Step::forward(*initial_count, length::value::len(i)), x))
@@ -248,15 +249,16 @@ where
         bulk.each_mut().enumerate_from(*initial_count)
     }
 }
-impl<'a, I, T, U> const InplaceMutSpec<'a> for EnumerateFrom<I, U>
+impl<'a, I, T, U> const InplaceBulkSpec<'a> for EnumerateFrom<I, U>
 where
     I: ~const InplaceBulk<'a, Item = T>,
     T: ~const Destruct,
-    U: ~const Step + Copy + ~const Destruct + 'a
+    U: ~const Step + Copy + ~const Destruct
 {
-    fn _get_mut<L>(Self { bulk, initial_count }: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    fn _get_mut<L>(Self { bulk, initial_count }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk>::ItemMut>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         let x = bulk.get_mut(i)?;
         Some((Step::forward(*initial_count, length::value::len(i)), x))

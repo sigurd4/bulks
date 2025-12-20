@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::{length::{self, LengthValue}, same::Same};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, Step, range::BoundedRange};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, RandomAccessBulk, Step, range::BoundedRange};
 
 pub mod iter
 {
@@ -10,7 +10,7 @@ pub mod iter
     where
         T: IntoIterator<IntoIter: ExactSizeIterator>
     {
-        pub(super) inner: T::IntoIter
+        pub(super) iter: T::IntoIter
     }
 }
 
@@ -21,8 +21,8 @@ where
 {
     pub const fn by_ref(&mut self) -> &mut T::IntoIter
     {
-        let Self { inner } = self;
-        inner
+        let Self { iter } = self;
+        iter
     }
 }
 
@@ -36,7 +36,7 @@ where
     
     fn into_iter(self) -> Self::IntoIter
     {
-        self.inner
+        self.iter
     }
 }
 
@@ -50,7 +50,7 @@ where
     default fn into_bulk(self) -> Self::IntoBulk
     {
         iter::Bulk::<T> {
-            inner: self.into_iter()
+            iter: self.into_iter()
         }.same().ok().unwrap()
     }
 }
@@ -63,12 +63,12 @@ where
     #[inline]
     default fn len(&self) -> usize
     {
-        self.inner.len()
+        self.iter.len()
     }
     #[inline]
     default fn is_empty(&self) -> bool
     {
-        self.inner.is_empty()
+        self.iter.is_empty()
     }
 
     #[inline]
@@ -77,7 +77,7 @@ where
         Self: Sized,
         F: FnMut(Self::Item)
     {
-        self.inner.for_each(f)
+        self.iter.for_each(f)
     }
     #[inline]
     default fn try_for_each<F, R>(mut self, f: F) -> R
@@ -86,14 +86,14 @@ where
         F: FnMut(Self::Item) -> R,
         R: core::ops::Try<Output = ()>
     {
-        self.inner.try_for_each(f)
+        self.iter.try_for_each(f)
     }
 
     default fn first(mut self) -> Option<Self::Item>
     where
         Self: Sized
     {
-        self.inner.next()
+        self.iter.next()
     }
     
     default fn nth<L>(mut self, n: L) -> Option<Self::Item>
@@ -101,7 +101,7 @@ where
         Self: Sized,
         L: LengthValue
     {
-        self.inner.nth(length::value::len(n))
+        self.iter.nth(length::value::len(n))
     }
 }
 impl<T, A, I> DoubleEndedBulk for iter::Bulk<T>
@@ -114,7 +114,7 @@ where
         Self: Sized,
         F: FnMut(Self::Item)
     {
-        self.inner.rev().for_each(f);
+        self.iter.rev().for_each(f);
     }
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
@@ -122,7 +122,7 @@ where
         F: FnMut(Self::Item) -> R,
         R: Try<Output = ()>
     {
-        self.inner.rev().try_for_each(f)
+        self.iter.rev().try_for_each(f)
     }
 }
 
@@ -132,7 +132,7 @@ where
 {
     fn len(&self) -> usize
     {
-        self.inner.steps().0
+        self.iter.steps().0
     }
     fn first(self) -> Option<Self::Item>
     where
@@ -140,7 +140,7 @@ where
     {
         if !self.is_empty()
         {
-            return Some(*self.inner.start())
+            return Some(*self.iter.start())
         }
         None
     }
@@ -149,9 +149,9 @@ where
         Self: Sized,
         F: ~const FnMut(Self::Item) + ~const Destruct
     {
-        let Self { inner } = self;
-        let inclusive = inner.inclusive();
-        let mut range = *inner.start()..*inner.end();
+        let Self { iter } = self;
+        let inclusive = iter.inclusive();
+        let mut range = *iter.start()..*iter.end();
         loop
         {
             let n = Step::steps_between(&range.start, &range.end).0;
@@ -174,9 +174,9 @@ where
         F: ~const FnMut(Self::Item) -> RR + ~const Destruct,
         RR: ~const Try<Output = ()>
     {
-        let Self { inner } = self;
-        let inclusive = inner.inclusive();
-        let mut range = *inner.start()..*inner.end();
+        let Self { iter } = self;
+        let inclusive = iter.inclusive();
+        let mut range = *iter.start()..*iter.end();
         loop
         {
             let n = Step::steps_between(&range.start, &range.end).0;

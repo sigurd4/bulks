@@ -1,8 +1,8 @@
-use core::{fmt, marker::{Destruct, PhantomData}};
+use core::{borrow::Borrow, fmt, marker::{Destruct, PhantomData}};
 
 use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, RandomAccessBulk, InplaceBulk, SplitBulk, StaticBulk, util::FlatRef};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, RandomAccessBulk, InplaceBulk, SplitBulk, StaticBulk};
 
 /// Creates a bulk that yields nothing.
 /// 
@@ -30,9 +30,13 @@ pub const fn empty<T>() -> Empty<T>
 ///
 /// This `struct` is created by the [`empty()`] function. See its documentation for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
-pub struct Empty<T>(PhantomData<T>);
+pub struct Empty<T, R = T>(PhantomData<(T, R)>)
+where
+    T: Borrow<R>;
 
-impl<T> const Clone for Empty<T>
+impl<T, R> const Clone for Empty<T, R>
+where
+    T: Borrow<R>
 {
     fn clone(&self) -> Self
     {
@@ -40,7 +44,9 @@ impl<T> const Clone for Empty<T>
     }
 }
 
-impl<T> fmt::Debug for Empty<T>
+impl<T, R> fmt::Debug for Empty<T, R>
+where
+    T: Borrow<R>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
     {
@@ -48,7 +54,9 @@ impl<T> fmt::Debug for Empty<T>
     }
 }
 
-impl<T> IntoIterator for Empty<T>
+impl<T, R> IntoIterator for Empty<T, R>
+where
+    T: Borrow<R>
 {
     type Item = T;
     type IntoIter = core::iter::Empty<T>;
@@ -67,7 +75,9 @@ impl<T> const IntoBulk for core::iter::Empty<T>
         empty()
     }
 }
-impl<T> const Bulk for Empty<T>
+impl<T, RR> const Bulk for Empty<T, RR>
+where
+    T: Borrow<RR>
 {
     type MinLength = [(); 0];
     type MaxLength = [(); 0];
@@ -121,7 +131,9 @@ impl<T> const Bulk for Empty<T>
         R::from_output(())
     }
 }
-impl<T> const DoubleEndedBulk for Empty<T>
+impl<T, RR> const DoubleEndedBulk for Empty<T, RR>
+where
+    T: Borrow<RR>
 {
     fn rev_for_each<F>(self, f: F)
     where
@@ -140,47 +152,45 @@ impl<T> const DoubleEndedBulk for Empty<T>
         R::from_output(())
     }
 }
-impl<T, L> const SplitBulk<L> for Empty<T>
+impl<T, R, L> const SplitBulk<L> for Empty<T, R>
 where
-    L: LengthValue
+    L: LengthValue,
+    T: Borrow<R>
 {
     type Left = Self;
     type Right = Self;
 
-    fn split_at(Self(PhantomData): Self, _n: L) -> (Self::Left, Self::Right)
+    fn split_at(bulk: Self, _n: L) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
-        (crate::empty(), crate::empty())
+        (bulk.clone(), bulk)
     }
 }
-impl<'a, T> const RandomAccessBulk<'a> for Empty<T>
+impl<'a, T, R> const RandomAccessBulk<'a> for Empty<T, R>
 where
-    Self: 'a,
-    T: FlatRef<'a>,
-    T::FlatRef: FlatRef<'a, FlatRef = T::FlatRef>
+    T: Borrow<R> + 'a,
+    R: 'a
 {
-    type ItemRef = T::FlatRef;
-    type EachRef = Empty<T::FlatRef>;
+    type ItemRef = &'a R;
+    type EachRef = Empty<&'a R, R>;
 
     fn each_ref(Self(PhantomData): &'a Self) -> Self::EachRef
     {
-        crate::empty()
+        Empty(PhantomData)
     }
 }
-impl<'a, T> const InplaceBulk<'a> for Empty<T>
+impl<'a, T, R> const InplaceBulk<'a> for Empty<T, R>
 where
-    Self: 'a,
-    T: FlatRef<'a>,
-    T::FlatRef: FlatRef<'a, FlatRef = T::FlatRef>,
-    T::FlatMut: FlatRef<'a, FlatRef = T::FlatRef, FlatMut = T::FlatMut>
+    T: Borrow<R> + 'a,
+    R: 'a
 {
-    type ItemMut = T::FlatMut;
-    type EachMut = Empty<T::FlatMut>;
+    type ItemMut = &'a mut R;
+    type EachMut = Empty<&'a mut R, R>;
 
     fn each_mut(Self(PhantomData): &'a mut Self) -> Self::EachMut
     {
-        crate::empty()
+        Empty(PhantomData)
     }
 }
 

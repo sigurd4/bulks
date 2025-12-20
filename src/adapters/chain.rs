@@ -149,7 +149,7 @@ where
 impl<A, B, T> const DoubleEndedBulk for Chain<A, B>
 where
     A: ~const DoubleEndedBulk<Item = T> + ~const Destruct,
-    B: ~const DoubleEndedBulk<Item = T>,
+    B: ~const DoubleEndedBulk<Item = T> + ~const Destruct,
     Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<F>(self, mut f: F)
@@ -200,13 +200,15 @@ where
         )
     }
 }
-impl<'a, A, B, T, TR> const RandomAccessBulk<'a> for Chain<A, B>
+
+const trait RandomAccessFirst<'a> = ~const RandomAccessBulk<'a, EachRef: ~const Destruct + ~const RandomAccessBulk<'a, Item = <Self as RandomAccessBulk<'a>>::ItemRef, EachRef = <Self as RandomAccessBulk<'a>>::EachRef> + ~const Destruct> + ~const Destruct + 'a;
+
+impl<'a, A, B, T> const RandomAccessBulk<'a> for Chain<A, B>
 where
-    A: ~const RandomAccessBulk<'a, Item = T, ItemRef = TR, EachRef: ~const Destruct> + ~const Destruct,
-    B: ~const RandomAccessBulk<'a, Item = T, ItemRef = TR, EachRef: ~const Destruct> + ~const Destruct,
-    TR: ~const Destruct + Copy + 'a
+    A: ~const RandomAccessFirst<'a, Item = T, EachRef: ~const Destruct>,
+    B: ~const RandomAccessFirst<'a, Item = T, EachRef: ~const Destruct, ItemRef = A::ItemRef>
 {
-    type ItemRef = TR;
+    type ItemRef = A::ItemRef;
     type EachRef = Chain<A::EachRef, B::EachRef>;
 
     fn each_ref(Self { a, b }: &'a Self) -> Self::EachRef
@@ -214,14 +216,12 @@ where
         a.each_ref().chain(b.each_ref())
     }
 }
-impl<'a, A, B, T, TR, TM> const InplaceBulk<'a> for Chain<A, B>
+impl<'a, A, B, T> const InplaceBulk<'a> for Chain<A, B>
 where
-    A: ~const InplaceBulk<'a, Item = T, ItemRef = TR, ItemMut = TM, EachRef: ~const Destruct, EachMut: ~const Destruct> + ~const Destruct,
-    B: ~const InplaceBulk<'a, Item = T, ItemRef = TR, ItemMut = TM, EachRef: ~const Destruct, EachMut: ~const Destruct> + ~const Destruct,
-    TR: ~const Destruct + Copy + 'a,
-    TM: ~const Destruct + 'a
+    A: ~const InplaceBulk<'a, Item = T, EachRef: ~const Destruct, EachMut: ~const Destruct> + ~const Destruct,
+    B: ~const InplaceBulk<'a, Item = T, ItemRef = A::ItemRef, ItemMut = A::ItemMut, EachRef: ~const Destruct, EachMut: ~const Destruct> + ~const Destruct + 'a
 {
-    type ItemMut = TM;
+    type ItemMut = A::ItemMut;
     type EachMut = Chain<A::EachMut, B::EachMut>;
 
     fn each_mut(Self { a, b }: &'a mut Self) -> Self::EachMut

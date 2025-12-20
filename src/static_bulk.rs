@@ -17,7 +17,7 @@ pub unsafe trait StaticBulk: Bulk<
     MaxLength = Self::Array<()>
 > + Sized
 {
-    type Array<U>: const Array<Elem = U> + Length<Elem = U> + IntoBulk<Item = U>;
+    type Array<U>: const Array<Elem = U> + Length<Elem = U> + const IntoBulk;
 }
 unsafe impl<T, const N: usize> StaticBulk for T
 where

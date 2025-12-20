@@ -1,8 +1,8 @@
-use core::{borrow::Borrow, fmt, marker::Destruct, ptr::Pointee};
+use core::{borrow::Borrow, fmt, marker::{Destruct, PhantomData}, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, RandomAccessBulkSpec, RepeatNWith, SplitBulk, util::{FlatRef, YieldOnce}};
+use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, RandomAccessBulkSpec, RepeatNWith, SplitBulk, util::YieldOnce};
 
 /// Creates a new bulk that repeats a single element a given number of times.
 ///
@@ -51,7 +51,8 @@ where
 {
     RepeatN {
         element,
-        n: length::value::into_metadata(n)
+        n: length::value::into_metadata(n),
+        marker: PhantomData
     }
 }
 
@@ -61,18 +62,19 @@ where
 /// See its documentation for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 #[derive(Clone)]
-pub struct RepeatN<A, N = [()]>
+pub struct RepeatN<A, N = [()], R = A>
 where
-    A: Clone,
+    A: Clone + Borrow<R>,
     N: Length<Elem = ()> + ?Sized
 {
     element: A,
-    n: <N as Pointee>::Metadata
+    n: <N as Pointee>::Metadata,
+    marker: PhantomData<R>
 }
 
-impl<A, N> fmt::Debug for RepeatN<A, N>
+impl<A, N, R> fmt::Debug for RepeatN<A, N, R>
 where
-    A: Clone + fmt::Debug,
+    A: Clone + fmt::Debug + Borrow<R>,
     N: Length<Elem = ()> + ?Sized
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
@@ -81,9 +83,9 @@ where
     }
 }
 
-impl<A, N> IntoIterator for RepeatN<A, N>
+impl<A, N, R> IntoIterator for RepeatN<A, N, R>
 where
-    A: Clone,
+    A: Clone + Borrow<R>,
     N: Length<Elem = ()> + ?Sized
 {
     type Item = A;
@@ -91,13 +93,13 @@ where
 
     fn into_iter(self) -> Self::IntoIter
     {
-        let Self { element, n } = self;
+        let Self { element, n, marker: _ } = self;
         core::iter::repeat_n(element, length::len_metadata::<N>(n))
     }
 }
-impl<A, N> const Bulk for RepeatN<A, N>
+impl<A, N, RR> const Bulk for RepeatN<A, N, RR>
 where
-    A: ~const Clone + ~const Destruct,
+    A: ~const Clone + ~const Destruct + Borrow<RR>,
     N: Length<Elem = ()> + ?Sized
 {
     type MinLength = N;
@@ -105,7 +107,7 @@ where
 
     fn len(&self) -> usize
     {
-        let Self { element: _, n } = self;
+        let Self { element: _, n, marker: _ } = self;
         length::len_metadata::<N>(*n)
     }
     fn for_each<F>(self, mut f: F)
@@ -113,7 +115,7 @@ where
         Self: Sized,
         F: ~const FnMut(Self::Item) + ~const Destruct
     {
-        let Self { element, n } = self;
+        let Self { element, n, marker: _ } = self;
         let n = length::len_metadata::<N>(n);
         let mut i = 1;
         while i < n
@@ -132,7 +134,7 @@ where
         F: ~const FnMut(Self::Item) -> R + ~const Destruct,
         R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
     {
-        let Self { element, n } = self;
+        let Self { element, n, marker: _ } = self;
         let n = length::len_metadata::<N>(n);
         let mut i = 1;
         while i < n
@@ -147,9 +149,9 @@ where
         R::from_output(())
     }
 }
-impl<A, N> const DoubleEndedBulk for RepeatN<A, N>
+impl<A, N, RR> const DoubleEndedBulk for RepeatN<A, N, RR>
 where
-    A: ~const Clone + ~const Destruct,
+    A: ~const Clone + ~const Destruct + Borrow<RR>,
     N: Length<Elem = ()> + ?Sized
 {
     fn rev_for_each<F>(self, f: F)
@@ -179,7 +181,7 @@ where
     type Left = RepeatN<A, L::Length<()>>;
     type Right = RepeatN<A, R::Length<()>>;
 
-    fn split_at(Self { element, n }: Self, m: M) -> (Self::Left, Self::Right)
+    fn split_at(Self { element, n, marker: _ }: Self, m: M) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
@@ -191,42 +193,39 @@ where
     }
 }
 
-impl<'a, A, N> const RandomAccessBulk<'a> for RepeatN<A, N>
+impl<'a, A, N, R> const RandomAccessBulk<'a> for RepeatN<A, N, R>
 where
-    Self: 'a,
-    A: FlatRef<'a> + ~const Clone + ~const Destruct,
-    &'a A: ~const Borrow<A::FlatRef>,
-    N: Length<Elem = ()> + ?Sized,
-    A::FlatRef: FlatRef<'a, FlatRef = A::FlatRef> + ~const Clone,
-    &'a A::FlatRef: ~const Borrow<A::FlatRef>
+    A: ~const Clone + ~const Destruct + ~const Borrow<R> + 'a,
+    N: Length<Elem = ()> + ?Sized + 'a,
+    R: 'a
 {
-    type ItemRef = A::FlatRef;
-    type EachRef = RepeatN<A::FlatRef, N>;
+    type ItemRef = &'a R;
+    type EachRef = RepeatN<&'a R, N, R>;
 
-    fn each_ref(Self { element, n }: &'a Self) -> Self::EachRef
+    fn each_ref(Self { element, n, marker }: &'a Self) -> Self::EachRef
     {
-        crate::repeat_n(*(&element).borrow(), length::value::from_metadata::<N::Value>(*n))
+        RepeatN {
+            element: element.borrow(),
+            n: *n,
+            marker: *marker
+        }
     }
 }
-impl<'a, A, N> const RandomAccessBulkSpec<'a> for RepeatN<A, N>
+impl<'a, A, N, R> const RandomAccessBulkSpec<'a> for RepeatN<A, N, R>
 where
-    Self: 'a,
-    A: FlatRef<'a> + ~const Clone + ~const Destruct,
-    &'a A: ~const Borrow<A::FlatRef>,
-    N: Length<Elem = ()> + ?Sized,
-    A::FlatRef: FlatRef<'a, FlatRef = A::FlatRef> + ~const Clone,
-    &'a A::FlatRef: ~const Borrow<A::FlatRef>
+    A: ~const Clone + ~const Destruct + ~const Borrow<R> + 'a,
+    N: Length<Elem = ()> + ?Sized + 'a,
+    R: 'a
 {
-    fn _get<L>(Self { element, n }: &'a Self, i: L) -> Option<A::FlatRef>
+    fn _get<L>(Self { element, n, marker: _ }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk>::ItemRef>
     where
-        Self: ~const RandomAccessBulk<'a>,
         L: LengthValue
     {
         if length::value::ge(i, length::value::from_metadata::<N::Value>(*n))
         {
             return None
         }
-        Some(*(&element).borrow())
+        Some(element.borrow())
     }
 }
 
@@ -237,7 +236,7 @@ where
 {
     fn from(value: RepeatN<A, N>) -> Self
     {
-        let RepeatN { element, n } = value;
+        let RepeatN { element, n, marker: _ } = value;
         crate::repeat_n_with(YieldOnce::new(element), length::value::from_metadata::<N::Value>(n))
     }
 }
@@ -251,6 +250,8 @@ mod test
     fn it_works()
     {
         let a = crate::repeat_n(1, [(); _])
+            .each_ref()
+            .copied()
             .collect::<[_; _], _>();
         assert_eq!(a, [1, 1, 1, 1])
     }

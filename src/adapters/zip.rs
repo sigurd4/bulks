@@ -2,7 +2,7 @@ use core::fmt;
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk};
 
 /// Converts the arguments to bulks and zips them.
 ///
@@ -222,12 +222,10 @@ where
     }
 }
 
-impl<'a, A, B> const RandomAccessBulk<'a> for Zip<A, B>
+impl<'a, A, B> RandomAccessBulk<'a> for Zip<A, B>
 where
-    Self: ~const Bulk,
-    A: ~const RandomAccessBulk<'a>,
-    B: ~const RandomAccessBulk<'a>,
-    Zip<A::EachRef, B::EachRef>: ~const Bulk<Item = (A::ItemRef, B::ItemRef)>
+    A: RandomAccessBulk<'a>,
+    B: RandomAccessBulk<'a>
 {
     type ItemRef = (A::ItemRef, B::ItemRef);
     type EachRef = Zip<A::EachRef, B::EachRef>;
@@ -238,13 +236,10 @@ where
             .zip(b.each_ref())
     }
 }
-impl<'a, A, B> const InplaceBulk<'a> for Zip<A, B>
+impl<'a, A, B> InplaceBulk<'a> for Zip<A, B>
 where
-    Self: ~const Bulk,
-    A: ~const InplaceBulk<'a>,
-    B: ~const InplaceBulk<'a>,
-    Zip<A::EachRef, B::EachRef>: ~const Bulk<Item = (A::ItemRef, B::ItemRef)>,
-    Zip<A::EachMut, B::EachMut>: ~const Bulk<Item = (A::ItemMut, B::ItemMut)>
+    A: InplaceBulk<'a>,
+    B: InplaceBulk<'a>
 {
     type ItemMut = (A::ItemMut, B::ItemMut);
     type EachMut = Zip<A::EachMut, B::EachMut>;
@@ -258,29 +253,26 @@ where
 
 impl<'a, A, B> const RandomAccessBulkSpec<'a> for Zip<A, B>
 where
-    Self: ~const Bulk,
     A: ~const RandomAccessBulk<'a>,
-    B: ~const RandomAccessBulk<'a>,
-    Zip<A::EachRef, B::EachRef>: ~const Bulk<Item = (A::ItemRef, B::ItemRef)>
+    B: ~const RandomAccessBulk<'a>
 {
-    fn _get<L>(Self { a, b }: &'a Self, i: L) -> Option<Self::ItemRef>
+    fn _get<L>(Self { a, b }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk>::ItemRef>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         Some((a.get(i)?, b.get(i)?))
     }
 }
-impl<'a, A, B> const InplaceMutSpec<'a> for Zip<A, B>
+impl<'a, A, B> const InplaceBulkSpec<'a> for Zip<A, B>
 where
-    Self: ~const Bulk,
     A: ~const InplaceBulk<'a>,
-    B: ~const InplaceBulk<'a>,
-    Zip<A::EachRef, B::EachRef>: ~const Bulk<Item = (A::ItemRef, B::ItemRef)>,
-    Zip<A::EachMut, B::EachMut>: ~const Bulk<Item = (A::ItemMut, B::ItemMut)>
+    B: ~const InplaceBulk<'a>
 {
-    fn _get_mut<L>(Self { a, b }: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    fn _get_mut<L>(Self { a, b }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk>::ItemMut>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         Some((a.get_mut(i)?, b.get_mut(i)?))
     }

@@ -222,6 +222,8 @@ pub trait CollectionAdapter
     type TryStrategy<B, T>
     where
         B: Bulk<Item: Try<Residual: Residual<T>>>;
+    #[cfg(feature = "alloc")]
+    type Nearest: FromBulk<Self>;
 }
 impl<A> CollectionAdapter for [A]
 {
@@ -232,6 +234,8 @@ impl<A> CollectionAdapter for [A]
     type TryStrategy<B, T> = B
     where
         B: Bulk<Item: Try<Residual: Residual<T>>>;
+    #[cfg(feature = "alloc")]
+    type Nearest = alloc::vec::Vec<A>;
 }
 impl<A> CollectionAdapter for Option<A>
 {
@@ -242,6 +246,8 @@ impl<A> CollectionAdapter for Option<A>
     type TryStrategy<B, T> = B
     where
         B: Bulk<Item: Try<Residual: Residual<T>>>;
+    #[cfg(feature = "alloc")]
+    type Nearest = Option<A>;
 }
 impl<A, const N: usize> CollectionAdapter for [A; N]
 {
@@ -252,6 +258,8 @@ impl<A, const N: usize> CollectionAdapter for [A; N]
     type TryStrategy<B, T> = <<B::Item as Try>::Residual as Residual<T>>::TryType
     where
         B: Bulk<Item: Try<Residual: Residual<T>>>;
+    #[cfg(feature = "alloc")]
+    type Nearest = [A; N];
 }
 
 pub const trait CollectionStrategy<B, T>

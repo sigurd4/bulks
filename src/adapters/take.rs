@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::{ControlFlow, Try}, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk};
 
 /// Creates a bulk that only delivers the first `n` iterations of `iterable`.
 pub const fn take<I, L>(iterable: I, n: L) -> Take<
@@ -276,11 +276,12 @@ where
 impl<'a, T, N> const RandomAccessBulkSpec<'a> for Take<T, N>
 where
     T: ~const RandomAccessBulk<'a, Item: ~const Destruct>,
-    N: Length<Elem = ()> + ?Sized + 'a
+    N: Length<Elem = ()> + ?Sized
 {
-    fn _get<L>(Self { bulk, n }: &'a Self, i: L) -> Option<Self::ItemRef>
+    fn _get<L>(Self { bulk, n }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk>::ItemRef>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         if length::value::le(length::value::from_metadata::<N::Value>(*n), i)
         {
@@ -289,14 +290,15 @@ where
         bulk.get(i)
     }
 }
-impl<'a, T, N> const InplaceMutSpec<'a> for Take<T, N>
+impl<'a, T, N> const InplaceBulkSpec<'a> for Take<T, N>
 where
     T: ~const InplaceBulk<'a, Item: ~const Destruct>,
-    N: Length<Elem = ()> + ?Sized + 'a
+    N: Length<Elem = ()> + ?Sized
 {
-    fn _get_mut<L>(Self { bulk, n }: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    fn _get_mut<L>(Self { bulk, n }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk>::ItemMut>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         if length::value::le(length::value::from_metadata::<N::Value>(*n), i)
         {

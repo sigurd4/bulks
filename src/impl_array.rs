@@ -1,8 +1,8 @@
-use core::{marker::Destruct, mem::MaybeUninit, ops::Try};
+use core::{marker::Destruct, mem::MaybeUninit, ops::{ControlFlow, Try}};
 
 use array_trait::{length::{self, LengthValue}, same::Same};
 
-use crate::{AsBulk, Bulk, DoubleEndedBulk, IntoBulk, InplaceBulk, RandomAccessBulk, SplitBulk, StaticBulk, util::{self, Guard}};
+use crate::{AsBulk, Bulk, DoubleEndedBulk, InplaceBulk, IntoBulk, RandomAccessBulk, SplitBulk, StaticBulk, slice, util::{self, Guard}};
 
 pub mod array
 {
@@ -49,10 +49,9 @@ macro_rules! impl_bulk {
 
             $(fn nth($self_nth:ident, $n_nth:ident) -> _
             $nth:block)?
-
         }
         {
-            $split:ident
+            $split:ident -> $split_as:ty
         }
     ) => {
         impl<$($a,)? $t, const $n: usize> array::$bulk<$($a,)? $t, $n>
@@ -169,14 +168,17 @@ macro_rules! impl_bulk {
         where
             L: LengthValue
         {
-            default type Left = <<$array as IntoIterator>::IntoIter as IntoBulk>::IntoBulk;
-            default type Right = <<$array as IntoIterator>::IntoIter as IntoBulk>::IntoBulk;
+            default type Left = $split_as;
+            default type Right = $split_as;
 
             #[track_caller]
             default fn split_at($self_split_at_dyn: Self, $n_split_at_dyn: L) -> (Self::Left, Self::Right)
             where
                 Self: Sized
-            $split_at_dyn
+            {
+                let split: ($split_as, $split_as) = $split_at_dyn;
+                split.same().ok().unwrap()
+            }
         }
         impl<$($a,)? T, const N: usize, const M: usize> const SplitBulk<[(); M]> for array::$bulk<$($a,)? T, N>
         where
@@ -202,9 +204,10 @@ macro_rules! impl_bulk {
                 )
             }
         }
-        impl<$($a,)? 'b, T, const N: usize> RandomAccessBulk<'b> for array::$bulk<$($a,)? T, N>
+        impl<'b, $($a,)? T, const N: usize> const RandomAccessBulk<'b> for array::$bulk<$($a,)? T, N>
         where
-            Self: 'b
+            T: 'b,
+            $($a: 'b)?
         {
             type ItemRef = &'b T;
             type EachRef = array::Bulk<'b, T, N>;
@@ -219,9 +222,10 @@ macro_rules! impl_bulk {
     (
         @extra impl $bulk:ident<$($a:lifetime,)? $t:ident, const $n:ident: usize>; for $item:ty; in $array:ty; $mut:ident
     ) => {
-        impl<$($a,)? 'b, T, const N: usize> InplaceBulk<'b> for array::$bulk<$($a,)? T, N>
+        impl<'b, $($a,)? T, const N: usize> const InplaceBulk<'b> for array::$bulk<$($a,)? T, N>
         where
-            Self: 'b
+            T: 'b,
+            $($a: 'b)?
         {
             type ItemMut = &'b mut T;
             type EachMut = array::BulkMut<'b, T, N>;
@@ -331,7 +335,7 @@ impl_bulk!(
         }
     }
     {
-        split_array
+        split_array -> <<[T; N] as IntoIterator>::IntoIter as IntoBulk>::IntoBulk
     }
 );
 impl_bulk!(
@@ -350,7 +354,7 @@ impl_bulk!(
 
         fn try_for_each(self, f) -> _
         {
-            let Self {array} = self;
+            let Self { array } = self;
             let mut n = 0;
             while n < N
             {
@@ -394,7 +398,7 @@ impl_bulk!(
             let n = length::value::len(n);
             let Self {array} = bulk;
             let (left, right) = array.split_at(n);
-            (left.into_bulk(), right.into_bulk()).same().ok().unwrap()
+            (left.into_bulk(), right.into_bulk())
         }
 
         fn nth(self, n) -> _
@@ -404,7 +408,7 @@ impl_bulk!(
         }
     }
     {
-        split_array_ref
+        split_array_ref -> slice::Bulk<'a, T>
     }
 );
 impl_bulk!(
@@ -467,7 +471,7 @@ impl_bulk!(
             let n = length::value::len(n);
             let Self {array} = bulk;
             let (left, right) = array.split_at_mut(n);
-            (left.into_bulk(), right.into_bulk()).same().ok().unwrap()
+            (left.into_bulk(), right.into_bulk())
         }
 
         fn nth(self, n) -> _
@@ -477,7 +481,7 @@ impl_bulk!(
         }
     }
     {
-        split_array_mut
+        split_array_mut -> slice::BulkMut<'a, T>
     }
 );
 

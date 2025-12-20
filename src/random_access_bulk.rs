@@ -20,37 +20,41 @@ pub const trait InplaceBulk<'a>: ~const RandomAccessBulk<'a>
     fn each_mut(bulk: &'a mut Self) -> Self::EachMut;
 }
 
-pub(crate) const trait RandomAccessBulkSpec<'a>: ~const RandomAccessBulk<'a>
+pub(crate) const trait RandomAccessBulkSpec<'a>: Bulk
 {
     fn _get<L>(bulk: &'a Self, i: L) -> Option<Self::ItemRef>
     where
-        L: LengthValue;
+        L: LengthValue,
+        Self: ~const RandomAccessBulk<'a> + 'a;
 }
 impl<'a, I> const RandomAccessBulkSpec<'a> for I
 where
-    I: ~const RandomAccessBulk<'a> + ?Sized
+    I: Bulk + ?Sized
 {
-    default fn _get<L>(bulk: &'a Self, i: L) -> Option<Self::ItemRef>
+    default fn _get<L>(bulk: &'a Self, i: L) -> Option<<Self as RandomAccessBulk<'a>>::ItemRef>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: ~const RandomAccessBulk<'a> + 'a
     {
         bulk.each_ref().nth(i)
     }
 }
 
-pub(crate) const trait InplaceMutSpec<'a>: ~const InplaceBulk<'a>
+pub(crate) const trait InplaceBulkSpec<'a>: Bulk
 {
     fn _get_mut<L>(bulk: &'a mut Self, i: L) -> Option<Self::ItemMut>
     where
-        L: LengthValue;
+        L: LengthValue,
+        Self: ~const InplaceBulk<'a> + 'a;
 }
-impl<'a, I> const InplaceMutSpec<'a> for I
+impl<'a, I> const InplaceBulkSpec<'a> for I
 where
-    I: ~const InplaceBulk<'a> + ?Sized
+    I: Bulk + ?Sized
 {
-    default fn _get_mut<L>(bulk: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    default fn _get_mut<L>(bulk: &'a mut Self, i: L) -> Option<<Self as InplaceBulk<'a>>::ItemMut>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: ~const InplaceBulk<'a> + 'a
     {
         bulk.each_mut().nth(i)
     }

@@ -1,4 +1,4 @@
-use core::{marker::Destruct, mem::{ManuallyDrop, MaybeUninit}, ops::{Deref, DerefMut}};
+use core::{borrow::Borrow, marker::Destruct, mem::{ManuallyDrop, MaybeUninit}, ops::{Deref, DerefMut}};
 
 moddef::moddef!(
     flat(pub) mod {
@@ -13,31 +13,63 @@ moddef::moddef!(
     }
 );
 
-pub trait FlatRef<'a>: 'a
+/*pub trait FlatRef
 {
-    type FlatRef: Deref + Copy + 'a + const Destruct + FlatRef<'a, FlatRef: Deref<Target = <Self::FlatRef as Deref>::Target>>;
-    type FlatMut: DerefMut + 'a + const Destruct + FlatRef<'a, FlatRef: Deref<Target = <Self::FlatRef as Deref>::Target>>;
+    type FlatRef<'a>: Deref + Copy + 'a + const Destruct + FlatRef<FlatRef<'a>: Deref<Target = <Self::FlatRef<'a> as Deref>::Target>>
+    where
+        Self: 'a;
+    type FlatMut<'a>: DerefMut + 'a + const Destruct + FlatRef<FlatRef<'a>: Deref<Target = <Self::FlatRef<'a> as Deref>::Target>>
+    where
+        Self: 'a;
 }
-impl<'a, T> FlatRef<'a> for T
+impl<T> FlatRef for T
+where
+    T: ?Sized
+{
+    default type FlatRef<'a> = &'a T
+    where
+        Self: 'a;
+    default type FlatMut<'a> = &'a mut T
+    where
+        Self: 'a;
+}
+impl<T> FlatRef for &T
+where
+    T: ?Sized
+{
+    type FlatRef<'a> = <T as FlatRef>::FlatRef<'a>
+    where
+        Self: 'a;
+    type FlatMut<'a> = &'a mut <T as FlatRef>::FlatRef<'a>
+    where
+        Self: 'a;
+}
+impl<T> FlatRef for &mut T
+where
+    T: ?Sized
+{
+    type FlatRef<'a> = <T as FlatRef>::FlatRef<'a>
+    where
+        Self: 'a;
+    type FlatMut<'a> = <T as FlatRef>::FlatMut<'a>
+    where
+        Self: 'a;
+}*/
+
+pub const trait BorrowAt<'a, T>
 where
     T: ?Sized + 'a
 {
-    default type FlatRef = &'a T;
-    default type FlatMut = &'a mut T;
+    fn borrow_at(&'a self) -> T;
 }
-impl<'a, T> FlatRef<'a> for &'a T
+impl<'a, T, U> const BorrowAt<'a, &'a T> for U
 where
-    T: ?Sized + 'a
+    U: ~const Borrow<T>
 {
-    type FlatRef = <T as FlatRef<'a>>::FlatRef;
-    type FlatMut = &'a mut <T as FlatRef<'a>>::FlatRef;
-}
-impl<'a, T> FlatRef<'a> for &'a mut T
-where
-    T: ?Sized + 'a
-{
-    type FlatRef = <T as FlatRef<'a>>::FlatRef;
-    type FlatMut = <T as FlatRef<'a>>::FlatMut;
+    fn borrow_at(&'a self) -> &'a T
+    {
+        self.borrow()
+    }
 }
 
 pub(crate) const fn split_array_ref<T, const N: usize, const M: usize>(array: &[T; N]) -> (&[T; N.min(M)], &[T; N.saturating_sub(M)])

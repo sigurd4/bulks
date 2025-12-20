@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, EnumerateFrom, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, EnumerateFrom, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk};
 
 /// A bulk that yields the element's index and the element.
 ///
@@ -243,9 +243,10 @@ where
     I: ~const RandomAccessBulk<'a, Item = T>,
     T: ~const Destruct
 {
-    fn _get<L>(Self { bulk }: &'a Self, i: L) -> Option<Self::ItemRef>
+    fn _get<L>(Self { bulk }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk>::ItemRef>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         let x = bulk.get(i)?;
         Some((length::value::len(i), x))
@@ -264,14 +265,15 @@ where
         bulk.each_mut().enumerate()
     }
 }
-impl<'a, I, T> const InplaceMutSpec<'a> for Enumerate<I>
+impl<'a, I, T> const InplaceBulkSpec<'a> for Enumerate<I>
 where
     I: ~const InplaceBulk<'a, Item = T>,
     T: ~const Destruct
 {
-    fn _get_mut<L>(Self { bulk }: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    fn _get_mut<L>(Self { bulk }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk>::ItemMut>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         let x = bulk.get_mut(i)?;
         Some((length::value::len(i), x))

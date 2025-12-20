@@ -1,8 +1,8 @@
-use core::{borrow::Borrow, marker::Destruct};
+use core::{borrow::Borrow, marker::{Destruct, PhantomData}};
 
 use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, OnceWith, RandomAccessBulk, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::{FlatRef, TakeOne, YieldOnce}};
+use crate::{Bulk, DoubleEndedBulk, OnceWith, RandomAccessBulk, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::{TakeOne, YieldOnce}};
 
 /// Creates a bulk that yields an element exactly once.
 /// 
@@ -23,7 +23,7 @@ use crate::{Bulk, DoubleEndedBulk, OnceWith, RandomAccessBulk, RepeatN, RepeatNW
 /// ```
 pub const fn once<T>(value: T) -> Once<T>
 {
-    Once(value)
+    Once(value, PhantomData)
 }
 
 /// A bulk that yields an element exactly once.
@@ -31,9 +31,13 @@ pub const fn once<T>(value: T) -> Once<T>
 /// This `struct` is created by the [`once()`] function. See its documentation for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug)]
-pub struct Once<T>(T);
+pub struct Once<T, R = T>(T, PhantomData<R>)
+where
+    T: Borrow<R>;
 
-impl<T> IntoIterator for Once<T>
+impl<T, R> IntoIterator for Once<T, R>
+where
+    T: Borrow<R>
 {
     type Item = T;
     type IntoIter = core::iter::Once<T>;
@@ -43,7 +47,9 @@ impl<T> IntoIterator for Once<T>
         core::iter::once(self.0)
     }
 }
-impl<T> const Bulk for Once<T>
+impl<T, RR> const Bulk for Once<T, RR>
+where
+    T: Borrow<RR>
 {
     type MinLength = [(); 1];
     type MaxLength = [(); 1];
@@ -89,7 +95,9 @@ impl<T> const Bulk for Once<T>
         f(self.0)
     }
 }
-impl<T> const DoubleEndedBulk for Once<T>
+impl<T, RR> const DoubleEndedBulk for Once<T, RR>
+where
+    T: Borrow<RR>
 {
     fn rev_for_each<FF>(self, f: FF)
     where
@@ -108,8 +116,9 @@ impl<T> const DoubleEndedBulk for Once<T>
         self.try_for_each(f)
     }
 }
-impl<A, L> const SplitBulk<L> for Once<A>
+impl<A, L, R> const SplitBulk<L> for Once<A, R>
 where
+    A: Borrow<R>,
     L: LengthValue,
     OnceWith<YieldOnce<A>>: ~const SplitBulk<L, Item = A, Left: ~const Bulk, Right: ~const Bulk>
 {
@@ -123,19 +132,17 @@ where
         OnceWith::from(bulk).split_at(n)
     }
 }
-impl<'a, T, R> const RandomAccessBulk<'a> for Once<T>
+impl<'a, T, R> const RandomAccessBulk<'a> for Once<T, R>
 where
-    Self: 'a,
-    T: FlatRef<'a, FlatRef = R>,
-    &'a T: ~const Borrow<R>,
-    R: FlatRef<'a, FlatRef = R> + ~const Destruct + Copy + 'a,
+    T: ~const Borrow<R> + 'a,
+    R: 'a
 {
-    type ItemRef = R;
-    type EachRef = Once<R>;
+    type ItemRef = &'a R;
+    type EachRef = Once<&'a R, R>;
 
-    fn each_ref(Self(value): &'a Self) -> Self::EachRef
+    fn each_ref(Self(value, PhantomData): &'a Self) -> Self::EachRef
     {
-        crate::once(*(&value).borrow())
+        Once(value.borrow(), PhantomData)
     }
 }
 
@@ -149,25 +156,29 @@ where
 {
 
 }
-impl<A> const From<Once<A>> for OnceWith<YieldOnce<A>>
+impl<A, R> const From<Once<A, R>> for OnceWith<YieldOnce<A>>
+where
+    A: Borrow<R>
 {
-    fn from(value: Once<A>) -> Self
+    fn from(value: Once<A, R>) -> Self
     {
         crate::once_with(YieldOnce::new(value.0))
     }
 }
-impl<A> const From<Once<A>> for RepeatN<A, [(); 1]>
+impl<A, R> const From<Once<A, R>> for RepeatN<A, [(); 1]>
 where
-    A: Clone
+    A: Clone + Borrow<R>
 {
-    fn from(value: Once<A>) -> Self
+    fn from(value: Once<A, R>) -> Self
     {
         crate::repeat_n(value.0, [(); 1])
     }
 }
-impl<A> const From<Once<A>> for RepeatNWith<TakeOne<YieldOnce<A>>, [(); 1]>
+impl<A, R> const From<Once<A, R>> for RepeatNWith<TakeOne<YieldOnce<A>>, [(); 1]>
+where
+    A: Borrow<R>
 {
-    fn from(value: Once<A>) -> Self
+    fn from(value: Once<A, R>) -> Self
     {
         crate::repeat_n_with(TakeOne::new(YieldOnce::new(value.0)), [(); 1])
     }

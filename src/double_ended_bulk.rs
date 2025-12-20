@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use crate::Bulk;
 
-pub const trait DoubleEndedBulk: Bulk<IntoIter: DoubleEndedIterator>
+pub const trait DoubleEndedBulk: ~const Bulk<IntoIter: DoubleEndedIterator>
 {
     /// Calls a closure on each element of a bulk in reverse.
     fn rev_for_each<F>(self, f: F)

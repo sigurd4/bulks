@@ -2,7 +2,7 @@ use core::{marker::Destruct, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk};
 
 
 /// A double-ended bulk with the direction inverted.
@@ -111,7 +111,7 @@ where
 }
 impl<I> const DoubleEndedBulk for Rev<I>
 where
-    I: ~const Bulk + DoubleEndedBulk
+    I: ~const Bulk + ~const DoubleEndedBulk
 {
     fn rev_for_each<F>(self, f: F)
     where
@@ -159,10 +159,16 @@ impl<'a, I> const RandomAccessBulk<'a> for Rev<I>
 where
     I: ~const RandomAccessBulk<'a, EachRef: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
 {
-    type ItemRef = <I as RandomAccessBulk<'a>>::ItemRef;
-    type EachRef = Rev<<I as RandomAccessBulk<'a>>::EachRef>;
+    type ItemRef = I::ItemRef
+    where
+        Self: 'a;
+    type EachRef = Rev<I::EachRef>
+    where
+        Self: 'a;
 
     fn each_ref(Self { bulk }: &'a Self) -> Self::EachRef
+    where
+        Self: 'a
     {
         bulk.each_ref().rev()
     }
@@ -171,8 +177,8 @@ impl<'a, I> const InplaceBulk<'a> for Rev<I>
 where
     I: ~const InplaceBulk<'a, EachRef: ~const DoubleEndedBulk, EachMut: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
 {
-    type ItemMut = <I as InplaceBulk<'a>>::ItemMut;
-    type EachMut = Rev<<I as InplaceBulk<'a>>::EachMut>;
+    type ItemMut = I::ItemMut;
+    type EachMut = Rev<I::EachMut>;
 
     fn each_mut(Self { bulk }: &'a mut Self) -> Self::EachMut
     {
@@ -184,9 +190,10 @@ impl<'a, I> const RandomAccessBulkSpec<'a> for Rev<I>
 where
     I: ~const RandomAccessBulk<'a, EachRef: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
 {
-    fn _get<L>(Self { bulk }: &'a Self, i: L) -> Option<Self::ItemRef>
+    fn _get<L>(Self { bulk }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk>::ItemRef>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         let n = length::value::or_len::<<I::Length as Length>::Value>(bulk.len());
         if let Some(ip1) = length::value::checked_add(i, [(); 1]) && let Some(j) = length::value::checked_sub(n, ip1)
@@ -199,13 +206,14 @@ where
         }
     }
 }
-impl<'a, I> const InplaceMutSpec<'a> for Rev<I>
+impl<'a, I> const InplaceBulkSpec<'a> for Rev<I>
 where
     I: ~const InplaceBulk<'a, EachRef: ~const DoubleEndedBulk, EachMut: ~const DoubleEndedBulk> + ~const DoubleEndedBulk
 {
-    fn _get_mut<L>(bulk: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    fn _get_mut<L>(bulk: &'a mut Self, i: L) -> Option<<Self as InplaceBulk<'a>>::ItemMut>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         let n = length::value::or_len::<<I::Length as Length>::Value>(bulk.len());
         if let Some(ip1) = length::value::checked_add(i, [(); 1]) && let Some(j) = length::value::checked_sub(n, ip1)

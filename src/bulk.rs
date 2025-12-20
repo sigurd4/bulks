@@ -2,7 +2,7 @@ use core::{fmt::Display, marker::Destruct, ops::{ControlFlow, FromResidual, Resi
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
-use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
+use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, InplaceBulk, InplaceBulkSpec, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, RandomAccessBulk, RandomAccessBulkSpec, RepeatN, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -27,12 +27,7 @@ use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, C
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 {
-    type Nearest: ?Sized = <Self as private::BulkBase>::Nearest;
-    type TryNearest: ?Sized = <Self as private::BulkBase>::TryNearest
-    where
-        Self::Item: Try;
     type Length: Length<Elem = ()> + ?Sized = <Self as private::BulkBase>::Length;
-    type Strategy<U, C>: CollectionAdapter<Elem = U> + CollectionStrategy<Self, C> + ?Sized = <Self as private::BulkBase>::Strategy<U, C>;
     type MinLength: Length<Elem = ()> + ?Sized = [(); 0];
     type MaxLength: Length<Elem = ()> + ?Sized = [()];
 
@@ -1743,29 +1738,6 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         Try::from_output(util::try_collect_array_with!(|pusher| self.try_for_each(pusher)?; for Self))
     }
 
-    /// Collects into an array if possible, otherwise a vector (if feature "alloc" is enabled)
-    #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
-    fn collect_nearest(self) -> Self::Nearest
-    where
-        Self: Sized,
-        Self::Nearest: ~const FromBulk<Self::Strategy<Self::Item, Self::Nearest>>,
-        Self::Strategy<Self::Item, Self::Nearest>: CollectionAdapter<Elem = Self::Item> + ~const CollectionStrategy<Self, Self::Nearest>
-    {
-        self.collect()
-    }
-
-    /// Fallibly collects into an array if possible, otherwise a vector (if feature "alloc" is enabled)
-    #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
-    fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<Self::TryNearest>>::TryType
-    where
-        Self: Sized,
-        Self::TryNearest: ~const FromBulk<Self::Strategy<<Self::Item as Try>::Output, Self::TryNearest>>,
-        Self::Strategy<<Self::Item as Try>::Output, Self::TryNearest>: CollectionAdapter<Elem = <Self::Item as Try>::Output> + ~const TryCollectionAdapter<Self, Self::TryNearest>,
-        Self::Item: ~const Try<Residual: ~const Residual<Self::TryNearest, TryType: ~const Try>> + ~const Destruct
-    {
-        self.try_collect()
-    }
-
     /// Reverses a bulks's direction.
     ///
     /// Usually, bulks span from left to right. After using `rev()`,
@@ -1978,20 +1950,20 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
     fn each_ref<'a>(&'a self) -> Self::EachRef
     where
-        Self: ~const RandomAccessBulk<'a>
+        Self: ~const RandomAccessBulk<'a> + 'a
     {
         RandomAccessBulk::each_ref(self)
     }
     fn each_mut<'a>(&'a mut self) -> Self::EachMut
     where
-        Self: ~const InplaceBulk<'a>
+        Self: ~const InplaceBulk<'a> + 'a
     {
         InplaceBulk::each_mut(self)
     }
 
     fn get<'a, L>(&'a self, i: L) -> Option<Self::ItemRef>
     where
-        Self: ~const RandomAccessBulk<'a>,
+        Self: ~const RandomAccessBulk<'a> + 'a,
         L: LengthValue
     {
         RandomAccessBulkSpec::_get(self, i)
@@ -1999,15 +1971,15 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
     fn get_mut<'a, L>(&'a mut self, i: L) -> Option<Self::ItemMut>
     where
-        Self: ~const InplaceBulk<'a>,
+        Self: ~const InplaceBulk<'a> + 'a,
         L: LengthValue
     {
-        InplaceMutSpec::_get_mut(self, i)
+        InplaceBulkSpec::_get_mut(self, i)
     }
 
     fn try_get<'a, L>(&'a self, i: L) -> Result<Self::ItemRef, OutOfRange>
     where
-        Self: ~const RandomAccessBulk<'a>,
+        Self: ~const RandomAccessBulk<'a> + 'a,
         L: LengthValue
     {
         match self.get(i)
@@ -2041,7 +2013,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
     fn swap_inplace<'a, L, R, T>(&'a mut self, lhs: L, rhs: R)
     where
-        Self: ~const InplaceBulk<'a, ItemMut = &'a mut T>,
+        Self: ~const InplaceBulk<'a, ItemMut = &'a mut T> + 'a,
         L: LengthValue,
         R: LengthValue,
         T: 'a
@@ -2055,7 +2027,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
     fn try_swap_inplace<'a, L, R, T>(&'a mut self, lhs: L, rhs: R) -> Result<(), OutOfRange>
     where
-        Self: ~const InplaceBulk<'a, ItemMut = &'a mut T>,
+        Self: ~const InplaceBulk<'a, ItemMut = &'a mut T> + 'a,
         L: LengthValue,
         R: LengthValue,
         T: 'a
@@ -2194,87 +2166,24 @@ mod test
 
 mod private
 {
-    use core::ops::Try;
-
     use array_trait::length::Length;
 
-    use crate::{Bulk, CollectionStrategy, CollectionAdapter, StaticBulk, option::MaybeBulk};
+    use crate::{Bulk, StaticBulk};
 
     pub const trait BulkBase: IntoIterator
     {
         type Length: Length<Elem = ()> + ?Sized;
-        type Strategy<U, C>: CollectionAdapter<Elem = U> + ~const CollectionStrategy<Self, C> + ?Sized
-        where
-            Self: Bulk;
-        type Nearest: ?Sized;
-        type TryNearest: ?Sized
-        where
-            Self::Item: Try;
     }
     impl<T> BulkBase for T
     where
         T: Bulk + ?Sized
     {
         default type Length = [()];
-        default type Strategy<U, C> = <Self as AdapterSpec<U, C>>::Adapter;
-        #[cfg(feature = "alloc")]
-        default type Nearest = alloc::vec::Vec<T::Item>;
-        #[cfg(not(feature = "alloc"))]
-        default type Nearest = [T::Item];
-        #[cfg(feature = "alloc")]
-        default type TryNearest = alloc::vec::Vec<<T::Item as Try>::Output>
-        where
-            Self::Item: Try;
-        #[cfg(not(feature = "alloc"))]
-        default type TryNearest = [<T::Item as Try>::Output]
-        where
-            Self::Item: Try;
     }
     impl<T> BulkBase for T
     where
         T: StaticBulk
     {
         type Length = <Self as StaticBulk>::Array<()>;
-        type Strategy<U, C> = <Self as AdapterSpec<U, C>>::Adapter;
-        type Nearest = <Self as StaticBulk>::Array<T::Item>;
-        type TryNearest = <Self as StaticBulk>::Array<<T::Item as Try>::Output>
-        where
-            Self::Item: Try;
-    }
-
-    pub trait AdapterSpecSpec<U, C>: Bulk
-    {
-        type Strategy: CollectionAdapter<Elem = U> + CollectionStrategy<Self, C> + ?Sized;
-    }
-    impl<T, U, C> AdapterSpecSpec<U, C> for T
-    where
-        T: Bulk + ?Sized
-    {
-        default type Strategy = [U];
-    }
-    impl<T, U, C> AdapterSpecSpec<U, C> for T
-    where
-        T: MaybeBulk + ?Sized,
-        Option<U>: CollectionStrategy<Self, C>
-    {
-        type Strategy = Option<U>;
-    }
-
-    pub trait AdapterSpec<U, C>: Bulk
-    {
-        type Adapter: CollectionAdapter<Elem = U> + CollectionStrategy<Self, C> + ?Sized;
-    }
-    impl<T, U, C> AdapterSpec<U, C> for T
-    where
-        T: Bulk + ?Sized
-    {
-        default type Adapter = <T as AdapterSpecSpec<U, C>>::Strategy;
-    }
-    impl<T, U, C, const N: usize> AdapterSpec<U, C> for T
-    where
-        T: StaticBulk<Array<()> = [(); N]>,
-        [U; N]: CollectionStrategy<Self, C>
-    {
-        type Adapter = [U; N];
     }
 }

@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::{AsArray, length::{self, LengthValue}};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, InplaceBulk, InplaceMutSpec, RandomAccessBulkSpec, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, StaticBulk};
 
 /// A bulk that flattens one level of nesting in a of things
 /// that can be turned into bulks.
@@ -283,9 +283,10 @@ where
     &'a II: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk<Length = [(); M]>, Item = II::ItemRef>,
     II: ~const RandomAccessBulk<'a>
 {
-    fn _get<L>(Self { bulk }: &'a Self, i: L) -> Option<Self::ItemRef>
+    fn _get<L>(Self { bulk }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk<'a>>::ItemRef>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         match bulk.get(length::value::div(i, [(); M]))
         {
@@ -294,15 +295,17 @@ where
         }
     }
 }
-impl<'a, I, II, const M: usize> const InplaceMutSpec<'a> for Flatten<I>
+impl<'a, I, II, const M: usize> const InplaceBulkSpec<'a> for Flatten<I>
 where
-    I: ~const InplaceBulk<'a, Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct, ItemRef: ~const IntoBulk<IntoBulk: ~const Bulk<Item: ~const Destruct + Copy> + StaticBulk>, ItemMut = &'a mut II>,
+    I: ~const InplaceBulk<'a, Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct, ItemRef = &'a II, ItemMut = &'a mut II>,
+    &'a II: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk<Length = [(); M]>, Item = II::ItemRef>,
     &'a mut II: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk<Length = [(); M]>, Item = II::ItemMut>,
     II: ~const InplaceBulk<'a>
 {
-    fn _get_mut<L>(Self { bulk }: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    fn _get_mut<L>(Self { bulk }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk<'a>>::ItemMut>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         match bulk.get_mut(length::value::div(i, [(); M]))
         {

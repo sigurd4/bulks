@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{AsBulk, Bulk, IntoBulk, InplaceBulk, RandomAccessBulk};
+use crate::{AsBulk, Bulk, InplaceBulk, IntoBulk, RandomAccessBulk, SplitBulk};
 
 pub mod option
 {
@@ -169,9 +169,10 @@ macro_rules! impl_option {
                 self.first()
             }
         }
-        impl<$($a,)? 'b, T> RandomAccessBulk<'b> for option::$bulk<$($a,)? $t>
+        impl<'b, $($a,)? T> RandomAccessBulk<'b> for option::$bulk<$($a,)? $t>
         where
-            Self: 'b
+            T: 'b,
+            $($a: 'b)?
         {
             type ItemRef = &'b T;
             type EachRef = option::Bulk<'b, T>;
@@ -186,9 +187,10 @@ macro_rules! impl_option {
     (
         @extra impl $bulk:ident<$($a:lifetime,)? $t:ident>; for $item:ty; in $option:ty; $mut:ident
     ) => {
-        impl<$($a,)? 'b, T> InplaceBulk<'b> for option::$bulk<$($a,)? T>
+        impl<'b, $($a,)? T> InplaceBulk<'b> for option::$bulk<$($a,)? T>
         where
-            Self: 'b
+            T: 'b,
+            $($a: 'b)?
         {
             type ItemMut = &'b mut T;
             type EachMut = option::BulkMut<'b, T>;
@@ -204,6 +206,31 @@ macro_rules! impl_option {
     ) => {
         
     };
+}
+impl<T, L> const SplitBulk<L> for option::IntoBulk<T>
+where
+    L: LengthValue
+{
+    type Left = Self;
+    type Right = Self;
+
+    fn split_at(bulk: Self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let empty = Self {
+            option: None
+        };
+
+        if length::value::eq(n, [(); 0])
+        {
+            (empty, bulk)
+        }
+        else
+        {
+            (bulk, empty)
+        }
+    }
 }
 impl_option!(
     impl IntoBulk<T>; for T; in Option<T>; mut
