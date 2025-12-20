@@ -31,14 +31,12 @@ pub const trait CollectNearest: ~const Bulk
         Self::Item: ~const Try;
 
     /// Collects into an array if possible, otherwise a vector
-    #[cfg(feature = "alloc")]
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
     fn collect_nearest(self) -> Self::Nearest
     where
         Self: Sized;
 
     /// Fallibly collects into an array if possible, otherwise a vector
-    #[cfg(feature = "alloc")]
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
     fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<Self::TryNearest>>::TryType
     where
@@ -90,14 +88,12 @@ mod private
             Self::Item: ~const Try;
 
         /// Collects into an array if possible, otherwise a vector
-        #[cfg(feature = "alloc")]
         #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
         fn _collect_nearest(self) -> Self::_Nearest
         where
             Self: Sized;
 
         /// Fallibly collects into an array if possible, otherwise a vector
-        #[cfg(feature = "alloc")]
         #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
         fn _try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<Self::_TryNearest>>::TryType
         where
