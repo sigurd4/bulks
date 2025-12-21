@@ -15,5 +15,5 @@ alloc = ["array_trait/alloc"]
 [dependencies]
 moddef = "0.3.0"
 currying = {version = "0.4.0", default-features = false, features = ["8", "rcurry"]}
-array_trait = {version = "1.1.17", default-features = false, features = ["length"]}
+array_trait = {version = "1.1.18", default-features = false, features = ["length"]}
 thiserror = "2.0.17"
