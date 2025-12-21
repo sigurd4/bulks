@@ -1,3 +1,5 @@
+use core::ptr::Thin;
+
 use crate::Bulk;
 
 pub const trait AsBulk
@@ -56,7 +58,7 @@ where
     
 }
 
-pub const trait IntoBulk: IntoIterator<IntoIter: ExactSizeIterator>
+pub const trait IntoBulk: IntoIterator<Item: Thin, IntoIter: ExactSizeIterator>
 {
     /// Which kind of bulk are we turning this into?
     type IntoBulk: ~const Bulk<Item = Self::Item, IntoIter = Self::IntoIter>;
