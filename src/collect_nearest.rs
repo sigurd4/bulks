@@ -4,7 +4,7 @@ use core::ops::{Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, Ra
 
 use array_trait::AsSlice;
 
-use crate::{AsBulk, Bulk, IntoBulk};
+use crate::{AsBulk, Bulk, IntoBulk, StaticBulk};
 
 pub(crate) const trait Collection<T> = ~const IntoBulk<Item = T/*, IntoBulk: for<'a> ~const RandomAccessBulk<'a>*/>
     + ~const AsBulk
@@ -46,108 +46,100 @@ pub const trait CollectNearest: ~const Bulk
         <<Self as IntoIterator>::Item as Try>::Residual: ~const Residual<Self::TryNearest> + ~const Residual<()> + ~const Destruct;
 }
 
+#[cfg(feature = "alloc")]
 impl<I> CollectNearest for I
 where
-    I: Bulk + private::_CollectNearest<<I as Bulk>::Length>
+    I: Bulk
 {
-    type Nearest = I::_Nearest;
-    type TryNearest = I::_TryNearest
+    default type Nearest = alloc::vec::Vec<I::Item>;
+    default type TryNearest = alloc::vec::Vec<<I::Item as Try>::Output>
     where
         Self::Item: Try;
 
-    fn collect_nearest(self) -> Self::Nearest
+    default fn collect_nearest(self) -> Self::Nearest
     {
-        self._collect_nearest()
+        use array_trait::same::Same;
+
+        self.collect::<alloc::vec::Vec<_>, _>().same().ok().unwrap()
     }
-    fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<Self::TryNearest>>::TryType
+    default fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<Self::TryNearest>>::TryType
     where
         <Self as IntoIterator>::Item: Try,
         <<Self as IntoIterator>::Item as Try>::Residual: Residual<Self::TryNearest> + Residual<()>
     {
-        self._try_collect_nearest()
+        vec_spec::CollectVecSpec::<Self::TryNearest>::try_collect_vec(self)
+    }
+}
+impl<I, const N: usize> const CollectNearest for I
+where
+    I: ~const Bulk + StaticBulk<Array<()> = [(); N]>
+{
+    type Nearest = I::Array<I::Item>;
+    type TryNearest = I::Array<<I::Item as Try>::Output>
+    where
+        Self::Item: Try;
+
+    fn collect_nearest(self) -> Self::Nearest
+    where
+        Self: Sized
+    {
+        self.collect_array()
+    }
+    fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<Self::TryNearest>>::TryType
+    where
+        Self: Sized,
+        <Self as IntoIterator>::Item: ~const Try + ~const Destruct,
+        <<Self as IntoIterator>::Item as Try>::Output: ~const Destruct,
+        <<Self as IntoIterator>::Item as Try>::Residual: ~const Residual<Self::TryNearest> + ~const Residual<()> + ~const Destruct
+    {
+        self.try_collect_array()
     }
 }
 
-mod private
+#[cfg(feature = "alloc")]
+mod vec_spec
 {
-    use core::{marker::Destruct, ops::{Try, Residual}};
+    use core::ops::{Residual, Try};
 
-    use array_trait::length::Length;
+    use array_trait::same::Same;
 
-    use crate::{Bulk, Collection, StaticBulk};
+    use crate::Bulk;
 
-    pub const trait _CollectNearest<L>: ~const Bulk
-    where
-        L: Length<Elem = ()> + ?Sized
+    pub(super) trait CollectVecSpec<C>: Bulk
     {
-        #[allow(private_bounds)]
-        type _Nearest: ~const Collection<Self::Item>;
-        #[allow(private_bounds)]
-        type _TryNearest: ~const Collection<<Self::Item as Try>::Output>
+        fn try_collect_vec(bulk: Self) -> <<Self::Item as Try>::Residual as Residual<C>>::TryType
         where
-            Self::Item: ~const Try;
-
-        /// Collects into an array if possible, otherwise a vector
-        #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
-        fn _collect_nearest(self) -> Self::_Nearest
-        where
-            Self: Sized;
-
-        /// Fallibly collects into an array if possible, otherwise a vector
-        #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
-        fn _try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<Self::_TryNearest>>::TryType
-        where
-            Self: Sized,
-            <Self as IntoIterator>::Item: ~const Try + ~const Destruct,
-            <<Self as IntoIterator>::Item as Try>::Output: ~const Destruct,
-            <<Self as IntoIterator>::Item as Try>::Residual: ~const Residual<Self::_TryNearest> + ~const Residual<()> + ~const Destruct;
+            <Self as IntoIterator>::Item: Try,
+            <<Self as IntoIterator>::Item as Try>::Residual: Residual<C> + Residual<()>;
     }
 
-    #[cfg(feature = "alloc")]
-    impl<I> _CollectNearest<[()]> for I
+    impl<I, C> CollectVecSpec<C> for I
     where
         I: Bulk
     {
-        type _Nearest = alloc::vec::Vec<I::Item>;
-        type _TryNearest = alloc::vec::Vec<<I::Item as Try>::Output>
-        where
-            Self::Item: Try;
-
-        fn _collect_nearest(self) -> Self::_Nearest
-        {
-            self.collect::<Self::_Nearest, _>()
-        }
-        fn _try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<Self::_TryNearest>>::TryType
+        default fn try_collect_vec(bulk: Self) -> <<Self::Item as Try>::Residual as Residual<C>>::TryType
         where
             <Self as IntoIterator>::Item: Try,
-            <<Self as IntoIterator>::Item as Try>::Residual: Residual<Self::_TryNearest> + Residual<()>
+            <<Self as IntoIterator>::Item as Try>::Residual: Residual<C> + Residual<()>
         {
-            self.try_collect::<Self::_TryNearest, _>()
+            let mut vec = alloc::vec::Vec::with_capacity(bulk.len());
+            for item in bulk
+            {
+                vec.push(item?);
+            }
+            Try::from_output(vec.same().ok().unwrap())
         }
     }
-    impl<I, const N: usize> const _CollectNearest<[(); N]> for I
+    impl<I> CollectVecSpec<alloc::vec::Vec<<I::Item as Try>::Output>> for I
     where
-        I: ~const Bulk + StaticBulk<Array<()> = [(); N]>
+        I: Bulk<Item: Try>
     {
-        type _Nearest = I::Array<I::Item>;
-        type _TryNearest = I::Array<<I::Item as Try>::Output>
+        fn try_collect_vec(bulk: Self) -> <<Self::Item as Try>::Residual as Residual<alloc::vec::Vec<<I::Item as Try>::Output>>>::TryType
         where
-            Self::Item: Try;
-
-        fn _collect_nearest(self) -> Self::_Nearest
-        where
-            Self: Sized
+            <Self as IntoIterator>::Item: Try,
+            <<Self as IntoIterator>::Item as Try>::Residual: Residual<alloc::vec::Vec<<I::Item as Try>::Output>> + Residual<()>
         {
-            self.collect_array()
-        }
-        fn _try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<Self::_TryNearest>>::TryType
-        where
-            Self: Sized,
-            <Self as IntoIterator>::Item: ~const Try + ~const Destruct,
-            <<Self as IntoIterator>::Item as Try>::Output: ~const Destruct,
-            <<Self as IntoIterator>::Item as Try>::Residual: ~const Residual<Self::_TryNearest> + ~const Residual<()> + ~const Destruct
-        {
-            self.try_collect_array()
+            bulk.try_collect::<alloc::vec::Vec<_>, _>()
         }
     }
 }

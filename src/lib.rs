@@ -423,6 +423,28 @@ mod tests
         assert_eq!(b, [(0, 0), (1, 1), (2, 2)] as [(usize, usize); _]);
     }
 
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn nearest()
+    {
+        let a: [i32; _] = [1, 2, 3];
+
+        let f = |x| (x - 1) as usize;
+
+        let b = a.bulk().copied().map(f).enumerate().inspect(|(i, x)| assert_eq!(i, x));
+
+        fn nearest<T>(bulk: T) -> <T as CollectNearest>::Nearest
+        where
+            T: Bulk
+        {
+            bulk.collect_nearest()
+        }
+
+        let b = nearest(b);
+
+        assert_eq!(b, [(0, 0), (1, 1), (2, 2)] as [(usize, usize); _]);
+    }
+
     #[test]
     fn test_option()
     {
