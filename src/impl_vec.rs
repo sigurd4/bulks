@@ -95,14 +95,14 @@ where
         self.into_iter().try_for_each(f)
     }
 
-    fn get<'a, L>(&'a self, i: L) -> Option<<Self as RandomAccessBulk<'a>>::ItemRef>
+    fn get<'a, L>(&'a self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
     where
         Self: 'a,
         L: LengthValue
     {
         self.inner.get(length::value::len(i))
     }
-    fn get_mut<'a, L>(&'a mut self, i: L) -> Option<<Self as InplaceBulk<'a>>::ItemMut>
+    fn get_mut<'a, L>(&'a mut self, i: L) -> Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>
     where
         Self: 'a,
         L: LengthValue
@@ -153,28 +153,37 @@ where
     }
 }
 
-impl<'a, T, A> RandomAccessBulk<'a> for vec::IntoBulk<T, A>
+impl<T, A> RandomAccessBulk for vec::IntoBulk<T, A>
 where
-    A: Allocator + 'a,
-    T: 'a
+    A: Allocator
 {
-    type ItemRef = &'a T;
-    type EachRef = slice::Bulk<'a, T>;
+    type ItemPointee = T;
+    type EachRef<'a> = slice::Bulk<'a, T>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a;
 
-    fn each_ref(Self { inner }: &'a Self) -> Self::EachRef
+    fn each_ref<'a>(Self { inner }: &'a Self) -> Self::EachRef<'a>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a
     {
         inner.bulk()
     }
 }
-impl<'a, T, A> InplaceBulk<'a> for vec::IntoBulk<T, A>
+impl<T, A> InplaceBulk for vec::IntoBulk<T, A>
 where
-    A: Allocator + 'a,
-    T: 'a
+    A: Allocator
 {
-    type ItemMut = &'a mut T;
-    type EachMut = slice::BulkMut<'a, T>;
+    type EachMut<'a> = slice::BulkMut<'a, T>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a;
     
-    fn each_mut(Self { inner }: &'a mut Self) -> Self::EachMut
+    fn each_mut<'a>(Self { inner }: &'a mut Self) -> Self::EachMut<'a>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a
     {
         inner.bulk_mut()
     }
