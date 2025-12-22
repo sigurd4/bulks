@@ -59,3 +59,29 @@ where
         bulk.each_mut().nth(i)
     }
 }
+
+#[cfg(test)]
+mod test
+{
+    use core::borrow::BorrowMut;
+
+    use crate::{Bulk, CollectNearest, InplaceBulk, IntoBulk};
+
+    #[test]
+    fn it_works()
+    {
+        fn swaps<B>(bulk: &mut B)
+        where
+            B: for<'a> InplaceBulk<'a, ItemMut: BorrowMut<B::Item>>
+        {
+            bulk.swap_inplace(0, 3);
+            bulk.swap_inplace(1, 2);
+        }
+
+        let a = [1, 2, 3, 4];
+        let mut bulk = a.into_bulk();
+        swaps(&mut bulk);
+        let b = bulk.collect_nearest();
+        println!("{b:?}")
+    }
+}

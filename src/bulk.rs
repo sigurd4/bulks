@@ -1,4 +1,4 @@
-use core::{fmt::Display, marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}, range::Step};
+use core::{borrow::BorrowMut, fmt::Display, marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}, range::Step};
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
@@ -2011,12 +2011,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
     }
 
-    fn swap_inplace<'a, L, R, T>(&'a mut self, lhs: L, rhs: R)
+    fn swap_inplace<'a, L, R>(&'a mut self, lhs: L, rhs: R)
     where
-        Self: ~const InplaceBulk<'a, ItemMut = &'a mut T> + 'a,
+        Self: ~const InplaceBulk<'a, ItemMut: ~const BorrowMut<Self::Item>>,
         L: LengthValue,
-        R: LengthValue,
-        T: 'a
+        R: LengthValue
     {
         match self.try_swap_inplace(lhs, rhs)
         {
@@ -2025,12 +2024,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
     }
 
-    fn try_swap_inplace<'a, L, R, T>(&'a mut self, lhs: L, rhs: R) -> Result<(), OutOfRange>
+    fn try_swap_inplace<'a, L, R>(&'a mut self, lhs: L, rhs: R) -> Result<(), OutOfRange>
     where
-        Self: ~const InplaceBulk<'a, ItemMut = &'a mut T> + 'a,
+        Self: ~const InplaceBulk<'a, ItemMut: ~const BorrowMut<Self::Item>>,
         L: LengthValue,
-        R: LengthValue,
-        T: 'a
+        R: LengthValue
     {
         let n = length::value::or_len::<Value<Self::Length>>(self.len());
 
@@ -2090,7 +2088,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         {
             match (closure.first, closure.last)
             {
-                (Some(first), Some(last)) => { core::mem::swap(first, last); Ok(()) },
+                (Some(mut first), Some(mut last)) => { core::mem::swap(first.borrow_mut(), last.borrow_mut()); Ok(()) },
                 (Some(first), None) if length::value::eq(i, j) => Ok(()),
                 (Some(_), None) => Err(length::value::len(j)),
                 (None, None) | (None, Some(_)) => Err(length::value::len(i))
