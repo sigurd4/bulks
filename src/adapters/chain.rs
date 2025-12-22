@@ -1,4 +1,4 @@
-use core::marker::Destruct;
+use core::{borrow::BorrowMut, marker::Destruct};
 
 use array_trait::length::{self, Length, LengthValue};
 
@@ -201,30 +201,40 @@ where
     }
 }
 
-const trait RandomAccessFirst<'a> = ~const RandomAccessBulk<'a, EachRef: ~const Destruct + ~const RandomAccessBulk<'a, Item = <Self as RandomAccessBulk<'a>>::ItemRef, EachRef = <Self as RandomAccessBulk<'a>>::EachRef> + ~const Destruct> + ~const Destruct + 'a;
-
-impl<'a, A, B, T> const RandomAccessBulk<'a> for Chain<A, B>
+impl<A, B, T, P> const RandomAccessBulk for Chain<A, B>
 where
-    A: ~const RandomAccessFirst<'a, Item = T, EachRef: ~const Destruct>,
-    B: ~const RandomAccessFirst<'a, Item = T, EachRef: ~const Destruct, ItemRef = A::ItemRef>
+    A: ~const RandomAccessBulk<Item = T, ItemPointee = P> + ~const Destruct,
+    B: ~const RandomAccessBulk<Item = T, ItemPointee = P> + ~const Destruct
 {
-    type ItemRef = A::ItemRef;
-    type EachRef = Chain<A::EachRef, B::EachRef>;
+    type ItemPointee = P;
+    type EachRef<'a> = Chain<A::EachRef<'a>, B::EachRef<'a>>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a;
 
-    fn each_ref(Self { a, b }: &'a Self) -> Self::EachRef
+    fn each_ref<'a>(Self { a, b }: &'a Self) -> Self::EachRef<'a>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a
     {
         a.each_ref().chain(b.each_ref())
     }
 }
-impl<'a, A, B, T> const InplaceBulk<'a> for Chain<A, B>
+impl<A, B, T, P> const InplaceBulk for Chain<A, B>
 where
-    A: ~const InplaceBulk<'a, Item = T, EachRef: ~const Destruct, EachMut: ~const Destruct> + ~const Destruct,
-    B: ~const InplaceBulk<'a, Item = T, ItemRef = A::ItemRef, ItemMut = A::ItemMut, EachRef: ~const Destruct, EachMut: ~const Destruct> + ~const Destruct + 'a
+    A: ~const InplaceBulk<Item = T, ItemPointee = P> + ~const Destruct,
+    B: ~const InplaceBulk<Item = T, ItemPointee = P> + ~const Destruct,
+    T: ~const BorrowMut<P>
 {
-    type ItemMut = A::ItemMut;
-    type EachMut = Chain<A::EachMut, B::EachMut>;
+    type EachMut<'a> = Chain<A::EachMut<'a>, B::EachMut<'a>>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a;
 
-    fn each_mut(Self { a, b }: &'a mut Self) -> Self::EachMut
+    fn each_mut<'a>(Self { a, b }: &'a mut Self) -> Self::EachMut<'a>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a
     {
         a.each_mut().chain(b.each_mut())
     }

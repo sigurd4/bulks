@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, EnumerateFrom, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, EnumerateFrom, SplitBulk};
 
 /// A bulk that yields the element's index and the element.
 ///
@@ -225,7 +225,7 @@ where
         result
     }
 }
-impl<'a, I, T> const RandomAccessBulk<'a> for Enumerate<I>
+/*impl<'a, I, T> const RandomAccessBulk<'a> for Enumerate<I>
 where
     I: ~const RandomAccessBulk<'a, Item = T>,
     T: ~const Destruct
@@ -278,7 +278,7 @@ where
         let x = bulk.get_mut(i)?;
         Some((length::value::len(i), x))
     }
-}
+}*/
 
 #[cfg(test)]
 mod test

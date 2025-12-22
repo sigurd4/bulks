@@ -2,7 +2,7 @@ use core::fmt;
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, SplitBulk};
 
 /// Converts the arguments to bulks and zips them.
 ///
@@ -222,7 +222,7 @@ where
     }
 }
 
-impl<'a, A, B> RandomAccessBulk<'a> for Zip<A, B>
+/*impl<A, B> RandomAccessBulk for Zip<A, B>
 where
     A: RandomAccessBulk<'a>,
     B: RandomAccessBulk<'a>
@@ -276,7 +276,7 @@ where
     {
         Some((a.get_mut(i)?, b.get_mut(i)?))
     }
-}
+}*/
 
 #[cfg(test)]
 mod test

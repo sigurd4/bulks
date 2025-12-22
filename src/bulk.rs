@@ -1,4 +1,4 @@
-use core::{borrow::BorrowMut, fmt::Display, marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}, range::Step};
+use core::{fmt::Display, marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}, range::Step};
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
@@ -1948,38 +1948,38 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         SplitBulk::split_at(self, length::value::saturating_sub(l, n))
     }
 
-    fn each_ref<'a>(&'a self) -> Self::EachRef
+    fn each_ref<'a>(&'a self) -> Self::EachRef<'a>
     where
-        Self: ~const RandomAccessBulk<'a> + 'a
+        Self: ~const RandomAccessBulk + 'a
     {
         RandomAccessBulk::each_ref(self)
     }
-    fn each_mut<'a>(&'a mut self) -> Self::EachMut
+    fn each_mut<'a>(&'a mut self) -> Self::EachMut<'a>
     where
-        Self: ~const InplaceBulk<'a> + 'a
+        Self: ~const InplaceBulk + 'a
     {
         InplaceBulk::each_mut(self)
     }
 
-    fn get<'a, L>(&'a self, i: L) -> Option<Self::ItemRef>
+    fn get<'a, L>(&'a self, i: L) -> Option<&'a Self::ItemPointee>
     where
-        Self: ~const RandomAccessBulk<'a> + 'a,
+        Self: ~const RandomAccessBulk + 'a,
         L: LengthValue
     {
         RandomAccessBulkSpec::_get(self, i)
     }
 
-    fn get_mut<'a, L>(&'a mut self, i: L) -> Option<Self::ItemMut>
+    fn get_mut<'a, L>(&'a mut self, i: L) -> Option<&'a mut Self::ItemPointee>
     where
-        Self: ~const InplaceBulk<'a> + 'a,
+        Self: ~const InplaceBulk + 'a,
         L: LengthValue
     {
         InplaceBulkSpec::_get_mut(self, i)
     }
 
-    fn try_get<'a, L>(&'a self, i: L) -> Result<Self::ItemRef, OutOfRange>
+    fn try_get<'a, L>(&'a self, i: L) -> Result<&'a Self::ItemPointee, OutOfRange>
     where
-        Self: ~const RandomAccessBulk<'a> + 'a,
+        Self: ~const RandomAccessBulk + 'a,
         L: LengthValue
     {
         match self.get(i)
@@ -1994,9 +1994,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
     }
 
-    fn try_get_mut<'a, L>(&'a mut self, i: L) -> Result<Self::ItemMut, OutOfRange>
+    fn try_get_mut<'a, L>(&'a mut self, i: L) -> Result<&'a mut Self::ItemPointee, OutOfRange>
     where
-        Self: ~const InplaceBulk<'a>,
+        Self: ~const InplaceBulk + 'a,
         L: LengthValue
     {
         let len = self.len();
@@ -2011,9 +2011,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
     }
 
-    fn swap_inplace<'a, L, R>(&'a mut self, lhs: L, rhs: R)
+    fn swap_inplace<L, R>(&mut self, lhs: L, rhs: R)
     where
-        Self: ~const InplaceBulk<'a, ItemMut: ~const BorrowMut<Self::Item>>,
+        Self: ~const InplaceBulk,
         L: LengthValue,
         R: LengthValue
     {
@@ -2024,9 +2024,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
     }
 
-    fn try_swap_inplace<'a, L, R>(&'a mut self, lhs: L, rhs: R) -> Result<(), OutOfRange>
+    fn try_swap_inplace<L, R>(&mut self, lhs: L, rhs: R) -> Result<(), OutOfRange>
     where
-        Self: ~const InplaceBulk<'a, ItemMut: ~const BorrowMut<Self::Item>>,
+        Self: ~const InplaceBulk,
         L: LengthValue,
         R: LengthValue
     {
@@ -2088,7 +2088,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         {
             match (closure.first, closure.last)
             {
-                (Some(mut first), Some(mut last)) => { core::mem::swap(first.borrow_mut(), last.borrow_mut()); Ok(()) },
+                (Some(first), Some(last)) => { core::mem::swap(first, last); Ok(()) },
                 (Some(first), None) if length::value::eq(i, j) => Ok(()),
                 (Some(_), None) => Err(length::value::len(j)),
                 (None, None) | (None, Some(_)) => Err(length::value::len(i))

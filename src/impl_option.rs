@@ -169,15 +169,18 @@ macro_rules! impl_option {
                 self.first()
             }
         }
-        impl<'b, $($a,)? T> RandomAccessBulk<'b> for option::$bulk<$($a,)? $t>
-        where
-            T: 'b,
-            $($a: 'b)?
+        impl<$($a,)? T> RandomAccessBulk for option::$bulk<$($a,)? $t>
         {
-            type ItemRef = &'b T;
-            type EachRef = option::Bulk<'b, T>;
+            type ItemPointee = T;
+            type EachRef<'b> = option::Bulk<'b, T>
+            where
+                Self::ItemPointee: 'b,
+                Self: 'b;
 
-            fn each_ref(bulk: &'b Self) -> Self::EachRef
+            fn each_ref<'b>(bulk: &'b Self) -> Self::EachRef<'b>
+            where
+                Self::ItemPointee: 'b,
+                Self: 'b
             {
                 (&bulk.option as &Option<T>).bulk()
             }
@@ -187,15 +190,17 @@ macro_rules! impl_option {
     (
         @extra impl $bulk:ident<$($a:lifetime,)? $t:ident>; for $item:ty; in $option:ty; $mut:ident
     ) => {
-        impl<'b, $($a,)? T> InplaceBulk<'b> for option::$bulk<$($a,)? T>
-        where
-            T: 'b,
-            $($a: 'b)?
+        impl<$($a,)? T> InplaceBulk for option::$bulk<$($a,)? T>
         {
-            type ItemMut = &'b mut T;
-            type EachMut = option::BulkMut<'b, T>;
+            type EachMut<'b> = option::BulkMut<'b, T>
+            where
+                Self::ItemPointee: 'b,
+                Self: 'b;
 
-            fn each_mut(bulk: &'b mut Self) -> Self::EachMut
+            fn each_mut<'b>(bulk: &'b mut Self) -> Self::EachMut<'b>
+            where
+                Self::ItemPointee: 'b,
+                Self: 'b
             {
                 (&mut bulk.option as &mut Option<T>).bulk_mut()
             }

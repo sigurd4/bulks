@@ -1,8 +1,8 @@
-use core::{marker::Destruct, ops::Try};
+use core::{borrow::Borrow, marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, Chain, DoubleEndedBulk, IntoContained, Once, RandomAccessBulk, SplitBulk, util::BorrowAt};
+use crate::{Bulk, Chain, DoubleEndedBulk, IntoContained, Once, RandomAccessBulk, SplitBulk};
 
 /// A bulk adapter that places a separator between all elements.
 ///
@@ -163,17 +163,23 @@ where
     }
 }
 
-impl<'a, I> const RandomAccessBulk<'a> for Intersperse<I>
+impl<I> const RandomAccessBulk for Intersperse<I>
 where
-    I: ~const RandomAccessBulk<'a, Item: ~const BorrowAt<'a, I::ItemRef> + ~const Clone + ~const Destruct, ItemRef: ~const BorrowAt<'a, I::ItemRef> + ~const Clone>
+    I: ~const RandomAccessBulk<Item: ~const Borrow<I::ItemPointee> + ~const Clone + ~const Destruct>
 {
-    type ItemRef = I::ItemRef;
-    type EachRef = Intersperse<I::EachRef>;
+    type ItemPointee = I::ItemPointee;
+    type EachRef<'a> = Intersperse<I::EachRef<'a>>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a;
 
-    fn each_ref(Self { bulk, separator }: &'a Self) -> Self::EachRef
+    fn each_ref<'a>(Self { bulk, separator }: &'a Self) -> Self::EachRef<'a>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a
     {
         bulk.each_ref()
-            .intersperse(separator.borrow_at())
+            .intersperse(separator.borrow())
     }
 }
 

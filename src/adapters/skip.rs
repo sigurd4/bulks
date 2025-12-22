@@ -221,38 +221,49 @@ where
         )
     }
 }
-impl<'a, T, N> const RandomAccessBulk<'a> for Skip<T, N>
+impl<T, N> const RandomAccessBulk for Skip<T, N>
 where
-    T: ~const RandomAccessBulk<'a, Item: ~const Destruct>,
-    N: Length<Elem = ()> + ?Sized + 'a
+    T: ~const RandomAccessBulk<Item: ~const Destruct>,
+    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
 {
-    type ItemRef = T::ItemRef;
-    type EachRef = Skip<T::EachRef, N>;
+    type ItemPointee = T::ItemPointee;
+    type EachRef<'a> = Skip<T::EachRef<'a>, N>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a;
 
-    fn each_ref(Self { bulk, n }: &'a Self) -> Self::EachRef
+    fn each_ref<'a>(Self { bulk, n }: &'a Self) -> Self::EachRef<'a>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a
     {
         bulk.each_ref().skip(length::value::from_metadata::<N::Value>(*n))
     }
 }
-impl<'a, T, N> const InplaceBulk<'a> for Skip<T, N>
+impl<T, N> const InplaceBulk for Skip<T, N>
 where
-    T: ~const InplaceBulk<'a, Item: ~const Destruct>,
-    N: Length<Elem = ()> + ?Sized + 'a
+    T: ~const InplaceBulk<Item: ~const Destruct>,
+    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
 {
-    type ItemMut = T::ItemMut;
-    type EachMut = Skip<T::EachMut, N>;
+    type EachMut<'a> = Skip<T::EachMut<'a>, N>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a;
 
-    fn each_mut(Self { bulk, n }: &'a mut Self) -> Self::EachMut
+    fn each_mut<'a>(Self { bulk, n }: &'a mut Self) -> Self::EachMut<'a>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a
     {
         bulk.each_mut().skip(length::value::from_metadata::<N::Value>(*n))
     }
 }
-impl<'a, T, N> const RandomAccessBulkSpec<'a> for Skip<T, N>
+impl<T, N> const RandomAccessBulkSpec for Skip<T, N>
 where
-    T: ~const RandomAccessBulk<'a, Item: ~const Destruct>,
+    T: ~const RandomAccessBulk,
     N: Length<Elem = ()> + ?Sized
 {
-    fn _get<L>(Self { bulk, n }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk<'a>>::ItemRef>
+    fn _get<'a, L>(Self { bulk, n }: &'a Self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
     where
         L: LengthValue,
         Self: 'a
@@ -260,12 +271,12 @@ where
         bulk.get(length::value::add(length::value::from_metadata::<N::Value>(*n), i))
     }
 }
-impl<'a, T, N> const InplaceBulkSpec<'a> for Skip<T, N>
+impl<T, N> const InplaceBulkSpec for Skip<T, N>
 where
-    T: ~const InplaceBulk<'a, Item: ~const Destruct>,
+    T: ~const InplaceBulk,
     N: Length<Elem = ()> + ?Sized
 {
-    fn _get_mut<L>(Self { bulk, n }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk<'a>>::ItemMut>
+    fn _get_mut<'a, L>(Self { bulk, n }: &'a mut Self, i: L) -> Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>
     where
         L: LengthValue,
         Self: 'a

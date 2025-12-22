@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::{Residual, Try}};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, CollectionAdapter, CollectionStrategy, DoubleEndedBulk, FromBulk, IntoBulk, RandomAccessBulk, InplaceBulk, Rev, SplitBulk, adapters::array_chunks_with_remainder::ArrayChunksWithRemainder, util::{self, ArrayBuffer}};
+use crate::{Bulk, CollectionAdapter, CollectionStrategy, DoubleEndedBulk, FromBulk, IntoBulk, Rev, SplitBulk, adapters::array_chunks_with_remainder::ArrayChunksWithRemainder, util::{self, ArrayBuffer}};
 
 /// A bulk over `N` elements of the bulk at a time.
 ///
@@ -244,9 +244,9 @@ where
         )
     }
 }
-impl<'a, I, const N: usize> const RandomAccessBulk<'a> for ArrayChunks<I, N>
+/*impl<I, const N: usize> const RandomAccessBulk for ArrayChunks<I, N>
 where
-    I: ~const RandomAccessBulk<'a, Item: ~const Destruct>
+    I: ~const RandomAccessBulk<Item: ~const Destruct>
 {
     type ItemRef = [I::ItemRef; N];
     type EachRef = ArrayChunks<I::EachRef, N>;
@@ -267,7 +267,7 @@ where
     {
         bulk.each_mut().array_chunks()
     }
-}
+}*/
 
 #[cfg(test)]
 mod test
@@ -310,14 +310,14 @@ mod test
     {
         let a = [1, 2, 3, 4, 5, 6];
 
-        let mut b = a.into_bulk().array_chunks::<2>();
+        let mut b = a.into_bulk();
 
-        for [e1, e2] in b.each_mut()
+        for [e1, e2] in b.each_mut().array_chunks::<2>()
         {
             core::mem::swap(e1, e2);
         }
 
-        let a = b.flatten().collect_array();
+        let a = b.array_chunks::<2>().flatten().collect_array();
 
         println!("{a:?}")
     }

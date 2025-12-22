@@ -1,60 +1,71 @@
-use core::marker::Destruct;
+use core::{marker::Destruct, ptr::Thin};
 
 use array_trait::length::LengthValue;
 
 use crate::Bulk;
 
-pub const trait RandomAccessBulk<'a>: ~const Bulk + 'a
+pub const trait RandomAccessBulk: ~const Bulk
 {
-    type ItemRef: 'a + Copy + ~const Destruct;
-    type EachRef: ~const RandomAccessBulk<'a, Item = Self::ItemRef, ItemRef = Self::ItemRef, EachRef = Self::EachRef> + 'a;
+    type ItemPointee: Sized + Thin;
+    type EachRef<'a>: ~const RandomAccessBulk<ItemPointee = Self::ItemPointee, Item = &'a Self::ItemPointee, EachRef<'a> = Self::EachRef<'a>> + 'a + ~const Destruct
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a;
 
-    fn each_ref(bulk: &'a Self) -> Self::EachRef;
+    fn each_ref<'a>(bulk: &'a Self) -> Self::EachRef<'a>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a;
 }
 
-pub const trait InplaceBulk<'a>: ~const RandomAccessBulk<'a>
+pub const trait InplaceBulk: ~const RandomAccessBulk
 {
-    type ItemMut: 'a + ~const Destruct;
-    type EachMut: ~const InplaceBulk<'a, Item = Self::ItemMut, ItemMut = Self::ItemMut, ItemRef = Self::ItemRef, EachMut = Self::EachMut, EachRef = Self::EachRef> + 'a;
+    type EachMut<'a>: ~const InplaceBulk<ItemPointee = Self::ItemPointee, Item = &'a mut Self::ItemPointee, EachRef<'a> = Self::EachRef<'a>, EachMut<'a> = Self::EachMut<'a>> + 'a + ~const Destruct
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a;
 
-    fn each_mut(bulk: &'a mut Self) -> Self::EachMut;
+    fn each_mut<'a>(bulk: &'a mut Self) -> Self::EachMut<'a>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a;
 }
 
-pub(crate) const trait RandomAccessBulkSpec<'a>: Bulk
+pub(crate) const trait RandomAccessBulkSpec: Bulk
 {
-    fn _get<L>(bulk: &'a Self, i: L) -> Option<Self::ItemRef>
+    fn _get<'a, L>(bulk: &'a Self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
     where
         L: LengthValue,
-        Self: ~const RandomAccessBulk<'a> + 'a;
+        Self: ~const RandomAccessBulk + 'a;
 }
-impl<'a, I> const RandomAccessBulkSpec<'a> for I
+impl<I> const RandomAccessBulkSpec for I
 where
     I: Bulk + ?Sized
 {
-    default fn _get<L>(bulk: &'a Self, i: L) -> Option<<Self as RandomAccessBulk<'a>>::ItemRef>
+    default fn _get<'a, L>(bulk: &'a Self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
     where
         L: LengthValue,
-        Self: ~const RandomAccessBulk<'a> + 'a
+        Self: ~const RandomAccessBulk + 'a
     {
         bulk.each_ref().nth(i)
     }
 }
 
-pub(crate) const trait InplaceBulkSpec<'a>: Bulk
+pub(crate) const trait InplaceBulkSpec: Bulk
 {
-    fn _get_mut<L>(bulk: &'a mut Self, i: L) -> Option<Self::ItemMut>
+    fn _get_mut<'a, L>(bulk: &'a mut Self, i: L) -> Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>
     where
         L: LengthValue,
-        Self: ~const InplaceBulk<'a> + 'a;
+        Self: ~const InplaceBulk + 'a;
 }
-impl<'a, I> const InplaceBulkSpec<'a> for I
+impl<I> const InplaceBulkSpec for I
 where
     I: Bulk + ?Sized
 {
-    default fn _get_mut<L>(bulk: &'a mut Self, i: L) -> Option<<Self as InplaceBulk<'a>>::ItemMut>
+    default fn _get_mut<'a, L>(bulk: &'a mut Self, i: L) -> Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>
     where
         L: LengthValue,
-        Self: ~const InplaceBulk<'a> + 'a
+        Self: ~const InplaceBulk + 'a
     {
         bulk.each_mut().nth(i)
     }
@@ -63,8 +74,6 @@ where
 #[cfg(test)]
 mod test
 {
-    use core::borrow::BorrowMut;
-
     use crate::*;
 
     #[test]
@@ -72,7 +81,7 @@ mod test
     {
         fn swaps<B>(bulk: &mut B)
         where
-            B: for<'a> InplaceBulk<'a, ItemMut: BorrowMut<B::Item>>
+            B: InplaceBulk
         {
             bulk.swap_inplace(0, 3);
             bulk.swap_inplace(1, 2);

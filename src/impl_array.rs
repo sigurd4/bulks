@@ -114,7 +114,7 @@ macro_rules! impl_bulk {
                 L: LengthValue
             $nth)?
 
-            fn get<'b, L>(&'b self, i: L) -> Option<<Self as RandomAccessBulk<'b>>::ItemRef>
+            fn get<'b, L>(&'b self, i: L) -> Option<&'b <Self as RandomAccessBulk>::ItemPointee>
             where
                 L: LengthValue,
                 Self: 'b
@@ -122,7 +122,7 @@ macro_rules! impl_bulk {
                 self.array.get(length::value::len(i))
             }
 
-            $(fn ${concat(get_, $mut)}<'b, L>(&'b mut self, i: L) -> Option<<Self as InplaceBulk<'b>>::ItemMut>
+            $(fn ${concat(get_, $mut)}<'b, L>(&'b mut self, i: L) -> Option<&'b mut <Self as RandomAccessBulk>::ItemPointee>
             where
                 L: LengthValue,
                 Self: 'b
@@ -204,15 +204,18 @@ macro_rules! impl_bulk {
                 )
             }
         }
-        impl<'b, $($a,)? T, const N: usize> const RandomAccessBulk<'b> for array::$bulk<$($a,)? T, N>
-        where
-            T: 'b,
-            $($a: 'b)?
+        impl<$($a,)? T, const N: usize> const RandomAccessBulk for array::$bulk<$($a,)? T, N>
         {
-            type ItemRef = &'b T;
-            type EachRef = array::Bulk<'b, T, N>;
+            type ItemPointee = T;
+            type EachRef<'b> = array::Bulk<'b, T, N>
+            where
+                Self::ItemPointee: 'b,
+                Self: 'b;
 
-            fn each_ref(bulk: &'b Self) -> Self::EachRef
+            fn each_ref<'b>(bulk: &'b Self) -> Self::EachRef<'b>
+            where
+                Self::ItemPointee: 'b,
+                Self: 'b
             {
                 (&bulk.array as &[T; N]).bulk()
             }
@@ -222,15 +225,17 @@ macro_rules! impl_bulk {
     (
         @extra impl $bulk:ident<$($a:lifetime,)? $t:ident, const $n:ident: usize>; for $item:ty; in $array:ty; $mut:ident
     ) => {
-        impl<'b, $($a,)? T, const N: usize> const InplaceBulk<'b> for array::$bulk<$($a,)? T, N>
-        where
-            T: 'b,
-            $($a: 'b)?
+        impl<$($a,)? T, const N: usize> const InplaceBulk for array::$bulk<$($a,)? T, N>
         {
-            type ItemMut = &'b mut T;
-            type EachMut = array::BulkMut<'b, T, N>;
+            type EachMut<'b> = array::BulkMut<'b, T, N>
+            where
+                Self::ItemPointee: 'b,
+                Self: 'b;
 
-            fn each_mut(bulk: &'b mut Self) -> Self::EachMut
+            fn each_mut<'b>(bulk: &'b mut Self) -> Self::EachMut<'b>
+            where
+                Self::ItemPointee: 'b,
+                Self: 'b
             {
                 (&mut bulk.array as &mut [T; N]).bulk_mut()
             }

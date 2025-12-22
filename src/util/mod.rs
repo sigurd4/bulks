@@ -1,4 +1,4 @@
-use core::{borrow::Borrow, mem::{ManuallyDrop, MaybeUninit}};
+use core::{mem::{ManuallyDrop, MaybeUninit}};
 
 moddef::moddef!(
     flat(pub) mod {
@@ -12,22 +12,6 @@ moddef::moddef!(
         yield_once
     }
 );
-
-pub const trait BorrowAt<'a, T>
-where
-    T: ?Sized + 'a
-{
-    fn borrow_at(&'a self) -> T;
-}
-impl<'a, T, U> const BorrowAt<'a, &'a T> for U
-where
-    U: ~const Borrow<T>
-{
-    fn borrow_at(&'a self) -> &'a T
-    {
-        self.borrow()
-    }
-}
 
 pub(crate) const fn split_array_ref<T, const N: usize, const M: usize>(array: &[T; N]) -> (&[T; N.min(M)], &[T; N.saturating_sub(M)])
 {

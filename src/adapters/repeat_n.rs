@@ -49,11 +49,7 @@ where
     T: Clone,
     L: LengthValue
 {
-    RepeatN {
-        element,
-        n: length::value::into_metadata(n),
-        marker: PhantomData
-    }
+    RepeatN::new(element, n)
 }
 
 /// A bulk that repeats an element an exact number of times.
@@ -62,19 +58,34 @@ where
 /// See its documentation for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 #[derive(Clone)]
-pub struct RepeatN<A, N = [()], R = A>
+pub struct RepeatN<A, N = [()], P = A>
 where
-    A: Clone + Borrow<R>,
+    A: Clone + Borrow<P>,
     N: Length<Elem = ()> + ?Sized
 {
     element: A,
     n: <N as Pointee>::Metadata,
-    marker: PhantomData<R>
+    marker: PhantomData<P>
 }
 
-impl<A, N, R> fmt::Debug for RepeatN<A, N, R>
+impl<A, N, P> RepeatN<A, N, P>
 where
-    A: Clone + fmt::Debug + Borrow<R>,
+    A: Clone + Borrow<P>,
+    N: Length<Elem = ()> + ?Sized
+{
+    const fn new(element: A, n: length::Value<N>) -> RepeatN<A, N, P>
+    {
+        RepeatN {
+            element,
+            n: length::value::into_metadata(n),
+            marker: PhantomData
+        }
+    }
+}
+
+impl<A, N, P> fmt::Debug for RepeatN<A, N, P>
+where
+    A: Clone + fmt::Debug + Borrow<P>,
     N: Length<Elem = ()> + ?Sized
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
@@ -83,9 +94,9 @@ where
     }
 }
 
-impl<A, N, R> IntoIterator for RepeatN<A, N, R>
+impl<A, N, P> IntoIterator for RepeatN<A, N, P>
 where
-    A: Clone + Borrow<R>,
+    A: Clone + Borrow<P>,
     N: Length<Elem = ()> + ?Sized
 {
     type Item = A;
@@ -93,13 +104,13 @@ where
 
     fn into_iter(self) -> Self::IntoIter
     {
-        let Self { element, n, marker: _ } = self;
+        let Self { element, n, marker: PhantomData } = self;
         core::iter::repeat_n(element, length::len_metadata::<N>(n))
     }
 }
-impl<A, N, RR> const Bulk for RepeatN<A, N, RR>
+impl<A, N, P> const Bulk for RepeatN<A, N, P>
 where
-    A: ~const Clone + ~const Destruct + Borrow<RR>,
+    A: ~const Clone + ~const Destruct + Borrow<P>,
     N: Length<Elem = ()> + ?Sized
 {
     type MinLength = N;
@@ -107,7 +118,7 @@ where
 
     fn len(&self) -> usize
     {
-        let Self { element: _, n, marker: _ } = self;
+        let Self { element: _, n, marker: PhantomData } = self;
         length::len_metadata::<N>(*n)
     }
     fn for_each<F>(self, mut f: F)
@@ -115,7 +126,7 @@ where
         Self: Sized,
         F: ~const FnMut(Self::Item) + ~const Destruct
     {
-        let Self { element, n, marker: _ } = self;
+        let Self { element, n, marker: PhantomData } = self;
         let n = length::len_metadata::<N>(n);
         let mut i = 1;
         while i < n
@@ -134,7 +145,7 @@ where
         F: ~const FnMut(Self::Item) -> R + ~const Destruct,
         R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
     {
-        let Self { element, n, marker: _ } = self;
+        let Self { element, n, marker: PhantomData } = self;
         let n = length::len_metadata::<N>(n);
         let mut i = 1;
         while i < n
@@ -149,9 +160,9 @@ where
         R::from_output(())
     }
 }
-impl<A, N, RR> const DoubleEndedBulk for RepeatN<A, N, RR>
+impl<A, N, P> const DoubleEndedBulk for RepeatN<A, N, P>
 where
-    A: ~const Clone + ~const Destruct + Borrow<RR>,
+    A: ~const Clone + ~const Destruct + Borrow<P>,
     N: Length<Elem = ()> + ?Sized
 {
     fn rev_for_each<F>(self, f: F)
@@ -170,56 +181,57 @@ where
         self.try_for_each(f)
     }
 }
-impl<A, N, M, L, R> const SplitBulk<M> for RepeatN<A, N>
+impl<A, N, M, L, R, P> const SplitBulk<M> for RepeatN<A, N, P>
 where
     N: Length<Elem = (), Value: LengthValue<Min<M> = L, SaturatingSub<M> = R>>,
-    A: ~const Clone + ~const Destruct,
+    A: ~const Clone + ~const Destruct + Borrow<P>,
     M: LengthValue,
     L: LengthValue,
     R: LengthValue
 {
-    type Left = RepeatN<A, L::Length<()>>;
-    type Right = RepeatN<A, R::Length<()>>;
+    type Left = RepeatN<A, L::Length<()>, P>;
+    type Right = RepeatN<A, R::Length<()>, P>;
 
-    fn split_at(Self { element, n, marker: _ }: Self, m: M) -> (Self::Left, Self::Right)
+    fn split_at(Self { element, n, marker: PhantomData }: Self, m: M) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
         let n = length::value::from_metadata::<N::Value>(n);
         (
-            repeat_n(element.clone(), length::value::min(n, m)),
-            repeat_n(element, length::value::saturating_sub(n, m))
+            RepeatN::new(element.clone(), length::value::min(n, m)),
+            RepeatN::new(element, length::value::saturating_sub(n, m))
         )
     }
 }
 
-impl<'a, A, N, R> const RandomAccessBulk<'a> for RepeatN<A, N, R>
+impl<A, N, P> const RandomAccessBulk for RepeatN<A, N, P>
 where
-    A: ~const Clone + ~const Destruct + ~const Borrow<R> + 'a,
-    N: Length<Elem = ()> + ?Sized + 'a,
-    R: 'a
+    A: ~const Clone + ~const Destruct + ~const Borrow<P>,
+    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
 {
-    type ItemRef = &'a R;
-    type EachRef = RepeatN<&'a R, N, R>;
+    type ItemPointee = P;
+    type EachRef<'a> = RepeatN<&'a P, N, P>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a;
 
-    fn each_ref(Self { element, n, marker }: &'a Self) -> Self::EachRef
+    fn each_ref<'a>(Self { element, n, marker: PhantomData }: &'a Self) -> Self::EachRef<'a>
+    where
+        Self::ItemPointee: 'a,
+        Self: 'a
     {
-        RepeatN {
-            element: element.borrow(),
-            n: *n,
-            marker: *marker
-        }
+        RepeatN::new(element.borrow(), length::value::from_metadata(*n))
     }
 }
-impl<'a, A, N, R> const RandomAccessBulkSpec<'a> for RepeatN<A, N, R>
+impl<A, N, P> const RandomAccessBulkSpec for RepeatN<A, N, P>
 where
-    A: ~const Clone + ~const Destruct + ~const Borrow<R> + 'a,
-    N: Length<Elem = ()> + ?Sized + 'a,
-    R: 'a
+    A: ~const Clone + ~const Destruct + ~const Borrow<P>,
+    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
 {
-    fn _get<L>(Self { element, n, marker: _ }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk<'a>>::ItemRef>
+    fn _get<'a, L>(Self { element, n, marker: PhantomData }: &'a Self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
     where
-        L: LengthValue
+        L: LengthValue,
+        Self: 'a
     {
         if length::value::ge(i, length::value::from_metadata::<N::Value>(*n))
         {
@@ -236,7 +248,7 @@ where
 {
     fn from(value: RepeatN<A, N>) -> Self
     {
-        let RepeatN { element, n, marker: _ } = value;
+        let RepeatN { element, n, marker: PhantomData } = value;
         crate::repeat_n_with(YieldOnce::new(element), length::value::from_metadata::<N::Value>(n))
     }
 }
