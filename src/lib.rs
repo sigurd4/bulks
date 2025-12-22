@@ -368,8 +368,7 @@ moddef::moddef!(
         into_bulk,
         split_bulk,
         random_access_bulk,
-        static_bulk,
-        temp
+        static_bulk
     },
     mod util
 );

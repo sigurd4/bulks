@@ -1,4 +1,4 @@
-use core::{borrow::{Borrow, BorrowMut}, marker::Destruct, ptr::{Pointee, Thin}};
+use core::{marker::Destruct, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
@@ -157,7 +157,7 @@ where
 
 impl<I> const RandomAccessBulk for Rev<I>
 where
-    I: for<'a, 'b> ~const RandomAccessBulk<ItemPointee: 'a,
+    I: for<'a, 'b> ~const RandomAccessBulk<ItemPointee: 'b,
         EachRef<'a>: ~const RandomAccessBulk<EachRef<'b> = I::EachRef<'b>> + 'b + ~const DoubleEndedBulk
     > + ~const DoubleEndedBulk
 {
@@ -177,7 +177,7 @@ where
 }
 impl<I> const InplaceBulk for Rev<I>
 where
-    I: for<'a, 'b> ~const InplaceBulk<ItemPointee: 'a,
+    I: for<'a, 'b> ~const InplaceBulk<ItemPointee: 'b,
         EachRef<'a>: ~const RandomAccessBulk<EachRef<'b> = I::EachRef<'b>> + 'b + ~const DoubleEndedBulk,
         EachMut<'a>: ~const InplaceBulk<EachRef<'b> = I::EachRef<'b>, EachMut<'b> = I::EachMut<'b>> + 'b + ~const DoubleEndedBulk
     > + ~const DoubleEndedBulk
@@ -198,7 +198,7 @@ where
 
 impl<I> const RandomAccessBulkSpec for Rev<I>
 where
-    I: for<'a, 'b> ~const RandomAccessBulk<ItemPointee: 'a,
+    I: for<'a, 'b> ~const RandomAccessBulk<ItemPointee: 'b,
         EachRef<'a>: ~const RandomAccessBulk<EachRef<'b> = I::EachRef<'b>> + 'b + ~const DoubleEndedBulk
     > + ~const DoubleEndedBulk
 {
@@ -220,7 +220,7 @@ where
 }
 impl<I> const InplaceBulkSpec for Rev<I>
 where
-    I: for<'a, 'b> ~const InplaceBulk<ItemPointee: 'a,
+    I: for<'a, 'b> ~const InplaceBulk<ItemPointee: 'b,
         EachRef<'a>: ~const RandomAccessBulk<EachRef<'b> = I::EachRef<'b>> + 'b + ~const DoubleEndedBulk,
         EachMut<'a>: ~const InplaceBulk<EachRef<'b> = I::EachRef<'b>, EachMut<'b> = I::EachMut<'b>> + 'b + ~const DoubleEndedBulk
     > + ~const DoubleEndedBulk
@@ -251,17 +251,12 @@ mod test
     fn it_works()
     {
         let a = [1, 2, 3, 4, 5, 6];
-        let (mut a, mut b) = a.into_bulk()
-            //.rev()
-            .split_at([(); 2]);
-        a.each_mut()
-            .for_each(|x| *x = 7 - *x);
+        let mut b = a.into_bulk();
+            //.rev();
         b.each_mut()
             .for_each(|x| *x = 7 - *x);
-        let a = a.collect_array();
         let b = b.collect_array();
 
-        println!("a = {a:?}");
         println!("b = {b:?}");
     }
 }
