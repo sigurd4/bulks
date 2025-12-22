@@ -65,7 +65,7 @@ mod test
 {
     use core::borrow::BorrowMut;
 
-    use crate::{Bulk, CollectNearest, InplaceBulk, IntoBulk};
+    use crate::*;
 
     #[test]
     fn it_works()
