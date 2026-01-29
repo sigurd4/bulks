@@ -340,7 +340,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     #[doc(alias = "inject", alias = "foldl")]
     #[inline]
-    fn fold<B, F>(self, init: B, f: F) -> B
+    fn fold<B, F>(self, init: B, mut f: F) -> B
     where
         Self: Sized,
         B: ~const Destruct,
@@ -389,7 +389,6 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
     }
 
-    /// TODO
     fn try_fold<B, F, R>(self, init: B, f: F) -> R
     where
         B: ~const Destruct,
@@ -447,7 +446,6 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
     }
 
-    /// TODO
     fn reduce<F>(self, f: F) -> Option<Self::Item>
     where 
         Self: Sized,
@@ -496,7 +494,6 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         })
     }
 
-    /// TODO
     fn try_reduce<F, R>(self, f: F) -> <R::Residual as Residual<Option<R::Output>>>::TryType
     where
         Self: Sized,
