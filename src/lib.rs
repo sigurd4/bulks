@@ -33,6 +33,7 @@
 #![feature(new_range_api)]
 #![feature(const_option_ops)]
 #![feature(step_trait)]
+#![feature(const_drop_in_place)]
 #![feature(iterator_try_collect)]
 #![feature(doc_notable_trait)]
 #![feature(mem_copy_fn)]
