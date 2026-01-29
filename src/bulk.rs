@@ -184,6 +184,131 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         self.skip(n).first()
     }
 
+    fn many<const N: usize>(self, n: [usize; N]) -> [Option<Self::Item>; N]
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct
+    {
+        // TODO: can be optimized by sorting first and storing permutations, then unsorting after.
+
+        struct Functor<'a, T, const N: usize>
+        {
+            done: usize,
+            refs: &'a mut [Result<T, usize>; N]
+        }
+        impl<'a, T, const N: usize> Functor<'a, T, N>
+        {
+            const fn update(&mut self, i: usize, x: T)
+            where
+                T: ~const Destruct
+            {
+                const trait ManySpec: Sized
+                {
+                    fn update<'a, const N: usize>(refs: &'a mut [Result<Self, usize>; N], k: &mut usize, i: usize, x: Self);
+                }
+                impl<T> const ManySpec for T
+                where
+                    T: ~const Destruct
+                {
+                    default fn update<'a, const N: usize>(refs: &'a mut [Result<Self, usize>; N], k: &mut usize, i: usize, x: Self)
+                    {
+                        while *k < N
+                        {
+                            if let Err(j) = &refs[*k]
+                            {
+                                if *j == i
+                                {
+                                    refs[*k] = Ok(x);
+                                    return
+                                }
+                                else
+                                {
+                                    break
+                                }
+                            }
+                            *k += 1
+                        }
+                        let mut n = *k;
+                        while n < N
+                        {
+                            if let Err(j) = &refs[n] && *j == i
+                            {
+                                refs[n] = Ok(x);
+                                return
+                            }
+                            n += 1
+                        }
+                    }
+                }
+                impl<T> const ManySpec for T
+                where
+                    T: Copy + ~const Destruct
+                {
+                    fn update<'a, const N: usize>(refs: &'a mut [Result<Self, usize>; N], k: &mut usize, i: usize, x: Self)
+                    {
+                        while *k < N
+                        {
+                            if let Err(j) = &refs[*k]
+                            {
+                                if *j == i
+                                {
+                                    refs[*k] = Ok(x)
+                                }
+                                else
+                                {
+                                    break
+                                }
+                            }
+                            *k += 1
+                        }
+                        let mut n = *k;
+                        while n < N
+                        {
+                            if let Err(j) = &refs[n] && *j == i
+                            {
+                                refs[n] = Ok(x)
+                            }
+                            n += 1
+                        }
+                    }
+                }
+
+                ManySpec::update(self.refs, &mut self.done, i, x);
+            }
+        }
+
+        impl<'a, T, const N: usize> const FnOnce<((usize, T),)> for Functor<'a, T, N>
+        where
+            T: ~const Destruct
+        {
+            type Output = ();
+
+            extern "rust-call" fn call_once(mut self, args: ((usize, T),)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        impl<'a, T, const N: usize> const FnMut<((usize, T),)> for Functor<'a, T, N>
+        where
+            T: ~const Destruct
+        {
+            extern "rust-call" fn call_mut(&mut self, ((i, x),): ((usize, T),)) -> Self::Output
+            {
+                self.update(i, x);
+            }
+        }
+
+        let mut refs = n.map(Err);
+
+        self.enumerate()
+            .for_each(Functor {
+                done: 0,
+                refs: &mut refs
+            });
+
+        refs.map(Result::ok)
+    }
+
     /// Calls a closure on each element of a bulk.
     ///
     /// This is equivalent to using a [`for`] loop on the bulk, although
@@ -2014,6 +2139,20 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                 Err(OutOfRange { i, len })
             }
         }
+    }
+
+    fn get_many<'a, const N: usize>(&'a self, i: [usize; N]) -> [Option<&'a Self::ItemPointee>; N]
+    where
+        Self: ~const RandomAccessBulk + 'a
+    {
+        RandomAccessBulkSpec::_get_many(self, i)
+    }
+
+    fn get_many_mut<'a, const N: usize>(&'a mut self, i: [usize; N]) -> [Option<&'a mut Self::ItemPointee>; N]
+    where
+        Self: ~const InplaceBulk + 'a
+    {
+        InplaceBulkSpec::_get_many_mut(self, i)
     }
 
     fn swap_inplace<L, R>(&mut self, lhs: L, rhs: R)

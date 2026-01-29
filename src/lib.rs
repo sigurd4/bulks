@@ -47,6 +47,8 @@
 #![feature(associated_type_defaults)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(const_eval_select)]
+#![feature(const_array)]
+#![feature(const_slice_make_iter)]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
 #![allow(clippy::map_clone)] // Temporary, because Option::cloned is not const and clippy doesn't get that
