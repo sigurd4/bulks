@@ -1,6 +1,7 @@
-use core::{marker::Destruct, ops::Try, ptr::Pointee};
+use core::{marker::Destruct, ops::{Add, Try}, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
+use currying::Curry;
 
 use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk};
 
@@ -269,6 +270,14 @@ where
         Self: 'a
     {
         bulk.get(length::value::add(length::value::from_metadata::<N::Value>(*n), i))
+    }
+
+    fn _get_many<'a, NN, const M: usize>(Self { bulk, n }: &'a Self, i: NN) -> [Option<&'a <Self as RandomAccessBulk>::ItemPointee>; M]
+    where
+        Self: 'a,
+        NN: ~const crate::IntoBulk<Item = usize, IntoBulk: ~const Bulk + crate::StaticBulk<Array<()> = [(); M]>>
+    {
+        bulk.get_many(i.into_bulk().map(Add::add.curry(length::value::len(length::value::from_metadata::<N::Value>(*n)))))
     }
 }
 impl<T, N> const InplaceBulkSpec for Skip<T, N>
