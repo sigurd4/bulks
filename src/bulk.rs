@@ -205,13 +205,13 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             {
                 const trait ManySpec: Sized
                 {
-                    fn update<'a, const N: usize>(refs: &'a mut [Result<Self, usize>; N], k: &mut usize, i: usize, x: Self);
+                    fn update<const N: usize>(refs: &mut [Result<Self, usize>; N], k: &mut usize, i: usize, x: Self);
                 }
                 impl<T> const ManySpec for T
                 where
                     T: ~const Destruct
                 {
-                    default fn update<'a, const N: usize>(refs: &'a mut [Result<Self, usize>; N], k: &mut usize, i: usize, x: Self)
+                    default fn update<const N: usize>(refs: &mut [Result<Self, usize>; N], k: &mut usize, i: usize, x: Self)
                     {
                         while *k < N
                         {
@@ -245,7 +245,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                 where
                     T: Copy + ~const Destruct
                 {
-                    fn update<'a, const N: usize>(refs: &'a mut [Result<Self, usize>; N], k: &mut usize, i: usize, x: Self)
+                    fn update<const N: usize>(refs: &mut [Result<Self, usize>; N], k: &mut usize, i: usize, x: Self)
                     {
                         while *k < N
                         {

@@ -246,7 +246,7 @@ where
         Self: 'a,
         NN: ~const crate::IntoBulk<Item = usize, IntoBulk: ~const Bulk + crate::StaticBulk<Array<()> = [(); M]>>
     {
-        const fn getidx<'a, A, P, N>(element: &'a A, i: usize, n: N) -> Option<&'a P>
+        const fn getidx<A, P, N>(element: &A, i: usize, n: N) -> Option<&P>
         where
             A: ~const Borrow<P>,
             N: LengthValue
