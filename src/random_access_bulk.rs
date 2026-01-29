@@ -1,9 +1,8 @@
 use core::{marker::Destruct, ptr::Thin};
 
 use array_trait::length::LengthValue;
-use currying::Curry;
 
-use crate::Bulk;
+use crate::{Bulk, IntoBulk, StaticBulk};
 
 pub const trait RandomAccessBulk: ~const Bulk
 {
@@ -32,38 +31,6 @@ pub const trait InplaceBulk: ~const RandomAccessBulk
         Self: 'a;
 }
 
-struct GetManyPredicate
-{
-    i: usize
-}
-impl<T> const FnOnce<(&&mut Result<T, usize>,)> for GetManyPredicate
-{
-    type Output = bool;
-
-    extern "rust-call" fn call_once(self, args: (&&mut Result<T, usize>,)) -> Self::Output
-    {
-        self.call(args)
-    }
-}
-impl<T> const FnMut<(&&mut Result<T, usize>,)> for GetManyPredicate
-{
-    extern "rust-call" fn call_mut(&mut self, args: (&&mut Result<T, usize>,)) -> Self::Output
-    {
-        self.call(args)
-    }
-}
-impl<T> const Fn<(&&mut Result<T, usize>,)> for GetManyPredicate
-{
-    extern "rust-call" fn call(&self, (res,): (&&mut Result<T, usize>,)) -> Self::Output
-    {
-        if let Err(i) = res
-        {
-            return i == &self.i
-        }
-        false
-    }
-}
-
 pub(crate) const trait RandomAccessBulkSpec: Bulk
 {
     fn _get<'a, L>(bulk: &'a Self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
@@ -71,9 +38,10 @@ pub(crate) const trait RandomAccessBulkSpec: Bulk
         L: LengthValue,
         Self: ~const RandomAccessBulk + 'a;
 
-    fn _get_many<'a, const N: usize>(bulk: &'a Self, i: [usize; N]) -> [Option<&'a <Self as RandomAccessBulk>::ItemPointee>; N]
+    fn _get_many<'a, NN, const N: usize>(bulk: &'a Self, i: NN) -> [Option<&'a <Self as RandomAccessBulk>::ItemPointee>; N]
     where
-        Self: ~const RandomAccessBulk + 'a;
+        Self: ~const RandomAccessBulk + 'a,
+        NN: ~const IntoBulk<Item = usize, IntoBulk: ~const Bulk + StaticBulk<Array<()> = [(); N]>>;
 }
 impl<I> const RandomAccessBulkSpec for I
 where
@@ -87,9 +55,10 @@ where
         bulk.each_ref().nth(i)
     }
 
-    default fn _get_many<'a, const N: usize>(bulk: &'a Self, i: [usize; N]) -> [Option<&'a <Self as RandomAccessBulk>::ItemPointee>; N]
+    default fn _get_many<'a, NN, const N: usize>(bulk: &'a Self, i: NN) -> [Option<&'a <Self as RandomAccessBulk>::ItemPointee>; N]
     where
-        Self: ~const RandomAccessBulk + 'a
+        Self: ~const RandomAccessBulk + 'a,
+        NN: ~const IntoBulk<Item = usize, IntoBulk: ~const Bulk + StaticBulk<Array<()> = [(); N]>>
     {
         bulk.each_ref().many(i)
     }
@@ -102,9 +71,10 @@ pub(crate) const trait InplaceBulkSpec: Bulk
         L: LengthValue,
         Self: ~const InplaceBulk + 'a;
 
-    fn _get_many_mut<'a, const N: usize>(bulk: &'a mut Self, i: [usize; N]) -> [Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>; N]
+    fn _get_many_mut<'a, NN, const N: usize>(bulk: &'a mut Self, n: NN) -> [Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>; N]
     where
-        Self: ~const InplaceBulk + 'a;
+        Self: ~const InplaceBulk + 'a,
+        NN: ~const IntoBulk<Item = usize, IntoBulk: ~const Bulk + StaticBulk<Array<()> = [(); N]>>;
 }
 impl<I> const InplaceBulkSpec for I
 where
@@ -118,9 +88,10 @@ where
         bulk.each_mut().nth(i)
     }
 
-    default fn _get_many_mut<'a, const N: usize>(bulk: &'a mut Self, i: [usize; N]) -> [Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>; N]
+    default fn _get_many_mut<'a, NN, const N: usize>(bulk: &'a mut Self, i: NN) -> [Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>; N]
     where
-        Self: ~const InplaceBulk + 'a
+        Self: ~const InplaceBulk + 'a,
+        NN: ~const IntoBulk<Item = usize, IntoBulk: ~const Bulk + StaticBulk<Array<()> = [(); N]>>
     {
         bulk.each_mut().many(i)
     }

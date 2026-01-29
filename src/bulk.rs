@@ -184,10 +184,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         self.skip(n).first()
     }
 
-    fn many<const N: usize>(self, n: [usize; N]) -> [Option<Self::Item>; N]
+    fn many<NN, const N: usize>(self, n: NN) -> [Option<Self::Item>; N]
     where
         Self: Sized,
-        Self::Item: ~const Destruct
+        Self::Item: ~const Destruct,
+        NN: ~const IntoBulk<Item = usize, IntoBulk: ~const Bulk + StaticBulk<Array<()> = [(); N]>>
     {
         // TODO: can be optimized by sorting first and storing permutations, then unsorting after.
 
@@ -298,7 +299,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             }
         }
 
-        let mut refs = n.map(Err);
+        let mut refs = n.into_bulk()
+            .map(Err)
+            .collect_array();
 
         self.enumerate()
             .for_each(Functor {
