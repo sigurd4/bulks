@@ -71,7 +71,7 @@ pub(crate) const trait InplaceBulkSpec: Bulk
         L: LengthValue,
         Self: ~const InplaceBulk + 'a;
 
-    fn _get_many_mut<'a, NN, const N: usize>(bulk: &'a mut Self, n: NN) -> [Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>; N]
+    fn _get_many_mut<'a, NN, const N: usize>(bulk: &'a mut Self, i: NN) -> [Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>; N]
     where
         Self: ~const InplaceBulk + 'a,
         NN: ~const IntoBulk<Item = usize, IntoBulk: ~const Bulk + StaticBulk<Array<()> = [(); N]>>;

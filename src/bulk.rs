@@ -2144,16 +2144,18 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
     }
 
-    fn get_many<'a, const N: usize>(&'a self, i: [usize; N]) -> [Option<&'a Self::ItemPointee>; N]
+    fn get_many<'a, NN, const N: usize>(&'a self, i: NN) -> [Option<&'a <Self as RandomAccessBulk>::ItemPointee>; N]
     where
-        Self: ~const RandomAccessBulk + 'a
+        Self: ~const RandomAccessBulk + 'a,
+        NN: ~const IntoBulk<Item = usize, IntoBulk: ~const Bulk + StaticBulk<Array<()> = [(); N]>>
     {
         RandomAccessBulkSpec::_get_many(self, i)
     }
 
-    fn get_many_mut<'a, const N: usize>(&'a mut self, i: [usize; N]) -> [Option<&'a mut Self::ItemPointee>; N]
+    fn get_many_mut<'a, NN, const N: usize>(&'a mut self, i: NN) -> [Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>; N]
     where
-        Self: ~const InplaceBulk + 'a
+        Self: ~const InplaceBulk + 'a,
+        NN: ~const IntoBulk<Item = usize, IntoBulk: ~const Bulk + StaticBulk<Array<()> = [(); N]>>
     {
         InplaceBulkSpec::_get_many_mut(self, i)
     }
