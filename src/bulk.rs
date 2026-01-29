@@ -340,7 +340,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     #[doc(alias = "inject", alias = "foldl")]
     #[inline]
-    fn fold<B, F>(self, init: B, mut f: F) -> B
+    fn fold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
         B: ~const Destruct,
