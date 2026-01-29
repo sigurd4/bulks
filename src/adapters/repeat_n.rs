@@ -1,6 +1,7 @@
 use core::{borrow::Borrow, fmt, marker::{Destruct, PhantomData}, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
+use currying::{Curry, RCurry};
 
 use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, RandomAccessBulkSpec, RepeatNWith, SplitBulk, util::YieldOnce};
 
@@ -238,6 +239,30 @@ where
             return None
         }
         Some(element.borrow())
+    }
+
+    fn _get_many<'a, NN, const M: usize>(Self { element, n, marker: PhantomData }: &'a Self, i: NN) -> [Option<&'a <Self as RandomAccessBulk>::ItemPointee>; M]
+    where
+        Self: 'a,
+        NN: ~const crate::IntoBulk<Item = usize, IntoBulk: ~const Bulk + crate::StaticBulk<Array<()> = [(); M]>>
+    {
+        const fn getidx<'a, A, P, N>(element: &'a A, i: usize, n: N) -> Option<&'a P>
+        where
+            A: ~const Borrow<P>,
+            N: LengthValue
+        {
+            if length::value::ge(i, n)
+            {
+                return None
+            }
+            Some(element.borrow())
+        }
+
+        i.into_bulk()
+            .map(getidx::<A, P, N::Value>
+                .curry_once(element)
+                .rcurry_once(length::value::from_metadata::<N::Value>(*n))
+            ).collect_array()
     }
 }
 
