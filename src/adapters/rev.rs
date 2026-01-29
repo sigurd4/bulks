@@ -146,7 +146,7 @@ where
     where
         Self: Sized
     {
-        let n = N::or_len(bulk.len());
+        let n = bulk.length();
         let (left, right) = bulk.split_at(length::value::saturating_sub(n, m));
         (
             right.rev(),
@@ -207,8 +207,7 @@ where
         L: LengthValue,
         Self: 'a
     {
-        let n = length::value::or_len::<<I::Length as Length>::Value>(bulk.len());
-        if let Some(ip1) = length::value::checked_add(i, [(); 1]) && let Some(j) = length::value::checked_sub(n, ip1)
+        if let Some(ip1) = length::value::checked_add(i, [(); 1]) && let Some(j) = length::value::checked_sub(bulk.length(), ip1)
         {
             bulk.get(j)
         }
@@ -230,8 +229,7 @@ where
         L: LengthValue,
         Self: 'a
     {
-        let n = length::value::or_len::<<I::Length as Length>::Value>(bulk.len());
-        if let Some(ip1) = length::value::checked_add(i, [(); 1]) && let Some(j) = length::value::checked_sub(n, ip1)
+        if let Some(ip1) = length::value::checked_add(i, [(); 1]) && let Some(j) = length::value::checked_sub(bulk.length(), ip1)
         {
             bulk.get_mut(j)
         }

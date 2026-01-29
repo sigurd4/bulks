@@ -191,7 +191,7 @@ where
     where
         Self: Sized
     {
-        let m = length::value::saturating_sub(n, length::value::or_len::<D>(a.len()));
+        let m = length::value::saturating_sub(n, a.length());
         let (a_left, a_right) = a.split_at(n);
         let (b_left, b_right) = b.split_at(m);
         (

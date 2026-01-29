@@ -55,6 +55,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     #[track_caller]
     fn len(&self) -> usize;
 
+    fn length(&self) -> Value<Self::Length>
+    {
+        let len = self.len();
+        let length = length::value::or_len(len);
+        assert!(length::value::len(length) == len);
+        length
+    }
+
     /// Returns `true` if the iterator is empty.
     ///
     /// This method has a default implementation using
@@ -1941,7 +1949,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         Self: ~const SplitBulk<length::value::SaturatingSub<<<Self as Bulk>::Length as Length>::Value, L>> + Sized,
         L: LengthValue
     {
-        let l = length::value::or_len::<<<Self as Bulk>::Length as Length>::Value>(self.len());
+        let l = self.length();
         SplitBulk::split_at(self, length::value::saturating_sub(l, n))
     }
 
@@ -2027,8 +2035,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         L: LengthValue,
         R: LengthValue
     {
-        let n = length::value::or_len::<Value<Self::Length>>(self.len());
-
+        let n = self.length();
         let bulk = self.each_mut();
 
         let j = length::value::min(lhs, rhs);
