@@ -1,6 +1,6 @@
 use array_trait::{Array, length::Length};
 
-use crate::{Bulk, IntoBulk};
+use crate::{Bulk, InplaceBulk, IntoBulk};
 
 /// A trait for bulks whose length can be determined at compile-time.
 /// 
@@ -17,7 +17,9 @@ pub unsafe trait StaticBulk: Bulk<
     MaxLength = Self::Array<()>
 > + Sized
 {
-    type Array<U>: const Array<Elem = U> + Length<Elem = U> + const IntoBulk;
+    type ArrayIter<U>: ExactSizeIterator<Item = U>;
+    type ArrayBulk<U>: const InplaceBulk<Item = U, ItemPointee = U, IntoIter = Self::ArrayIter<U>>;
+    type Array<U>: const Array<Elem = U> + Length<Elem = U> + const IntoBulk<IntoBulk = Self::ArrayBulk<U>, IntoIter = Self::ArrayIter<U>>;
 }
 unsafe impl<T, const N: usize> StaticBulk for T
 where
@@ -26,5 +28,7 @@ where
     MaxLength = [(); N]
 > + Sized
 {
+    type ArrayIter<U> = core::array::IntoIter<U, N>;
+    type ArrayBulk<U> = crate::array::IntoBulk<U, N>;
     type Array<U> = [U; N];
 }

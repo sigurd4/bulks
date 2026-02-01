@@ -4,9 +4,9 @@ use core::ops::{Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, Ra
 
 use array_trait::AsSlice;
 
-use crate::{AsBulk, Bulk, IntoBulk, StaticBulk};
+use crate::{AsBulk, Bulk, InplaceBulk, IntoBulk, StaticBulk};
 
-pub(crate) const trait Collection<T> = ~const IntoBulk<Item = T/*, IntoBulk: ~const InplaceBulk*/>
+pub(crate) const trait Collection<T> = ~const IntoBulk<Item = T, IntoBulk: ~const InplaceBulk>
     + ~const AsBulk
     + ~const AsSlice<Elem = T>
     + ~const AsRef<[T]>
