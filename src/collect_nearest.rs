@@ -6,7 +6,7 @@ use array_trait::AsSlice;
 
 use crate::{AsBulk, Bulk, IntoBulk, StaticBulk};
 
-pub(crate) const trait Collection<T> = ~const IntoBulk<Item = T/*, IntoBulk: for<'a> ~const RandomAccessBulk<'a>*/>
+pub(crate) const trait Collection<T> = ~const IntoBulk<Item = T/*, IntoBulk: ~const InplaceBulk*/>
     + ~const AsBulk
     + ~const AsSlice<Elem = T>
     + ~const AsRef<[T]>
