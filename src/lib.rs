@@ -11,6 +11,7 @@
 #![feature(const_try_residual)]
 #![feature(iter_intersperse)]
 #![feature(ascii_char)]
+#![feature(const_result_unwrap_unchecked)]
 #![feature(iter_map_windows)]
 #![feature(tuple_trait)]
 #![feature(try_trait_v2)]
@@ -363,6 +364,7 @@ moddef::moddef!(
         double_ended_bulk,
         from_bulk,
         into_bulk,
+        into_inplace_bulk,
         split_bulk,
         random_access_bulk,
         static_bulk
