@@ -1,4 +1,4 @@
-use core::{fmt::Display, marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}, range::Step};
+use core::{fmt::Display, iter::Step, marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}};
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
@@ -2237,7 +2237,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             match (closure.first, closure.last)
             {
                 (Some(first), Some(last)) => { core::mem::swap(first, last); Ok(()) },
-                (Some(first), None) if length::value::eq(i, j) => Ok(()),
+                (Some(_), None) if length::value::eq(i, j) => Ok(()),
                 (Some(_), None) => Err(length::value::len(j)),
                 (None, None) | (None, Some(_)) => Err(length::value::len(i))
             }

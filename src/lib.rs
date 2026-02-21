@@ -40,7 +40,6 @@
 #![feature(mem_copy_fn)]
 #![feature(array_into_iter_constructors)]
 #![feature(decl_macro)]
-#![feature(ptr_as_ref_unchecked)]
 #![feature(iter_next_chunk)]
 #![feature(iter_advance_by)]
 #![feature(maybe_uninit_uninit_array_transpose)]

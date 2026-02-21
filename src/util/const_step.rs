@@ -1,4 +1,4 @@
-use core::{ascii::Char as AsciiChar, net::{Ipv4Addr, Ipv6Addr}, range::Step};
+use core::{ascii::Char as AsciiChar, net::{Ipv4Addr, Ipv6Addr}, iter::Step};
 
 /// Temporary solution because they haven't made the `Step` trait const yet... :(
 pub const trait ConstStep: Step
