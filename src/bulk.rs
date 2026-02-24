@@ -1,4 +1,4 @@
-use core::{fmt::Display, iter::Step, marker::Destruct, ops::{ControlFlow, FromResidual, Residual, Try}};
+use core::{fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, FromResidual, Mul, Residual, Try}};
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
@@ -2246,6 +2246,22 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             Ok(()) => Ok(()),
             Err(i) => Err(OutOfRange { i, len: length::value::len(n) })
         }
+    }
+
+    fn sum_from<T>(self, from: T) -> T
+    where
+        T: ~const Add<Self::Item, Output = T> + ~const Destruct,
+        Self: Sized
+    {
+        self.fold(from, Add::add)
+    }
+
+    fn product_from<T>(self, from: T) -> T
+    where
+        T: ~const Mul<Self::Item, Output = T> + ~const Destruct,
+        Self: Sized
+    {
+        self.fold(from, Mul::mul)
     }
 }
 
