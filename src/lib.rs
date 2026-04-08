@@ -494,7 +494,7 @@ mod tests
             (7.5, Grade::A), // Innovation with Sensor Technology
             (7.5, Grade::A), // Electronic Measurement Systems
             (7.5, Grade::A), // Applied Mathematics
-            (7.5, Grade::D), // Reliability and Robustness in Sensor Systems
+            (7.5, Grade::D)  // Reliability and Robustness in Sensor Systems
         ];
         const GRADES_UNI_BACHELOR: [(u8, Grade); 21] = [
             (5, Grade::C),  // Ingeniørrollen
@@ -545,27 +545,17 @@ mod tests
             4  // Matematikk R2
         ];
 
-        let pts_uni_master: f32 = GRADES_UNI_MASTER.into_bulk()
-            .map(|(ptr, _)| ptr)
-            .sum_from(0.0);
-        let pts_uni_bachelor: f32 = GRADES_UNI_BACHELOR.into_bulk()
-            .map(|(ptr, _)| ptr as u16)
-            .sum_from(0) as f32;
+        let pts_uni_master: f32 = GRADES_UNI_MASTER.into_bulk().map(|(ptr, _)| ptr).sum_from(0.0);
+        let pts_uni_bachelor: f32 = GRADES_UNI_BACHELOR.into_bulk().map(|(ptr, _)| ptr as u16).sum_from(0) as f32;
 
-        let gpa_uni_master: f32 = GRADES_UNI_MASTER.into_bulk()
-            .map(|(pts, grade)| pts * (grade as u8) as f32)
-            .sum_from(0.0) as f32/pts_uni_master;
-        let gpa_uni_bachelor: f32 = GRADES_UNI_BACHELOR.into_bulk()
-            .map(|(pts, grade)| (pts * grade as u8) as u16)
-            .sum_from(0) as f32/pts_uni_bachelor;
+        let gpa_uni_master: f32 = GRADES_UNI_MASTER.into_bulk().map(|(pts, grade)| pts * (grade as u8) as f32).sum_from(0.0) as f32 / pts_uni_master;
+        let gpa_uni_bachelor: f32 = GRADES_UNI_BACHELOR.into_bulk().map(|(pts, grade)| (pts * grade as u8) as u16).sum_from(0) as f32 / pts_uni_bachelor;
 
-        let gpa_uni = (gpa_uni_master*pts_uni_master + gpa_uni_bachelor*pts_uni_bachelor)/(pts_uni_master + pts_uni_bachelor);
+        let gpa_uni = (gpa_uni_master * pts_uni_master + gpa_uni_bachelor * pts_uni_bachelor) / (pts_uni_master + pts_uni_bachelor);
 
         println!("{}", gpa_uni);
 
-        let gpa_vgs: f32 = GRADES_VGS.into_bulk()
-            .map(|grade| grade as u16)
-            .sum_from(0) as f32 / GRADES_VGS.len() as f32;
+        let gpa_vgs: f32 = GRADES_VGS.into_bulk().map(|grade| grade as u16).sum_from(0) as f32 / GRADES_VGS.len() as f32;
 
         println!("{}", gpa_vgs);
     }
