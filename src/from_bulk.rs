@@ -134,7 +134,7 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        all(any(A = "[{integer}]", A = "[{integer}; _]", A = "[{integer}; {n}]", A = "Option<{integer}>"), any(Self = "&[{integral}]", Self = "&[{A}]", Self = "&[_]")),
+        all(any(A = "[{integer}]", A = "[{integer}; _]", A = "[{integer}; {integral}]", A = "Option<{integer}>"), any(Self = "&[{integral}]", Self = "&[{A}]", Self = "&[_]")),
         message = "a slice of type `{Self}` cannot be collected since we need to store the elements somewhere",
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
@@ -144,17 +144,17 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        all(any(A = "[{integer}]", A = "[{integer}; _]", A = "[{integer}; {n}]", A = "Option<{integer}>"), any(Self = "[{integral}]", Self = "[{A}]", Self = "[_]")),
+        all(any(A = "[{integer}]", A = "[{integer}; _]", A = "[{integer}; {integral}]", A = "Option<{integer}>"), any(Self = "[{integral}]", Self = "[{A}]", Self = "[_]")),
         message = "a slice of type `{Self}` cannot be collected since `{Self}` has no definite size",
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        all(any(A = "[{A}]", A = "[_]"), any(Self = "[{A}; _]", Self = "[{A}; {n}]", Self = "[_; _]", Self = "[_; {n}]")),
+        all(any(A = "[{A}]", A = "[_]"), any(Self = "[{A}; _]", Self = "[{A}; {integral}]", Self = "[_; _]", Self = "[_; {integral}]")),
         message = "an array of type `{Self}` cannot be collected directly from a dynamically sized bulk",
         label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
     ),
     on(
-        all(A = "[{integer}]", any(Self = "[{integral}; _]", Self = "[{integral}; {n}]", Self = "[{A}; _]", Self = "[{A}; {n}]", Self = "[_; _]", Self = "[_; {n}]")),
+        all(A = "[{integer}]", any(Self = "[{integral}; _]", Self = "[{integral}; {integral}]", Self = "[{A}; _]", Self = "[{A}; {integral}]", Self = "[_; _]", Self = "[_; {integral}]")),
         message = "an array of type `{Self}` cannot be collected directly from a dynamically sized bulk",
         label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
     ),
