@@ -6,27 +6,27 @@ use array_trait::AsSlice;
 
 use crate::{AsBulk, Bulk, InplaceBulk, IntoBulk, StaticBulk};
 
-pub(crate) const trait Collection<T> = ~const IntoBulk<Item = T, IntoBulk: ~const InplaceBulk<Item = T, ItemPointee = T>>
+pub(crate) const trait Collection = ~const IntoBulk<IntoBulk: ~const InplaceBulk<Item = <Self as IntoIterator>::Item, ItemPointee = <Self as IntoIterator>::Item>>
     + ~const AsBulk
-    + ~const AsSlice<Elem = T>
-    + ~const AsRef<[T]>
-    + ~const AsMut<[T]>
-    + ~const Borrow<[T]>
-    + ~const BorrowMut<[T]>
-    + ~const IndexMut<usize, Output = <[T] as Index<usize>>::Output>
-    + ~const IndexMut<Range<usize>, Output = <[T] as Index<Range<usize>>>::Output>
-    + ~const IndexMut<RangeInclusive<usize>, Output = <[T] as Index<RangeInclusive<usize>>>::Output>
-    + ~const IndexMut<RangeFrom<usize>, Output = <[T] as Index<RangeFrom<usize>>>::Output>
-    + ~const IndexMut<RangeTo<usize>, Output = <[T] as Index<RangeTo<usize>>>::Output>
-    + ~const IndexMut<RangeToInclusive<usize>, Output = <[T] as Index<RangeToInclusive<usize>>>::Output>
-    + ~const IndexMut<RangeFull, Output = <[T] as Index<RangeFull>>::Output>;
+    + ~const AsSlice<Elem = <Self as IntoIterator>::Item>
+    + ~const AsRef<[<Self as IntoIterator>::Item]>
+    + ~const AsMut<[<Self as IntoIterator>::Item]>
+    + ~const Borrow<[<Self as IntoIterator>::Item]>
+    + ~const BorrowMut<[<Self as IntoIterator>::Item]>
+    + ~const IndexMut<usize, Output = <[<Self as IntoIterator>::Item] as Index<usize>>::Output>
+    + ~const IndexMut<Range<usize>, Output = <[<Self as IntoIterator>::Item] as Index<Range<usize>>>::Output>
+    + ~const IndexMut<RangeInclusive<usize>, Output = <[<Self as IntoIterator>::Item] as Index<RangeInclusive<usize>>>::Output>
+    + ~const IndexMut<RangeFrom<usize>, Output = <[<Self as IntoIterator>::Item] as Index<RangeFrom<usize>>>::Output>
+    + ~const IndexMut<RangeTo<usize>, Output = <[<Self as IntoIterator>::Item] as Index<RangeTo<usize>>>::Output>
+    + ~const IndexMut<RangeToInclusive<usize>, Output = <[<Self as IntoIterator>::Item] as Index<RangeToInclusive<usize>>>::Output>
+    + ~const IndexMut<RangeFull, Output = <[<Self as IntoIterator>::Item] as Index<RangeFull>>::Output>;
 
 pub const trait CollectNearest: ~const Bulk
 {
     #[allow(private_bounds)]
-    type Nearest: ~const Collection<Self::Item>;
+    type Nearest: ~const Collection<Item = Self::Item>;
     #[allow(private_bounds)]
-    type TryNearest: ~const Collection<<Self::Item as Try>::Output>
+    type TryNearest: ~const Collection<Item = <Self::Item as Try>::Output>
     where
         Self::Item: ~const Try;
 

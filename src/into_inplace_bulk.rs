@@ -1,21 +1,21 @@
 use crate::{InplaceBulk, IntoBulk};
 
-pub const trait IntoInplaceBulk: IntoBulk
+pub const trait IntoInplaceBulk
 {
-    type IntoInplaceBulk: ~const InplaceBulk;
+    type IntoInplaceBulk: InplaceBulk;
 
     fn into_inplace_bulk(self) -> Self::IntoInplaceBulk;
 }
-
-impl<T> const IntoInplaceBulk for T
+impl<I> const IntoInplaceBulk for I
 where
-    T: ~const private::_IntoInplaceBulk<_IntoInplaceBulk: ~const InplaceBulk>
+    I: ~const private::_IntoInplace<_IntoInplace: ~const IntoBulk<IntoBulk: InplaceBulk>>
 {
-    type IntoInplaceBulk = <T as private::_IntoInplaceBulk>::_IntoInplaceBulk;
+    type IntoInplaceBulk = <<I as private::_IntoInplace>::_IntoInplace as IntoBulk>::IntoBulk;
 
     fn into_inplace_bulk(self) -> Self::IntoInplaceBulk
     {
-        self._into_inplace_bulk()
+        self._into_inplace()
+            .into_bulk()
     }
 }
 
@@ -23,40 +23,69 @@ mod private
 {
     use array_trait::same::Same;
 
-    use crate::{Bulk, CollectNearest, InplaceBulk, IntoBulk};
+    use crate::{CollectNearest, InplaceBulk, IntoBulk};
 
-    pub const trait _IntoInplaceBulk: IntoBulk
+    pub const trait _IntoInplace
     {
-        type _IntoInplaceBulk: ~const Bulk<Item = Self::Item>;
+        type _IntoInplace;
 
-        fn _into_inplace_bulk(self) -> Self::_IntoInplaceBulk;
+        fn _into_inplace(self) -> Self::_IntoInplace;
     }
-    impl<T> const _IntoInplaceBulk for T
-    where
-        T: ~const IntoBulk
+    impl<I> const _IntoInplace for I
     {
-        default type _IntoInplaceBulk = T::IntoBulk;
+        default type _IntoInplace = I;
 
-        default fn _into_inplace_bulk(self) -> Self::_IntoInplaceBulk
+        default fn _into_inplace(self) -> Self::_IntoInplace
         {
             unsafe {
-                self.into_bulk().same().unwrap_unchecked()
+                self.same()
+                    .unwrap_unchecked()
             }
         }
     }
-    impl<T, B, N> const _IntoInplaceBulk for T
+    impl<I, B, N> const _IntoInplace for I
     where
-        T: ~const IntoBulk<IntoBulk = B>,
-        B: ~const CollectNearest<Nearest = N>,
-        N: ~const IntoBulk<IntoBulk: InplaceBulk<Item = T::Item>>
+        I: ~const IntoBulk<IntoBulk = B>,
+        B: ~const CollectNearest<Nearest = N>
     {
-        type _IntoInplaceBulk = N::IntoBulk;
+        type _IntoInplace = N;
 
-        fn _into_inplace_bulk(self) -> Self::_IntoInplaceBulk
+        fn _into_inplace(self) -> Self::_IntoInplace
         {
             self.into_bulk()
                 .collect_nearest()
-                .into_bulk()
+        }
+    }
+
+    pub const trait __IntoInplace
+    {
+        type __IntoInplace;
+
+        fn __into_inplace(self) -> Self::__IntoInplace;
+    }
+    impl<I> const __IntoInplace for I
+    {
+        default type __IntoInplace = <I as _IntoInplace>::_IntoInplace;
+
+        default fn __into_inplace(self) -> Self::__IntoInplace
+        {
+            unsafe {
+                self._into_inplace()
+                    .same()
+                    .unwrap_unchecked()
+            }
+        }
+    }
+    impl<I, B> const __IntoInplace for I
+    where
+        I: IntoBulk<IntoBulk = B>,
+        B: InplaceBulk
+    {
+        type __IntoInplace = I;
+
+        fn __into_inplace(self) -> Self::__IntoInplace
+        {
+            self
         }
     }
 }
