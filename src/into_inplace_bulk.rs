@@ -1,6 +1,6 @@
 use crate::{InplaceBulk, IntoBulk};
 
-pub trait IntoInplaceBulk: IntoBulk
+/*pub trait IntoInplaceBulk: IntoBulk
 {
     type IntoInplaceBulk: InplaceBulk;
 
@@ -15,6 +15,8 @@ where
 
     fn into_inplace_bulk(self) -> Self::IntoInplaceBulk
     {
+        use crate::into_inplace_bulk::private::_IntoInplace;
+
         self._into_inplace()
     }
 }
@@ -28,6 +30,8 @@ where
 
     fn into_inplace_bulk(self) -> Self::IntoInplaceBulk
     {
+        use crate::into_inplace_bulk::private::_IntoInplace;
+
         self._into_inplace()
     }
 }
@@ -36,7 +40,7 @@ mod private
 {
     use array_trait::same::Same;
 
-    use crate::{CollectNearest, InplaceBulk, IntoBulk};
+    use crate::{InplaceBulk, IntoBulk};
 
     pub trait _IntoInplace
     {
@@ -49,13 +53,18 @@ mod private
     where
         I: IntoBulk
     {
-        default type _IntoInplace = <I::IntoBulk as CollectNearest>::Nearest;
+        default type _IntoInplace = crate::vec::IntoBulk<I::Item>;
 
         default fn _into_inplace(self) -> Self::_IntoInplace
         {
+            use crate::Bulk;
+
             self.into_bulk()
-                .collect_nearest()
+                .collect::<alloc::vec::Vec<_>, _>()
                 .into_bulk()
+                .same()
+                .ok()
+                .unwrap()
         }
     }
     impl<I> _IntoInplace for I
@@ -76,10 +85,11 @@ mod test
 {
     use crate::*;
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn it_works()
     {
-        let a = [1, 2, 3, 4, 5];
+        let a = [1u8, 2, 3, 4, 5];
 
         let mut b = a.into_bulk()
             .map(|x| 6 - x)
@@ -87,8 +97,11 @@ mod test
 
         b.swap_inplace(1, 3);
 
-        let c = b.collect_nearest();
+        let c: [_; 5] = b.collect::<Vec<_>, _>()
+            .try_into()
+            .ok()
+            .unwrap();
 
         assert_eq!(c, [5, 2, 3, 4, 1])
     }
-}
+}*/
