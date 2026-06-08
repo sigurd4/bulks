@@ -2,7 +2,7 @@ use core::{fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, F
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
-use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, InplaceBulk, InplaceBulkSpec, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Mutate, RandomAccessBulk, RandomAccessBulkSpec, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
+use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, InplaceBulk, InplaceBulkSpec, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, RandomAccessBulk, RandomAccessBulkSpec, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -890,6 +890,40 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         U: ~const IntoContainedBy<Self>
     {
         crate::zip(self, other)
+    }
+
+    /// Merges two bulks or iterators into a single bulk using a merging function.
+    /// 
+    /// Similar to [`Bulk::zip`], followed by [`Bulk::map`], but keeps the tail if the length of the two bulks differ.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(generic_const_exprs)]
+    /// use bulks::*;
+    /// 
+    /// let s1 = b"abc".into_bulk().copied();
+    /// let s2 = b"def".into_bulk().copied();
+    ///
+    /// let mut bulk = s1.merge(s2, Add::add);
+    /// 
+    /// let s: [_; _] = bulk.collect();
+    /// 
+    /// assert_eq!(s, [b'a' + b'd', b'b' + b'e', b'c' + b'f', b'g']);
+    /// ```
+    #[inline]
+    #[track_caller]
+    fn merge<U, F, O>(self, other: U, merger: F) -> Merge<Self, U::IntoBulk, F>
+    where
+        Self: Sized,
+        U: ~const IntoBulk,
+        Self::Item: Into<O>,
+        U::Item: Into<O>,
+        F: FnMut(Self::Item, U::Item) -> O
+    {
+        crate::merge(self, other, merger)
     }
 
     /// Creates a new bulk which places a copy of `separator` between adjacent

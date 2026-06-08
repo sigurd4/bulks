@@ -21,6 +21,7 @@ moddef::moddef!(
         mutate,
         once_with,
         once,
+        merge,
         repeat_n_with,
         repeat_n,
         rev,

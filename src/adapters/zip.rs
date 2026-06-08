@@ -132,6 +132,7 @@ where
     A: Bulk,
     B: Bulk
 {
+    type Length = length::Min<A::Length, B::Length>;
     type MinLength = length::Min<A::MinLength, B::MinLength>;
     type MaxLength = length::Min<A::MaxLength, B::MaxLength>;
 
