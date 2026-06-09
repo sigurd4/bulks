@@ -2,7 +2,7 @@ use core::{fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, F
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
-use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, InplaceBulk, InplaceBulkSpec, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, RandomAccessBulk, RandomAccessBulkSpec, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
+use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, InplaceBulk, InplaceBulkSpec, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, RandomAccessBulk, RandomAccessBulkSpec, Resize, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -1903,6 +1903,30 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         Self: StaticBulk<Item: ~const Destruct + ~const Try<Residual: Residual<(), TryType: ~const Try> + Residual<Self::Array<<Self::Item as Try>::Output>, TryType: ~const Try> + ~const Destruct, Output: ~const Destruct>> + ~const Bulk
     {
         Try::from_output(util::try_collect_array_with!(|pusher| self.try_for_each(pusher)?; for Self))
+    }
+
+    /// Resizes a bulk, padding it with copies of a given value of `element` if too short, or truncating it if too long.
+    /// The resuling bulk will have an exact length given by `n`.
+    ///
+    /// ```
+    /// # #![feature(generic_const_exprs)]
+    /// 
+    /// use bulks::*;
+    ///
+    /// let u = [1, 3, 3, 7];
+    /// 
+    /// let v = u.into_bulk()
+    ///     .resize([(); 6], 9)
+    ///     .collect();
+    /// assert_eq!(v, [1, 3, 3, 7, 9, 9]);
+    /// ```
+    fn resize<N>(self, n: N::Value, element: Self::Item) -> Resize<Self, N>
+    where
+        Self: Sized,
+        Self::Item: Copy,
+        N: Length<Elem = ()> + ?Sized
+    {
+        Resize::new(self, n, element)
     }
 
     /// Reverses a bulks's direction.
