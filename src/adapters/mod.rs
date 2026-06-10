@@ -1,3 +1,7 @@
+use array_trait::length::{self, LengthValue};
+
+use crate::range::{Range, RangeInclusive};
+
 moddef::moddef!(
     mod {
         array_chunks_with_remainder
@@ -32,3 +36,19 @@ moddef::moddef!(
         zip
     }
 );
+
+pub const fn range<S, E>(start: S, end: E) -> Range<length::value::Length<S, ()>, length::value::Length<E, ()>>
+where
+    S: LengthValue,
+    E: LengthValue
+{
+    Range::new(start, end)
+}
+
+pub const fn range_inclusive<S, E>(start: S, end: E) -> RangeInclusive<length::value::Length<S, ()>, length::value::Length<E, ()>>
+where
+    S: LengthValue,
+    E: LengthValue
+{
+    RangeInclusive::new(start, end)
+}

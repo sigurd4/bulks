@@ -350,7 +350,6 @@ moddef::moddef!(
         adapters,
         impl_array,
         impl_iter,
-        impl_range,
         impl_slice,
         impl_vec for cfg(feature = "alloc"),
         impl_option,
@@ -363,10 +362,11 @@ moddef::moddef!(
         random_access_bulk,
         static_bulk
     },
+    pub mod {
+        range
+    },
     mod util
 );
-
-pub use util::ConstStep as Step;
 
 #[cfg(false)]
 pub mod asm

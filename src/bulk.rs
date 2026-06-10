@@ -84,7 +84,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     #[track_caller]
     fn is_empty(&self) -> bool
     {
-        self.len() == 0
+        length::value::eq(self.length(), [(); 0])
     }
 
     /// Returns the first value, and discards the rest of the bulk.

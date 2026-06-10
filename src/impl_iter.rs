@@ -1,8 +1,8 @@
-use core::{marker::Destruct, ops::Try};
+use core::{iter::Step, marker::Destruct, ops::Try};
 
 use array_trait::{length::{self, LengthValue}, same::Same};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, Step, range::BoundedRange};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, range::BoundedRange};
 
 pub mod iter
 {

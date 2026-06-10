@@ -3,7 +3,6 @@ use core::{mem::{ManuallyDrop, MaybeUninit}};
 moddef::moddef!(
     flat(pub) mod {
         array_buffer,
-        const_step,
         guard,
         infinite_iterator,
         mutator,

@@ -1,4 +1,4 @@
-use crate::Step;
+use core::iter::Step;
 
 pub struct Stepper<U, const REV: bool = false>
 where

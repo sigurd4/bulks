@@ -1,8 +1,8 @@
-use core::{marker::Destruct, ops::Try};
+use core::{iter::Step, marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk, Step, util::Stepper};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk, util::Stepper};
 
 /// A bulk that yields the element's index counting from a given initial index and the element.
 ///
