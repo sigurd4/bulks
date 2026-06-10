@@ -113,7 +113,7 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
 /// }
 ///
 /// // Now we can make a new bulk...
-/// let iter = (0..5).into_bulk();
+/// let iter = (0..5i32).into_bulk();
 ///
 /// // ... and make a MyCollection out of it
 /// let c = MyCollection::from_bulk(iter);
@@ -122,7 +122,7 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
 ///
 /// // collect works too!
 ///
-/// let iter = (0..5).into_bulk();
+/// let iter = (0..5i32).into_bulk();
 /// let c: MyCollection = iter.collect();
 ///
 /// assert_eq!(c.0, vec![0, 1, 2, 3, 4]);

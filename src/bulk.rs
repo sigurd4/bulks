@@ -904,12 +904,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
+    /// use core::ops::Add;
+    /// 
     /// let s1 = b"abc".into_bulk().copied();
-    /// let s2 = b"def".into_bulk().copied();
+    /// let s2 = b"defg".into_bulk().copied();
     ///
     /// let mut bulk = s1.merge(s2, Add::add);
     /// 
-    /// let s: [_; _] = bulk.collect();
+    /// let s: [_; _] = bulk.collect_array();
     /// 
     /// assert_eq!(s, [b'a' + b'd', b'b' + b'e', b'c' + b'f', b'g']);
     /// ```
@@ -1917,7 +1919,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// 
     /// let v = u.into_bulk()
     ///     .resize([(); 6], 9)
-    ///     .collect();
+    ///     .collect_array();
     /// assert_eq!(v, [1, 3, 3, 7, 9, 9]);
     /// ```
     fn resize<N>(self, n: N::Value, element: Self::Item) -> Resize<Self, N>
@@ -1941,7 +1943,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// 
     /// let v = u.into_bulk()
     ///     .resize_with([(); 6], || 9)
-    ///     .collect();
+    ///     .collect_array();
     /// assert_eq!(v, [1, 3, 3, 7, 9, 9]);
     /// ```
     fn resize_with<F, N>(self, n: N, padder: F) -> ResizeWith<Self, F, N::Length<()>>

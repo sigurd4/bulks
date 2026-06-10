@@ -158,7 +158,6 @@ where
     Rhs: Bulk<Item: Into<O>>,
     F: FnMut(Lhs::Item, Rhs::Item) -> O
 {
-    type Length = length::Max<Lhs::Length, Rhs::Length>;
     type MaxLength = length::Max<Lhs::MaxLength, Rhs::MaxLength>;
     type MinLength = length::Max<Lhs::MinLength, Rhs::MinLength>;
 
