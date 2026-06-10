@@ -65,7 +65,7 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
 /// 
 /// // A sample collection, that's just a wrapper over Vec<T>
 /// #[derive(Debug)]
-/// struct MyCollection(Vec<i32>);
+/// struct MyCollection(Vec<usize>);
 ///
 /// // Let's give it some methods so we can create one and add things
 /// // to it.
@@ -76,18 +76,18 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
 ///         MyCollection(Vec::new())
 ///     }
 ///
-///     fn add(&mut self, elem: i32)
+///     fn add(&mut self, elem: usize)
 ///     {
 ///         self.0.push(elem);
 ///     }
 /// }
 ///
 /// // and we'll implement FromBulk
-/// impl FromBulk<[i32]> for MyCollection
+/// impl FromBulk<[usize]> for MyCollection
 /// {
 ///     fn from_bulk<I>(bulk: I) -> Self
 ///     where
-///         I: IntoBulk<Item = i32>
+///         I: IntoBulk<Item = usize>
 ///     {
 ///         let mut c = MyCollection::new();
 ///
@@ -100,7 +100,7 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
 /// 
 ///     fn try_from_bulk<I>(bulk: I) -> <<I::Item as Try>::Residual as Residual<Self>>::TryType
 ///     where
-///         I: IntoBulk<Item: Try<Output = i32, Residual: Residual<Self>>>
+///         I: IntoBulk<Item: Try<Output = usize, Residual: Residual<Self>>>
 ///     {
 ///         let mut c = MyCollection::new();
 ///
@@ -113,7 +113,7 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
 /// }
 ///
 /// // Now we can make a new bulk...
-/// let iter = (0..5i32).into_bulk();
+/// let iter = (0..5).into_bulk();
 ///
 /// // ... and make a MyCollection out of it
 /// let c = MyCollection::from_bulk(iter);
@@ -122,7 +122,7 @@ use crate::{Bulk, IntoBulk, StaticBulk, option::MaybeLength};
 ///
 /// // collect works too!
 ///
-/// let iter = (0..5i32).into_bulk();
+/// let iter = (0..5).into_bulk();
 /// let c: MyCollection = iter.collect();
 ///
 /// assert_eq!(c.0, vec![0, 1, 2, 3, 4]);
