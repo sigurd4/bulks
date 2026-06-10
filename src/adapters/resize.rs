@@ -29,8 +29,8 @@ where
     N: Length<Elem = ()> + ?Sized
 {
     bulk: T,
-    element: T::Item,
-    n: <N as Pointee>::Metadata
+    n: <N as Pointee>::Metadata,
+    element: T::Item
 }
 
 impl<T, N> Resize<T, N>

@@ -2,7 +2,7 @@ use core::{fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, F
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
-use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, InplaceBulk, InplaceBulkSpec, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, RandomAccessBulk, RandomAccessBulkSpec, Resize, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
+use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, InplaceBulk, InplaceBulkSpec, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, RandomAccessBulk, RandomAccessBulkSpec, Resize, ResizeWith, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -1927,6 +1927,30 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         N: Length<Elem = ()> + ?Sized
     {
         Resize::new(self, n, element)
+    }
+
+    /// Resizes a bulk, padding it with the output of `padder` if too short, or truncating it if too long.
+    /// The resuling bulk will have an exact length given by `n`.
+    ///
+    /// ```
+    /// # #![feature(generic_const_exprs)]
+    /// 
+    /// use bulks::*;
+    ///
+    /// let u = [1, 3, 3, 7];
+    /// 
+    /// let v = u.into_bulk()
+    ///     .resize_with([(); 6], || 9)
+    ///     .collect();
+    /// assert_eq!(v, [1, 3, 3, 7, 9, 9]);
+    /// ```
+    fn resize_with<F, N>(self, n: N, padder: F) -> ResizeWith<Self, F, N::Length<()>>
+    where
+        Self: Sized,
+        N: LengthValue,
+        F: FnMut() -> Self::Item
+    {
+        ResizeWith::new(self, n, padder)
     }
 
     /// Reverses a bulks's direction.

@@ -28,6 +28,7 @@ moddef::moddef!(
         merge,
         repeat_n_with,
         repeat_n,
+        resize_with,
         resize,
         rev,
         skip,
