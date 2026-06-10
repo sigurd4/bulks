@@ -9,7 +9,6 @@
 #![feature(iter_array_chunks)]
 #![feature(const_try_residual)]
 #![feature(iter_intersperse)]
-#![feature(ascii_char)]
 #![feature(const_ops)]
 #![feature(iter_map_windows)]
 #![feature(tuple_trait)]
