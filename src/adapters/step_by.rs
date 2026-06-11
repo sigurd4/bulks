@@ -3,7 +3,7 @@ use core::{marker::Destruct, ops::{Mul, Try}, ptr::Pointee};
 use array_trait::length::{self, Length, LengthValue};
 use currying::Curry;
 
-use crate::{Bulk, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulk, RandomAccessBulkSpec, SplitBulk};
 
 /// A bulk that steps by a custom amount.
 ///
@@ -191,6 +191,121 @@ where
             left.step_by(n),
             right.step_by(n)
         )
+    }
+}
+
+impl<T, N> const DoubleEndedBulk for StepBy<T, N>
+where
+    T: ~const DoubleEndedBulk<Item: ~const Destruct>,
+    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
+{
+    fn rev_for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) + ~const Destruct
+    {
+        struct Closure<F>
+        {
+            f: F,
+            n: usize,
+            step: usize
+        }
+        impl<F, T> const FnOnce<(T,)> for Closure<F>
+        where
+            T: ~const Destruct,
+            F: ~const FnOnce(T) + ~const Destruct
+        {
+            type Output = ();
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                let Self { f, n, step } = self;
+                if n == step - 1
+                {
+                    f(x)
+                }
+            }
+        }
+        impl<F, T> const FnMut<(T,)> for Closure<F>
+        where
+            T: ~const Destruct,
+            F: ~const FnMut(T)
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                let Self { f, n, step } = self;
+                if *n == *step - 1
+                {
+                    f(x)
+                }
+                *n += 1;
+                *n %= *step
+            }
+        }
+
+        let Self { bulk, step } = self;
+        bulk.rev_for_each(Closure {
+            f,
+            n: 0,
+            step: length::len_metadata::<N>(step)
+        })
+    }
+
+    fn try_rev_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = (), Residual: ~const Destruct>
+    {
+        struct Closure<F>
+        {
+            f: F,
+            n: usize,
+            step: usize
+        }
+        impl<F, T, R> const FnOnce<(T,)> for Closure<F>
+        where
+            T: ~const Destruct,
+            F: ~const FnOnce(T) -> R + ~const Destruct,
+            R: ~const Try<Output = (), Residual: ~const Destruct>
+        {
+            type Output = R;
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                let Self { f, n, step } = self;
+                if n == step - 1
+                {
+                    f(x)?
+                }
+                R::from_output(())
+            }
+        }
+        impl<F, T, R> const FnMut<(T,)> for Closure<F>
+        where
+            T: ~const Destruct,
+            F: ~const FnMut(T) -> R,
+            R: ~const Try<Output = (), Residual: ~const Destruct>
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                let Self { f, n, step } = self;
+                if *n == *step - 1
+                {
+                    f(x)?
+                }
+                *n += 1;
+                *n %= *step;
+                R::from_output(())
+            }
+        }
+
+        let Self { bulk, step } = self;
+        bulk.try_rev_for_each(Closure {
+            f,
+            n: 0,
+            step: length::len_metadata::<N>(step)
+        })
     }
 }
 

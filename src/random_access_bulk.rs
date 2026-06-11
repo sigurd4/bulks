@@ -4,7 +4,7 @@ use array_trait::length::LengthValue;
 
 use crate::{Bulk, IntoBulk, StaticBulk};
 
-pub const trait RandomAccessBulk: ~const Bulk
+pub const trait RandomAccessBulk: ~const Bulk // DoubleEndedBulk
 {
     type ItemPointee: Sized + Thin;
     type EachRef<'a>: ~const RandomAccessBulk<ItemPointee = Self::ItemPointee, Item = &'a Self::ItemPointee, EachRef<'a> = Self::EachRef<'a>> + 'a + ~const Destruct
