@@ -34,6 +34,7 @@ moddef::moddef!(
         skip,
         step_by,
         take,
+        transpose,
         zip
     }
 );
