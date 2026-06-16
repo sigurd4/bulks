@@ -1,6 +1,6 @@
-use core::{marker::Destruct, ops::Try};
+use core::ops::Try;
 
-use crate::{Bulk, CollectNearest, InplaceBulk, IntoBulk, Map, RandomAccessBulk};
+use crate::{Bulk, IntoBulk};
 
 pub const trait TransposableBulk: ~const private::TransposableBulk
 {
