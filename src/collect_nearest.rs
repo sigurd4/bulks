@@ -21,6 +21,10 @@ pub(crate) const trait Collection<T> = ~const IntoBulk<Item = T, IntoBulk: ~cons
     + ~const IndexMut<RangeToInclusive<usize>, Output = <[T] as Index<RangeToInclusive<usize>>>::Output>
     + ~const IndexMut<RangeFull, Output = <[T] as Index<RangeFull>>::Output>;
 
+#[rustc_on_unimplemented(
+    message = "an array cannot be collected from dynamically sized bulk `{Self}`",
+    label = "an array cannot be collected from bulk"
+)]
 pub const trait CollectNearest: ~const Bulk
 {
     #[allow(private_bounds)]
@@ -70,9 +74,9 @@ where
         vec_spec::CollectVecSpec::<Self::TryNearest>::try_collect_vec(self)
     }
 }
-impl<I, const N: usize> const CollectNearest for I
+impl<I> const CollectNearest for I
 where
-    I: ~const Bulk + StaticBulk<Array<()> = [(); N]>
+    I: ~const Bulk + StaticBulk
 {
     type Nearest = I::Array<I::Item>;
     type TryNearest = I::Array<<I::Item as Try>::Output>

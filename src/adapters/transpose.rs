@@ -53,6 +53,7 @@ impl<I, T> Bulk for Transpose<I>
 where
     I: private::TransposableBulk<Item: IntoBulk<Item = T>>
 {
+    type Length = <<I::Item as IntoBulk>::IntoBulk as Bulk>::Length;
     type MinLength = <<I::Item as IntoBulk>::IntoBulk as Bulk>::MinLength;
     type MaxLength = <<I::Item as IntoBulk>::IntoBulk as Bulk>::MaxLength;
 
@@ -107,7 +108,8 @@ mod private
         Map<I, fn(I::Item) -> <I::Item as IntoBulk>::IntoBulk>: CollectNearest<Nearest = N>,
         N: IntoBulk<IntoBulk: InplaceBulk<Item = <Self::Item as IntoBulk>::IntoBulk, ItemPointee = <Self::Item as IntoBulk>::IntoBulk>>,
         IntoIter<N::IntoBulk>: ExactSizeIterator<Item: IntoBulk<Item = <Self::Item as IntoIterator>::Item>>,
-        <<Map<N::IntoBulk, fn(<I::Item as IntoBulk>::IntoBulk) -> <I::Item as IntoIterator>::IntoIter> as CollectNearest>::Nearest as IntoIterator>::IntoIter: ExactSizeIterator
+        Map<<N as IntoBulk>::IntoBulk, fn(<<I as IntoIterator>::Item as IntoBulk>::IntoBulk) -> <<I as IntoIterator>::Item as IntoIterator>::IntoIter>: CollectNearest,
+        <<Map<N::IntoBulk, fn(<I::Item as IntoBulk>::IntoBulk) -> <I::Item as IntoIterator>::IntoIter> as CollectNearest>::Nearest as IntoIterator>::IntoIter: ExactSizeIterator,
     {
         type RowsIntoIter = IntoIter<N::IntoBulk>;
 
@@ -126,9 +128,10 @@ mod private
         Map<I, fn(I::Item) -> <I::Item as IntoBulk>::IntoBulk>: ~const CollectNearest<Nearest = N>,
         N: ~const IntoBulk<IntoBulk: InplaceBulk<Item = <Self::Item as IntoBulk>::IntoBulk, ItemPointee = <Self::Item as IntoBulk>::IntoBulk>>,
         IntoIter<N::IntoBulk>: ExactSizeIterator<Item: IntoBulk<Item = <Self::Item as IntoIterator>::Item>>,
+        Map<<N as IntoBulk>::IntoBulk, fn(<<I as IntoIterator>::Item as IntoBulk>::IntoBulk) -> <<I as IntoIterator>::Item as IntoIterator>::IntoIter>: CollectNearest,
         <<Map<N::IntoBulk, fn(<I::Item as IntoBulk>::IntoBulk) -> <I::Item as IntoIterator>::IntoIter> as CollectNearest>::Nearest as IntoIterator>::IntoIter: ExactSizeIterator
     {
-        type Rows = <<Map<I, fn(I::Item) -> <I::Item as IntoBulk>::IntoBulk> as CollectNearest>::Nearest as IntoBulk>::IntoBulk;
+        type Rows = <N as IntoBulk>::IntoBulk;
 
         fn rows(bulks: Self) -> Self::Rows
         {
