@@ -8,14 +8,14 @@ pub const trait TransposableBulk: ~const private::TransposableBulk
 }
 impl<I> const TransposableBulk for I
 where
-    I: ~const private::TransposableBulk
+    I: ~const private::TransposableBulk + ?Sized
 {
 
 }
 
 pub struct Transpose<I>
 where
-    I: TransposableBulk
+    I: TransposableBulk + ?Sized
 {
     bulks: I::Rows
 }
@@ -36,7 +36,7 @@ where
 
 impl<I, T> IntoIterator for Transpose<I>
 where
-    I: TransposableBulk<Item: IntoBulk<Item = T>>
+    I: TransposableBulk<Item: IntoBulk<Item = T>> + ?Sized
 {
     type IntoIter = I::RowsIntoIter;
     type Item = <I::RowsIntoIter as Iterator>::Item;
@@ -51,7 +51,7 @@ where
 
 impl<I, T> Bulk for Transpose<I>
 where
-    I: private::TransposableBulk<Item: IntoBulk<Item = T>>
+    I: TransposableBulk<Item: IntoBulk<Item = T>> + ?Sized
 {
     type Length = <<I::Item as IntoBulk>::IntoBulk as Bulk>::Length;
     type MinLength = <<I::Item as IntoBulk>::IntoBulk as Bulk>::MinLength;
