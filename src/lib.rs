@@ -46,7 +46,6 @@
 #![cfg_attr(feature = "alloc", feature(allocator_api))]
 #![feature(specialization)]
 #![feature(generic_const_exprs)]
-#![allow(clippy::map_clone)] // Temporary, because Option::cloned is not const and clippy doesn't get that
 
 //! Composable bulk-iteration.
 //!
