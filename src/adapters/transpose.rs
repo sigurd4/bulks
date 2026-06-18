@@ -146,6 +146,7 @@ mod private
         I: Bulk<Item: IntoBulk>,
         Map<I, fn(I::Item) -> <I::Item as IntoIterator>::IntoIter>: CollectNearest<Nearest: IntoBulk>
     {
+        #[allow(clippy::type_complexity)]
         pub(super) iters: <<Map<I, fn(I::Item) -> <I::Item as IntoIterator>::IntoIter> as CollectNearest>::Nearest as IntoBulk>::IntoBulk
     }
     impl<I, R> Iterator for IntoIter<I>
@@ -158,9 +159,9 @@ mod private
         type Item = R;
 
         fn next(&mut self) -> Option<Self::Item>
-        {
-            let iters: &mut <<Map<I, fn(I::Item) -> <I::Item as IntoIterator>::IntoIter> as CollectNearest>::Nearest as IntoBulk>::IntoBulk  = unsafe {
-                core::mem::transmute(&mut self.iters)
+        {   
+            let iters = unsafe {
+                core::ptr::from_mut(&mut self.iters).as_mut().unwrap()
             };
             iters.each_mut()
                 .map(Iterator::next as fn(&'static mut _) -> Option<_>)

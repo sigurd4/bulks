@@ -75,8 +75,7 @@ where
     fn len(&self) -> usize
     {
         let Self { bulk: _, n, element: _ } = self;
-        let n = length::len_metadata::<N>(*n);
-        n
+        length::len_metadata::<N>(*n)
     }
     fn for_each<F>(self, mut f: F)
     where

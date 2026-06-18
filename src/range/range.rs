@@ -182,7 +182,7 @@ impl<S, E, L> const SplitBulk<L> for Range<S, E>
 where
     S: Length<Elem = ()> + ?Sized,
     E: Length<Elem = ()> + ?Sized,
-    L: LengthValue + ?Sized
+    L: LengthValue
 {
     type Left = Range<S, length::value::Length<length::value::Min<E::Value, length::value::Add<S::Value, L>>, ()>>;
     type Right = Range<length::value::Length<length::value::Min<E::Value, length::value::Add<S::Value, L>>, ()>, E>;
