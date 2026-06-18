@@ -1,8 +1,8 @@
-use core::{borrow::Borrow, marker::Destruct, ops::Try, ptr::Pointee};
+use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
 
 pub const fn resize<I, L>(iterable: I, n: L, element: I::Item) -> Resize<
     <<I as IntoContained>::IntoContained as IntoBulk>::IntoBulk,
@@ -175,43 +175,6 @@ where
             left.resize(n, element),
             right.resize(length::value::saturating_sub(n, m), element)
         )
-    }
-}
-
-impl<T, N> const RandomAccessBulk for Resize<T, N>
-where
-    T: ~const RandomAccessBulk<Item: Copy + ~const Borrow<T::ItemPointee> + ~const Destruct>,
-    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized,
-{
-    type ItemPointee = T::ItemPointee;
-    type EachRef<'a> = Resize<T::EachRef<'a>, N>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_ref<'a>(Self { bulk, n, element }: &'a Self) -> Self::EachRef<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        bulk.each_ref().resize(length::value::from_metadata::<N::Value>(*n), element.borrow())
-    }
-}
-impl<T, N> const RandomAccessBulkSpec for Resize<T, N>
-where
-    T: ~const RandomAccessBulk<Item: Copy + ~const Borrow<T::ItemPointee> + ~const Destruct>,
-    N: Length<Elem = ()> + ?Sized
-{
-    fn _get<'a, L>(Self { bulk, n, element }: &'a Self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        if length::value::le(length::value::from_metadata::<N::Value>(*n), i)
-        {
-            return None
-        }
-        Some(bulk.get(i).unwrap_or(element.borrow()))
     }
 }
 

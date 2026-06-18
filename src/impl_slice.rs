@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, AsBulk, InplaceBulk, IntoBulk, RandomAccessBulk, DoubleEndedBulk, SplitBulk};
+use crate::{Bulk, IntoBulk, DoubleEndedBulk, SplitBulk};
 
 pub mod slice
 {
@@ -96,22 +96,6 @@ macro_rules! impl_bulk {
                 L: LengthValue
             $nth
 
-            fn get<'b, L>(&'b self, i: L) -> Option<&'b <Self as RandomAccessBulk>::ItemPointee>
-            where
-                L: LengthValue,
-                Self: 'b
-            {
-                self.slice.get(length::value::len(i))
-            }
-
-            $(fn ${concat(get_, $mut)}<'b, L>(&'b mut self, i: L) -> Option<&'b mut <Self as RandomAccessBulk>::ItemPointee>
-            where
-                L: LengthValue,
-                Self: 'b
-            {
-                self.slice.get_mut(length::value::len(i))
-            })?
-
             #[inline]
             fn for_each<F>($self_for_each, mut $f_for_each: F)
             where
@@ -155,47 +139,6 @@ macro_rules! impl_bulk {
                 Self: Sized
             $split_at
         }
-        impl<$a, T> const RandomAccessBulk for slice::$bulk<$a, T>
-        {
-            type ItemPointee = T;
-            type EachRef<'b> = slice::Bulk<'b, T>
-            where
-                Self::ItemPointee: 'b,
-                Self: 'b;
-
-            fn each_ref<'b>(bulk: &'b Self) -> Self::EachRef<'b>
-            where
-                Self::ItemPointee: 'b,
-                Self: 'b
-            {
-                (&bulk.slice as &[T]).bulk()
-            }
-        }
-        impl_bulk!(@extra impl $bulk<$a, $t>; for $item; in $slice; $($mut)?);
-    };
-    (
-        @extra impl $bulk:ident<$a:lifetime, $t:ident>; for $item:ty; in $slice:ty; $mut:ident
-    ) => {
-        impl<$a, T> const InplaceBulk for slice::$bulk<$a, T>
-        {
-            type EachMut<'b> = slice::BulkMut<'b, T>
-            where
-                Self::ItemPointee: 'b,
-                Self: 'b;
-
-            fn each_mut<'b>(bulk: &'b mut Self) -> Self::EachMut<'b>
-            where
-                Self::ItemPointee: 'b,
-                Self: 'b
-            {
-                (&mut bulk.slice as &mut [T]).bulk_mut()
-            }
-        }
-    };
-    (
-        @extra impl $bulk:ident<$a:lifetime, $t:ident>; for $item:ty; in $slice:ty;
-    ) => {
-        
     };
 }
 impl_bulk!(

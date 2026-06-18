@@ -1,8 +1,8 @@
-use core::{fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, FromResidual, Mul, Residual, Try}};
+use core::{fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, DerefMut, FromResidual, Mul, Residual, Try}};
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
-use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, InplaceBulk, InplaceBulkSpec, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, RandomAccessBulk, RandomAccessBulkSpec, Resize, ResizeWith, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TransposableBulk, Transpose, TryCollectionAdapter, Zip, util};
+use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, Resize, ResizeWith, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -182,13 +182,6 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         L: LengthValue
     {
         self.skip(n).first()
-    }
-
-    fn transpose(self) -> Transpose<Self>
-    where
-        Self: ~const TransposableBulk + Sized
-    {
-        Transpose::new(self)
     }
 
     fn many<NN, const N: usize>(self, n: NN) -> [Option<Self::Item>; N]
@@ -2171,102 +2164,23 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         let l = self.length();
         SplitBulk::split_at(self, length::value::saturating_sub(l, n))
     }
-
-    fn each_ref<'a>(&'a self) -> Self::EachRef<'a>
+    
+    fn swap<L, R>(&mut self, lhs: L, rhs: R)
     where
-        Self: ~const RandomAccessBulk + 'a
-    {
-        RandomAccessBulk::each_ref(self)
-    }
-    fn each_mut<'a>(&'a mut self) -> Self::EachMut<'a>
-    where
-        Self: ~const InplaceBulk + 'a
-    {
-        InplaceBulk::each_mut(self)
-    }
-
-    fn get<'a, L>(&'a self, i: L) -> Option<&'a Self::ItemPointee>
-    where
-        Self: ~const RandomAccessBulk + 'a,
-        L: LengthValue
-    {
-        RandomAccessBulkSpec::_get(self, i)
-    }
-
-    fn get_mut<'a, L>(&'a mut self, i: L) -> Option<&'a mut Self::ItemPointee>
-    where
-        Self: ~const InplaceBulk + 'a,
-        L: LengthValue
-    {
-        InplaceBulkSpec::_get_mut(self, i)
-    }
-
-    fn try_get<'a, L>(&'a self, i: L) -> Result<&'a Self::ItemPointee, OutOfRange>
-    where
-        Self: ~const RandomAccessBulk + 'a,
-        L: LengthValue
-    {
-        match self.get(i)
-        {
-            Some(x) => Ok(x),
-            None => {
-                let len = self.len();
-                let i = length::value::len(i);
-                assert!(i >= len, "Malformed bulk length");
-                Err(OutOfRange { i, len })
-            }
-        }
-    }
-
-    fn try_get_mut<'a, L>(&'a mut self, i: L) -> Result<&'a mut Self::ItemPointee, OutOfRange>
-    where
-        Self: ~const InplaceBulk + 'a,
-        L: LengthValue
-    {
-        let len = self.len();
-        match self.get_mut(i)
-        {
-            Some(x) => Ok(x),
-            None => {
-                let i = length::value::len(i);
-                assert!(i >= len, "Malformed bulk length");
-                Err(OutOfRange { i, len })
-            }
-        }
-    }
-
-    fn get_many<'a, NN, const N: usize>(&'a self, i: NN) -> [Option<&'a <Self as RandomAccessBulk>::ItemPointee>; N]
-    where
-        Self: ~const RandomAccessBulk + 'a,
-        NN: ~const IntoBulk<Item = usize, IntoBulk: ~const Bulk + StaticBulk<Array<()> = [(); N]>>
-    {
-        RandomAccessBulkSpec::_get_many(self, i)
-    }
-
-    fn get_many_mut<'a, NN, const N: usize>(&'a mut self, i: NN) -> [Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>; N]
-    where
-        Self: ~const InplaceBulk + 'a,
-        NN: ~const IntoBulk<Item = usize, IntoBulk: ~const Bulk + StaticBulk<Array<()> = [(); N]>>
-    {
-        InplaceBulkSpec::_get_many_mut(self, i)
-    }
-
-    fn swap_inplace<L, R>(&mut self, lhs: L, rhs: R)
-    where
-        Self: ~const InplaceBulk,
+        Self::Item: ~const DerefMut,
         L: LengthValue,
         R: LengthValue
     {
-        match self.try_swap_inplace(lhs, rhs)
+        match self.try_swap(lhs, rhs)
         {
             Ok(()) => (),
             Err(err) => err.halt()
         }
     }
 
-    fn try_swap_inplace<L, R>(&mut self, lhs: L, rhs: R) -> Result<(), OutOfRange>
+    fn try_swap<L, R>(&mut self, lhs: L, rhs: R) -> Result<(), OutOfRange>
     where
-        Self: ~const InplaceBulk,
+        Self::Item: ~const DerefMut,
         L: LengthValue,
         R: LengthValue
     {

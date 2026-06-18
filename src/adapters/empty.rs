@@ -1,8 +1,8 @@
-use core::{borrow::{Borrow, BorrowMut}, fmt, marker::{Destruct, PhantomData}};
+use core::{borrow::Borrow, fmt, marker::{Destruct, PhantomData}};
 
 use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, RandomAccessBulk, InplaceBulk, SplitBulk, StaticBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk};
 
 /// Creates a bulk that yields nothing.
 /// 
@@ -165,41 +165,6 @@ where
         Self: Sized
     {
         (bulk.clone(), bulk)
-    }
-}
-impl<T, P> const RandomAccessBulk for Empty<T, P>
-where
-    T: Borrow<P>
-{
-    type ItemPointee = P;
-    type EachRef<'a> = Empty<&'a P, P>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_ref<'a>(Self(PhantomData): &'a Self) -> Self::EachRef<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        Empty(PhantomData)
-    }
-}
-impl<T, P> const InplaceBulk for Empty<T, P>
-where
-    T: BorrowMut<P>
-{
-    type EachMut<'a> = Empty<&'a mut P, P>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_mut<'a>(Self(PhantomData): &'a mut Self) -> Self::EachMut<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        Empty(PhantomData)
     }
 }
 

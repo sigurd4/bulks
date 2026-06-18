@@ -358,7 +358,6 @@ moddef::moddef!(
         from_bulk,
         into_bulk,
         split_bulk,
-        random_access_bulk,
         static_bulk
     },
     pub mod {

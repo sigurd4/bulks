@@ -2,7 +2,7 @@ use core::{marker::Destruct, mem::MaybeUninit, ops::Try};
 
 use array_trait::{length::{self, LengthValue}, same::Same};
 
-use crate::{AsBulk, Bulk, DoubleEndedBulk, InplaceBulk, IntoBulk, RandomAccessBulk, SplitBulk, StaticBulk, slice, util::{self, Guard}};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk, slice, util::{self, Guard}};
 
 pub mod array
 {
@@ -114,22 +114,6 @@ macro_rules! impl_bulk {
                 L: LengthValue
             $nth)?
 
-            fn get<'b, L>(&'b self, i: L) -> Option<&'b <Self as RandomAccessBulk>::ItemPointee>
-            where
-                L: LengthValue,
-                Self: 'b
-            {
-                self.array.get(length::value::len(i))
-            }
-
-            $(fn ${concat(get_, $mut)}<'b, L>(&'b mut self, i: L) -> Option<&'b mut <Self as RandomAccessBulk>::ItemPointee>
-            where
-                L: LengthValue,
-                Self: 'b
-            {
-                self.array.get_mut(length::value::len(i))
-            })?
-
             #[inline]
             fn collect_array($self_collect_array) -> <Self as StaticBulk>::Array<Self::Item>
             $collect_array
@@ -204,47 +188,6 @@ macro_rules! impl_bulk {
                 )
             }
         }
-        impl<$($a,)? T, const N: usize> const RandomAccessBulk for array::$bulk<$($a,)? T, N>
-        {
-            type ItemPointee = T;
-            type EachRef<'b> = array::Bulk<'b, T, N>
-            where
-                Self::ItemPointee: 'b,
-                Self: 'b;
-
-            fn each_ref<'b>(bulk: &'b Self) -> Self::EachRef<'b>
-            where
-                Self::ItemPointee: 'b,
-                Self: 'b
-            {
-                (&bulk.array as &[T; N]).bulk()
-            }
-        }
-        impl_bulk!(@extra impl $bulk<$($a,)? $t, const $n: usize>; for $item; in $array; $($mut)?);
-    };
-    (
-        @extra impl $bulk:ident<$($a:lifetime,)? $t:ident, const $n:ident: usize>; for $item:ty; in $array:ty; $mut:ident
-    ) => {
-        impl<$($a,)? T, const N: usize> const InplaceBulk for array::$bulk<$($a,)? T, N>
-        {
-            type EachMut<'b> = array::BulkMut<'b, T, N>
-            where
-                Self::ItemPointee: 'b,
-                Self: 'b;
-
-            fn each_mut<'b>(bulk: &'b mut Self) -> Self::EachMut<'b>
-            where
-                Self::ItemPointee: 'b,
-                Self: 'b
-            {
-                (&mut bulk.array as &mut [T; N]).bulk_mut()
-            }
-        }
-    };
-    (
-        @extra impl $bulk:ident<$($a:lifetime,)? $t:ident, const $n:ident: usize>; for $item:ty; in $array:ty;
-    ) => {
-        
     };
 }
 impl_bulk!(

@@ -2,7 +2,7 @@ use core::{marker::Destruct, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 
 
 /// A double-ended bulk with the direction inverted.
@@ -152,91 +152,6 @@ where
             right.rev(),
             left.rev()
         )
-    }
-}
-
-impl<I> const RandomAccessBulk for Rev<I>
-where
-    I: for<'a, 'b> ~const RandomAccessBulk<ItemPointee: 'b,
-        EachRef<'a>: ~const RandomAccessBulk<EachRef<'b> = I::EachRef<'b>> + 'b + ~const DoubleEndedBulk
-    > + ~const DoubleEndedBulk
-{
-    type ItemPointee = I::ItemPointee;
-    type EachRef<'a> = Rev<I::EachRef<'a>>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_ref<'a>(Self { bulk }: &'a Self) -> Self::EachRef<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        bulk.each_ref().rev()
-    }
-}
-impl<I> const InplaceBulk for Rev<I>
-where
-    I: for<'a, 'b> ~const InplaceBulk<ItemPointee: 'b,
-        EachRef<'a>: ~const RandomAccessBulk<EachRef<'b> = I::EachRef<'b>> + 'b + ~const DoubleEndedBulk,
-        EachMut<'a>: ~const InplaceBulk<EachRef<'b> = I::EachRef<'b>, EachMut<'b> = I::EachMut<'b>> + 'b + ~const DoubleEndedBulk
-    > + ~const DoubleEndedBulk
-{
-    type EachMut<'a> = Rev<I::EachMut<'a>>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_mut<'a>(Self { bulk }: &'a mut Self) -> Self::EachMut<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        bulk.each_mut().rev()
-    }
-}
-
-impl<I> const RandomAccessBulkSpec for Rev<I>
-where
-    I: for<'a, 'b> ~const RandomAccessBulk<ItemPointee: 'b,
-        EachRef<'a>: ~const RandomAccessBulk<EachRef<'b> = I::EachRef<'b>> + 'b + ~const DoubleEndedBulk
-    > + ~const DoubleEndedBulk
-{
-    fn _get<'a, L>(Self { bulk }: &'a Self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        if let Some(ip1) = length::value::checked_add(i, [(); 1]) && let Some(j) = length::value::checked_sub(bulk.length(), ip1)
-        {
-            bulk.get(j)
-        }
-        else
-        {
-            None
-        }
-    }
-}
-impl<I> const InplaceBulkSpec for Rev<I>
-where
-    I: for<'a, 'b> ~const InplaceBulk<ItemPointee: 'b,
-        EachRef<'a>: ~const RandomAccessBulk<EachRef<'b> = I::EachRef<'b>> + 'b + ~const DoubleEndedBulk,
-        EachMut<'a>: ~const InplaceBulk<EachRef<'b> = I::EachRef<'b>, EachMut<'b> = I::EachMut<'b>> + 'b + ~const DoubleEndedBulk
-    > + ~const DoubleEndedBulk
-{
-    fn _get_mut<'a, L>(bulk: &'a mut Self, i: L) -> Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        if let Some(ip1) = length::value::checked_add(i, [(); 1]) && let Some(j) = length::value::checked_sub(bulk.length(), ip1)
-        {
-            bulk.get_mut(j)
-        }
-        else
-        {
-            None
-        }
     }
 }
 

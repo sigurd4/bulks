@@ -1,9 +1,8 @@
-use core::{marker::Destruct, ops::{Add, Try}, ptr::Pointee};
+use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
-use currying::Curry;
 
-use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 
 /// A bulk that skips over `n` elements of `bulk`.
 ///
@@ -220,77 +219,6 @@ where
             left.skip(n),
             right.skip(length::value::saturating_sub(n, l))
         )
-    }
-}
-impl<T, N> const RandomAccessBulk for Skip<T, N>
-where
-    T: ~const RandomAccessBulk<Item: ~const Destruct>,
-    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
-{
-    type ItemPointee = T::ItemPointee;
-    type EachRef<'a> = Skip<T::EachRef<'a>, N>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_ref<'a>(Self { bulk, n }: &'a Self) -> Self::EachRef<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        bulk.each_ref().skip(length::value::from_metadata::<N::Value>(*n))
-    }
-}
-impl<T, N> const InplaceBulk for Skip<T, N>
-where
-    T: ~const InplaceBulk<Item: ~const Destruct>,
-    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
-{
-    type EachMut<'a> = Skip<T::EachMut<'a>, N>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_mut<'a>(Self { bulk, n }: &'a mut Self) -> Self::EachMut<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        bulk.each_mut().skip(length::value::from_metadata::<N::Value>(*n))
-    }
-}
-impl<T, N> const RandomAccessBulkSpec for Skip<T, N>
-where
-    T: ~const RandomAccessBulk,
-    N: Length<Elem = ()> + ?Sized
-{
-    fn _get<'a, L>(Self { bulk, n }: &'a Self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        bulk.get(length::value::add(length::value::from_metadata::<N::Value>(*n), i))
-    }
-
-    fn _get_many<'a, NN, const M: usize>(Self { bulk, n }: &'a Self, i: NN) -> [Option<&'a <Self as RandomAccessBulk>::ItemPointee>; M]
-    where
-        Self: 'a,
-        NN: ~const crate::IntoBulk<Item = usize, IntoBulk: ~const Bulk + crate::StaticBulk<Array<()> = [(); M]>>
-    {
-        bulk.get_many(i.into_bulk().map(Add::add.curry(length::value::len(length::value::from_metadata::<N::Value>(*n)))))
-    }
-}
-impl<T, N> const InplaceBulkSpec for Skip<T, N>
-where
-    T: ~const InplaceBulk,
-    N: Length<Elem = ()> + ?Sized
-{
-    fn _get_mut<'a, L>(Self { bulk, n }: &'a mut Self, i: L) -> Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        bulk.get_mut(length::value::add(length::value::from_metadata::<N::Value>(*n), i))
     }
 }
 

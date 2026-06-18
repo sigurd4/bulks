@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{AsBulk, Bulk, InplaceBulk, IntoBulk, RandomAccessBulk, SplitBulk};
+use crate::{Bulk, IntoBulk, SplitBulk};
 
 pub mod option
 {
@@ -169,47 +169,6 @@ macro_rules! impl_option {
                 self.first()
             }
         }
-        impl<$($a,)? T> RandomAccessBulk for option::$bulk<$($a,)? $t>
-        {
-            type ItemPointee = T;
-            type EachRef<'b> = option::Bulk<'b, T>
-            where
-                Self::ItemPointee: 'b,
-                Self: 'b;
-
-            fn each_ref<'b>(bulk: &'b Self) -> Self::EachRef<'b>
-            where
-                Self::ItemPointee: 'b,
-                Self: 'b
-            {
-                (&bulk.option as &Option<T>).bulk()
-            }
-        }
-        impl_option!(@extra impl $bulk<$($a,)? $t>; for $item; in $option; $($mut)?);
-    };
-    (
-        @extra impl $bulk:ident<$($a:lifetime,)? $t:ident>; for $item:ty; in $option:ty; $mut:ident
-    ) => {
-        impl<$($a,)? T> InplaceBulk for option::$bulk<$($a,)? T>
-        {
-            type EachMut<'b> = option::BulkMut<'b, T>
-            where
-                Self::ItemPointee: 'b,
-                Self: 'b;
-
-            fn each_mut<'b>(bulk: &'b mut Self) -> Self::EachMut<'b>
-            where
-                Self::ItemPointee: 'b,
-                Self: 'b
-            {
-                (&mut bulk.option as &mut Option<T>).bulk_mut()
-            }
-        }
-    };
-    (
-        @extra impl $bulk:ident<$($a:lifetime,)? $t:ident>; for $item:ty; in $option:ty;
-    ) => {
-        
     };
 }
 impl<T, L> const SplitBulk<L> for option::IntoBulk<T>

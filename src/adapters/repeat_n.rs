@@ -1,9 +1,8 @@
-use core::{borrow::Borrow, fmt, marker::{Destruct, PhantomData}, ptr::Pointee};
+use core::{borrow::Borrow, fmt, marker::Destruct, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
-use currying::{Curry, RCurry};
 
-use crate::{Bulk, DoubleEndedBulk, RandomAccessBulk, RandomAccessBulkSpec, RepeatNWith, SplitBulk, util::YieldOnce};
+use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, util::YieldOnce};
 
 /// Creates a new bulk that repeats a single element a given number of times.
 ///
@@ -59,14 +58,13 @@ where
 /// See its documentation for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 #[derive(Clone)]
-pub struct RepeatN<A, N = [()], P = A>
+pub struct RepeatN<A, N = [()]>
 where
-    A: Clone + Borrow<P>,
+    A: Clone,
     N: Length<Elem = ()> + ?Sized
 {
     element: A,
-    n: <N as Pointee>::Metadata,
-    marker: PhantomData<P>
+    n: <N as Pointee>::Metadata
 }
 
 impl<A, N, P> RepeatN<A, N, P>
@@ -78,8 +76,7 @@ where
     {
         RepeatN {
             element,
-            n: length::value::into_metadata(n),
-            marker: PhantomData
+            n: length::value::into_metadata(n)
         }
     }
 }
@@ -105,7 +102,7 @@ where
 
     fn into_iter(self) -> Self::IntoIter
     {
-        let Self { element, n, marker: PhantomData } = self;
+        let Self { element, n } = self;
         core::iter::repeat_n(element, length::len_metadata::<N>(n))
     }
 }
@@ -119,7 +116,7 @@ where
 
     fn len(&self) -> usize
     {
-        let Self { element: _, n, marker: PhantomData } = self;
+        let Self { element: _, n } = self;
         length::len_metadata::<N>(*n)
     }
     fn for_each<F>(self, mut f: F)
@@ -127,7 +124,7 @@ where
         Self: Sized,
         F: ~const FnMut(Self::Item) + ~const Destruct
     {
-        let Self { element, n, marker: PhantomData } = self;
+        let Self { element, n } = self;
         let n = length::len_metadata::<N>(n);
         let mut i = 1;
         while i < n
@@ -146,7 +143,7 @@ where
         F: ~const FnMut(Self::Item) -> R + ~const Destruct,
         R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
     {
-        let Self { element, n, marker: PhantomData } = self;
+        let Self { element, n } = self;
         let n = length::len_metadata::<N>(n);
         let mut i = 1;
         while i < n
@@ -193,7 +190,7 @@ where
     type Left = RepeatN<A, L::Length<()>, P>;
     type Right = RepeatN<A, R::Length<()>, P>;
 
-    fn split_at(Self { element, n, marker: PhantomData }: Self, m: M) -> (Self::Left, Self::Right)
+    fn split_at(Self { element, n }: Self, m: M) -> (Self::Left, Self::Right)
     where
         Self: Sized
     {
@@ -205,67 +202,6 @@ where
     }
 }
 
-impl<A, N, P> const RandomAccessBulk for RepeatN<A, N, P>
-where
-    A: ~const Clone + ~const Destruct + ~const Borrow<P>,
-    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
-{
-    type ItemPointee = P;
-    type EachRef<'a> = RepeatN<&'a P, N, P>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_ref<'a>(Self { element, n, marker: PhantomData }: &'a Self) -> Self::EachRef<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        RepeatN::new(element.borrow(), length::value::from_metadata(*n))
-    }
-}
-impl<A, N, P> const RandomAccessBulkSpec for RepeatN<A, N, P>
-where
-    A: ~const Clone + ~const Destruct + ~const Borrow<P>,
-    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
-{
-    fn _get<'a, L>(Self { element, n, marker: PhantomData }: &'a Self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        if length::value::ge(i, length::value::from_metadata::<N::Value>(*n))
-        {
-            return None
-        }
-        Some(element.borrow())
-    }
-
-    fn _get_many<'a, NN, const M: usize>(Self { element, n, marker: PhantomData }: &'a Self, i: NN) -> [Option<&'a <Self as RandomAccessBulk>::ItemPointee>; M]
-    where
-        Self: 'a,
-        NN: ~const crate::IntoBulk<Item = usize, IntoBulk: ~const Bulk + crate::StaticBulk<Array<()> = [(); M]>>
-    {
-        const fn getidx<A, P, N>(element: &A, i: usize, n: N) -> Option<&P>
-        where
-            A: ~const Borrow<P>,
-            N: LengthValue
-        {
-            if length::value::ge(i, n)
-            {
-                return None
-            }
-            Some(element.borrow())
-        }
-
-        i.into_bulk()
-            .map(getidx::<A, P, N::Value>
-                .curry_once(element)
-                .rcurry_once(length::value::from_metadata::<N::Value>(*n))
-            ).collect_array()
-    }
-}
-
 impl<A, N> const From<RepeatN<A, N>> for RepeatNWith<YieldOnce<A>, N>
 where
     A: Clone,
@@ -273,7 +209,7 @@ where
 {
     fn from(value: RepeatN<A, N>) -> Self
     {
-        let RepeatN { element, n, marker: PhantomData } = value;
+        let RepeatN { element, n } = value;
         crate::repeat_n_with(YieldOnce::new(element), length::value::from_metadata::<N::Value>(n))
     }
 }

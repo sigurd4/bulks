@@ -1,9 +1,8 @@
-use core::{marker::Destruct, ops::{Mul, Try}, ptr::Pointee};
+use core::{marker::Destruct, ops::Try, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
-use currying::Curry;
 
-use crate::{Bulk, DoubleEndedBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulk, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 
 /// A bulk that steps by a custom amount.
 ///
@@ -306,78 +305,6 @@ where
             n: 0,
             step: length::len_metadata::<N>(step)
         })
-    }
-}
-
-impl<T, N> const RandomAccessBulk for StepBy<T, N>
-where
-    T: ~const RandomAccessBulk<Item: ~const Destruct>,
-    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
-{
-    type ItemPointee = T::ItemPointee;
-    type EachRef<'a> = StepBy<T::EachRef<'a>, N>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_ref<'a>(Self { bulk, step }: &'a Self) -> Self::EachRef<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        bulk.each_ref().step_by(length::value::from_metadata::<N::Value>(*step))
-    }
-}
-impl<T, N> const InplaceBulk for StepBy<T, N>
-where
-    T: ~const InplaceBulk<Item: ~const Destruct>,
-    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
-{
-    type EachMut<'a> = StepBy<T::EachMut<'a>, N>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_mut<'a>(Self { bulk, step }: &'a mut Self) -> Self::EachMut<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        bulk.each_mut().step_by(length::value::from_metadata::<N::Value>(*step))
-    }
-}
-
-impl<T, N> const RandomAccessBulkSpec for StepBy<T, N>
-where
-    T: ~const RandomAccessBulk,
-    N: Length<Elem = ()> + ?Sized
-{
-    fn _get<'a, L>(Self { bulk, step }: &'a Self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        bulk.get(length::value::mul(length::value::from_metadata::<N::Value>(*step), i))
-    }
-    fn _get_many<'a, NN, const M: usize>(Self { bulk, step }: &'a Self, i: NN) -> [Option<&'a <Self as RandomAccessBulk>::ItemPointee>; M]
-    where
-        Self: 'a,
-        NN: ~const crate::IntoBulk<Item = usize, IntoBulk: ~const Bulk + crate::StaticBulk<Array<()> = [(); M]>>
-    {
-        bulk.get_many(i.into_bulk().map(Mul::mul.curry(length::value::len(length::value::from_metadata::<N::Value>(*step)))))
-    }
-}
-impl<T, N> const InplaceBulkSpec for StepBy<T, N>
-where
-    T: ~const InplaceBulk,
-    N: Length<Elem = ()> + ?Sized
-{
-    fn _get_mut<'a, L>(Self { bulk, step }: &'a mut Self, i: L) -> Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        bulk.get_mut(length::value::mul(length::value::from_metadata::<N::Value>(*step), i))
     }
 }
 

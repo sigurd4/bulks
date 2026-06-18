@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::{ControlFlow, Try}, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, RandomAccessBulk, InplaceBulk, InplaceBulkSpec, RandomAccessBulkSpec, SplitBulk};
+use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
 
 /// Creates a bulk that only delivers the first `n` iterations of `iterable`.
 pub const fn take<I, L>(iterable: I, n: L) -> Take<
@@ -244,78 +244,6 @@ where
             left.take(n),
             right.take(length::value::saturating_sub(n, m))
         )
-    }
-}
-
-impl<T, N> const RandomAccessBulk for Take<T, N>
-where
-    T: ~const RandomAccessBulk<Item: ~const Destruct>,
-    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
-{
-    type ItemPointee = T::ItemPointee;
-    type EachRef<'a> = Take<T::EachRef<'a>, N>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_ref<'a>(Self { bulk, n }: &'a Self) -> Self::EachRef<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        bulk.each_ref().take(length::value::from_metadata::<N::Value>(*n))
-    }
-}
-impl<T, N> const InplaceBulk for Take<T, N>
-where
-    T: ~const InplaceBulk<Item: ~const Destruct>,
-    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
-{
-    type EachMut<'a> = Take<T::EachMut<'a>, N>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_mut<'a>(Self { bulk, n }: &'a mut Self) -> Self::EachMut<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        bulk.each_mut().take(length::value::from_metadata::<N::Value>(*n))
-    }
-}
-impl<T, N> const RandomAccessBulkSpec for Take<T, N>
-where
-    T: ~const RandomAccessBulk<Item: ~const Destruct>,
-    N: Length<Elem = ()> + ?Sized
-{
-    fn _get<'a, L>(Self { bulk, n }: &'a Self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        if length::value::le(length::value::from_metadata::<N::Value>(*n), i)
-        {
-            return None
-        }
-        bulk.get(i)
-    }
-}
-impl<T, N> const InplaceBulkSpec for Take<T, N>
-where
-    T: ~const InplaceBulk<Item: ~const Destruct>,
-    N: Length<Elem = ()> + ?Sized
-{
-    fn _get_mut<'a, L>(Self { bulk, n }: &'a mut Self, i: L) -> Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        if length::value::le(length::value::from_metadata::<N::Value>(*n), i)
-        {
-            return None
-        }
-        bulk.get_mut(i)
     }
 }
 
