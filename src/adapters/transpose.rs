@@ -8,14 +8,14 @@ pub const trait TransposableBulk: ~const private::TransposableBulk
 }
 impl<I> const TransposableBulk for I
 where
-    I: ~const private::TransposableBulk + ?Sized
+    I: ~const private::TransposableBulk
 {
 
 }
 
 pub struct Transpose<I>
 where
-    I: TransposableBulk + ?Sized
+    I: TransposableBulk
 {
     bulks: I::Rows
 }
@@ -26,7 +26,7 @@ where
 {
     pub(crate) const fn new(bulk: I) -> Self
     where
-        I: ~const TransposableBulk
+        I: ~const TransposableBulk + Sized
     {
         Self {
             bulks: I::rows(bulk)
@@ -36,7 +36,7 @@ where
 
 impl<I, T> IntoIterator for Transpose<I>
 where
-    I: TransposableBulk<Item: IntoBulk<Item = T>> + ?Sized
+    I: TransposableBulk<Item: IntoBulk<Item = T>>
 {
     type IntoIter = I::RowsIntoIter;
     type Item = <I::RowsIntoIter as Iterator>::Item;
@@ -51,7 +51,7 @@ where
 
 impl<I, T> Bulk for Transpose<I>
 where
-    I: TransposableBulk<Item: IntoBulk<Item = T>> + ?Sized
+    I: TransposableBulk<Item: IntoBulk<Item = T>>
 {
     type Length = <<I::Item as IntoBulk>::IntoBulk as Bulk>::Length;
     type MinLength = <<I::Item as IntoBulk>::IntoBulk as Bulk>::MinLength;
@@ -87,7 +87,7 @@ mod private
 {
     use crate::{Bulk, CollectNearest, InplaceBulk, IntoBulk, Map};
 
-    pub trait TransposableIntoIter: Bulk<Item: IntoBulk>
+    pub trait TransposableIntoIter: Bulk<Item: IntoBulk> + Sized
     {
         type RowsIntoIter: ExactSizeIterator<Item: IntoBulk<Item = <Self::Item as IntoIterator>::Item>>;
 
@@ -134,6 +134,8 @@ mod private
         type Rows = <N as IntoBulk>::IntoBulk;
 
         fn rows(bulks: Self) -> Self::Rows
+        where
+            Self: Sized
         {
             bulks.map(IntoBulk::into_bulk as fn(_) -> _)
                 .collect_nearest()
