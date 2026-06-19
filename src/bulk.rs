@@ -2167,6 +2167,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     
     /// Consumes the bulk, and swaps two elements of it. Items must be mutably dereferenceable.
     /// 
+    /// Panics if either index is out of bounds.
+    /// 
     /// # Example
     /// 
     /// ```
@@ -2194,6 +2196,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     }
 
     /// Consumes the bulk, and swaps two elements of it. Items must be mutably dereferenceable.
+    /// 
+    /// Returns an error if either index is out of bounds.
     /// 
     /// # Example
     /// 
