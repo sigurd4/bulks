@@ -2177,11 +2177,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let mut a = *b"Com Truise";
     /// 
     /// a.bulk_mut()
-    ///     .swap(0, 4);
+    ///     .swap::<u8, _, _>(0, 4);
     /// 
     /// assert_eq!(&a, b"Tom Cruise");
     /// ```
-    fn swap<L, R, S>(self, lhs: L, rhs: R)
+    fn swap<S, L, R>(self, lhs: L, rhs: R)
     where
         Self: Sized,
         Self::Item: ~const BorrowMut<S> + ~const Destruct,
@@ -2208,18 +2208,18 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// 
     /// std::assert_matches!(
     ///     a.bulk_mut()
-    ///         .try_swap(0, 4),
+    ///         .try_swap::<u8, _, _>(0, 4),
     ///     Ok(())
     /// );
     /// std::assert_matches!(
     ///     a.bulk_mut()
-    ///         .try_swap(4, 10),
+    ///         .try_swap::<u8, _, _>(4, 10),
     ///     Err(OutOfRange { i: 10, len: 10 })
     /// );
     /// 
     /// assert_eq!(&a, b"Tom Cruise");
     /// ```
-    fn try_swap<L, R, S>(self, lhs: L, rhs: R) -> Result<(), OutOfRange>
+    fn try_swap<S, L, R>(self, lhs: L, rhs: R) -> Result<(), OutOfRange>
     where
         Self: Sized,
         Self::Item: ~const BorrowMut<S> + ~const Destruct,
