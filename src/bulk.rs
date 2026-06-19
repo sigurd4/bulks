@@ -1,4 +1,4 @@
-use core::{fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, DerefMut, FromResidual, Mul, Residual, Try}};
+use core::{borrow::BorrowMut, fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, FromResidual, Mul, Residual, Try}};
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
@@ -2181,10 +2181,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// 
     /// assert_eq!(&a, b"Tom Cruise");
     /// ```
-    fn swap<L, R>(self, lhs: L, rhs: R)
+    fn swap<L, R, S>(self, lhs: L, rhs: R)
     where
         Self: Sized,
-        Self::Item: ~const DerefMut<Target: Sized> + ~const Destruct,
+        Self::Item: ~const BorrowMut<S> + ~const Destruct,
         L: LengthValue,
         R: LengthValue
     {
@@ -2219,10 +2219,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// 
     /// assert_eq!(&a, b"Tom Cruise");
     /// ```
-    fn try_swap<L, R>(self, lhs: L, rhs: R) -> Result<(), OutOfRange>
+    fn try_swap<L, R, S>(self, lhs: L, rhs: R) -> Result<(), OutOfRange>
     where
         Self: Sized,
-        Self::Item: ~const DerefMut<Target: Sized> + ~const Destruct,
+        Self::Item: ~const BorrowMut<S> + ~const Destruct,
         L: LengthValue,
         R: LengthValue
     {
@@ -2282,7 +2282,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         {
             match (closure.first, closure.last)
             {
-                (Some(mut first), Some(mut last)) => { core::mem::swap(first.deref_mut(), last.deref_mut()); Ok(()) },
+                (Some(mut first), Some(mut last)) => { core::mem::swap(first.borrow_mut(), last.borrow_mut()); Ok(()) },
                 (Some(_), None) if length::value::eq(i, j) => Ok(()),
                 (Some(_), None) => Err(length::value::len(j)),
                 (None, None) | (None, Some(_)) => Err(length::value::len(i))
