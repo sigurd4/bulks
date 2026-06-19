@@ -2172,12 +2172,12 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// use bulks::*;
     /// 
-    /// let mut a = b"Com Truise";
+    /// let mut a = *b"Com Truise";
     /// 
     /// a.bulk_mut()
     ///     .swap(0, 4);
     /// 
-    /// assert_eq!(&left, b"Tom Cruise");
+    /// assert_eq!(&a, b"Tom Cruise");
     /// ```
     fn swap<L, R>(self, lhs: L, rhs: R)
     where
