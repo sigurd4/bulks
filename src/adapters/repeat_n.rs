@@ -1,4 +1,4 @@
-use core::{borrow::Borrow, fmt, marker::Destruct, ptr::Pointee};
+use core::{marker::Destruct, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
@@ -67,12 +67,12 @@ where
     n: <N as Pointee>::Metadata
 }
 
-impl<A, N, P> RepeatN<A, N, P>
+impl<A, N> RepeatN<A, N>
 where
-    A: Clone + Borrow<P>,
+    A: Clone,
     N: Length<Elem = ()> + ?Sized
 {
-    const fn new(element: A, n: length::Value<N>) -> RepeatN<A, N, P>
+    const fn new(element: A, n: length::Value<N>) -> RepeatN<A, N>
     {
         RepeatN {
             element,
@@ -81,20 +81,20 @@ where
     }
 }
 
-impl<A, N, P> fmt::Debug for RepeatN<A, N, P>
+impl<A, N> core::fmt::Debug for RepeatN<A, N>
 where
-    A: Clone + fmt::Debug + Borrow<P>,
+    A: Clone + core::fmt::Debug,
     N: Length<Elem = ()> + ?Sized
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
     {
         f.debug_struct("RepeatN").field("count", &self.len()).field("element", &self.element).finish()
     }
 }
 
-impl<A, N, P> IntoIterator for RepeatN<A, N, P>
+impl<A, N> IntoIterator for RepeatN<A, N>
 where
-    A: Clone + Borrow<P>,
+    A: Clone,
     N: Length<Elem = ()> + ?Sized
 {
     type Item = A;
@@ -106,9 +106,9 @@ where
         core::iter::repeat_n(element, length::len_metadata::<N>(n))
     }
 }
-impl<A, N, P> const Bulk for RepeatN<A, N, P>
+impl<A, N> const Bulk for RepeatN<A, N>
 where
-    A: ~const Clone + ~const Destruct + Borrow<P>,
+    A: ~const Clone + ~const Destruct,
     N: Length<Elem = ()> + ?Sized
 {
     type MinLength = N;
@@ -158,9 +158,9 @@ where
         R::from_output(())
     }
 }
-impl<A, N, P> const DoubleEndedBulk for RepeatN<A, N, P>
+impl<A, N> const DoubleEndedBulk for RepeatN<A, N>
 where
-    A: ~const Clone + ~const Destruct + Borrow<P>,
+    A: ~const Clone + ~const Destruct,
     N: Length<Elem = ()> + ?Sized
 {
     fn rev_for_each<F>(self, f: F)
@@ -179,16 +179,16 @@ where
         self.try_for_each(f)
     }
 }
-impl<A, N, M, L, R, P> const SplitBulk<M> for RepeatN<A, N, P>
+impl<A, N, M, L, R> const SplitBulk<M> for RepeatN<A, N>
 where
     N: Length<Elem = (), Value: LengthValue<Min<M> = L, SaturatingSub<M> = R>>,
-    A: ~const Clone + ~const Destruct + Borrow<P>,
+    A: ~const Clone + ~const Destruct,
     M: LengthValue,
     L: LengthValue,
     R: LengthValue
 {
-    type Left = RepeatN<A, L::Length<()>, P>;
-    type Right = RepeatN<A, R::Length<()>, P>;
+    type Left = RepeatN<A, L::Length<()>>;
+    type Right = RepeatN<A, R::Length<()>>;
 
     fn split_at(Self { element, n }: Self, m: M) -> (Self::Left, Self::Right)
     where
@@ -223,8 +223,6 @@ mod test
     fn it_works()
     {
         let a = crate::repeat_n(1, [(); _])
-            .each_ref()
-            .copied()
             .collect::<[_; _], _>();
         assert_eq!(a, [1, 1, 1, 1])
     }

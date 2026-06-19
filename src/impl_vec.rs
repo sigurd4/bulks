@@ -3,7 +3,7 @@ use core::{alloc::Allocator, ops::Try};
 use alloc::vec::Vec;
 use array_trait::length::{self, LengthValue};
 
-use crate::{AsBulk, Bulk, DoubleEndedBulk, InplaceBulk, IntoBulk, RandomAccessBulk, SplitBulk, slice};
+use crate::{AsBulk, Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, slice};
 
 pub mod vec
 {
@@ -94,21 +94,6 @@ where
     {
         self.into_iter().try_for_each(f)
     }
-
-    fn get<'a, L>(&'a self, i: L) -> Option<&'a <Self as RandomAccessBulk>::ItemPointee>
-    where
-        Self: 'a,
-        L: LengthValue
-    {
-        self.inner.get(length::value::len(i))
-    }
-    fn get_mut<'a, L>(&'a mut self, i: L) -> Option<&'a mut <Self as RandomAccessBulk>::ItemPointee>
-    where
-        Self: 'a,
-        L: LengthValue
-    {
-        self.inner.get_mut(length::value::len(i))
-    }
 }
 
 impl<T, A> DoubleEndedBulk for vec::IntoBulk<T, A>
@@ -150,41 +135,5 @@ where
             .into_bulk();
 
         (left, right)
-    }
-}
-
-impl<T, A> RandomAccessBulk for vec::IntoBulk<T, A>
-where
-    A: Allocator
-{
-    type ItemPointee = T;
-    type EachRef<'a> = slice::Bulk<'a, T>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-
-    fn each_ref<'a>(Self { inner }: &'a Self) -> Self::EachRef<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        inner.bulk()
-    }
-}
-impl<T, A> InplaceBulk for vec::IntoBulk<T, A>
-where
-    A: Allocator
-{
-    type EachMut<'a> = slice::BulkMut<'a, T>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a;
-    
-    fn each_mut<'a>(Self { inner }: &'a mut Self) -> Self::EachMut<'a>
-    where
-        Self::ItemPointee: 'a,
-        Self: 'a
-    {
-        inner.bulk_mut()
     }
 }

@@ -460,12 +460,14 @@ mod tests
     {
         let a = [1, 2, 3, 4];
 
-        let mut bulk = a.into_bulk();
+        let mut b = a;
 
-        bulk.try_swap_inplace(0, 3)?;
-        bulk.try_swap_inplace(1, 2)?;
+        b.bulk_mut().try_swap(0, 3)?;
+        b.bulk_mut().try_swap(1, 2)?;
 
-        let b = bulk.rev().collect_array();
+        let b =  b.into_bulk()
+            .rev()
+            .collect_array();
 
         assert_eq!(a, b);
         println!("{a:?}");

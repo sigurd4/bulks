@@ -304,21 +304,4 @@ mod test
         println!("b = {b:?}");
         println!("r = {r:?}");
     }
-
-    #[test]
-    fn test_random_access()
-    {
-        let a = [1, 2, 3, 4, 5, 6];
-
-        let mut b = a.into_bulk();
-
-        for [e1, e2] in b.each_mut().array_chunks::<2>()
-        {
-            core::mem::swap(e1, e2);
-        }
-
-        let a = b.array_chunks::<2>().flatten().collect_array();
-
-        println!("{a:?}")
-    }
 }

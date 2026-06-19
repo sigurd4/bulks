@@ -256,10 +256,8 @@ mod test
 
         let bulk = a.into_bulk().intersperse(b);
 
-        let c_ref = bulk.each_ref().collect::<String, _>();
         let c = bulk.collect::<String, _>();
 
-        assert_eq!(c, c_ref);
         println!("{:?}", c);
     }
 }

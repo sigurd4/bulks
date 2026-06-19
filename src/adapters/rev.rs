@@ -164,12 +164,11 @@ mod test
     fn it_works()
     {
         let a = [1, 2, 3, 4, 5, 6];
-        let mut b = a.into_bulk();
-            //.rev();
-        b.each_mut()
-            .for_each(|x| *x = 7 - *x);
-        let b = b.collect_array();
+        let b = a.into_bulk()
+            .rev()
+            .map(|x| 7 - x)
+            .collect_array();
 
-        println!("b = {b:?}");
+        assert_eq!(a, b)
     }
 }

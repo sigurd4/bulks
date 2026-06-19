@@ -2165,9 +2165,24 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         SplitBulk::split_at(self, length::value::saturating_sub(l, n))
     }
     
-    fn swap<L, R>(&mut self, lhs: L, rhs: R)
+    /// Consumes the bulk, and swaps two elements of it. Items must be mutably dereferenceable.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let mut a = b"Com Truise";
+    /// 
+    /// a.bulk_mut()
+    ///     .swap(0, 4);
+    /// 
+    /// assert_eq!(&left, b"Tom Cruise");
+    /// ```
+    fn swap<L, R>(self, lhs: L, rhs: R)
     where
-        Self::Item: ~const DerefMut,
+        Self: Sized,
+        Self::Item: ~const DerefMut<Target: Sized> + ~const Destruct,
         L: LengthValue,
         R: LengthValue
     {
@@ -2178,14 +2193,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
     }
 
-    fn try_swap<L, R>(&mut self, lhs: L, rhs: R) -> Result<(), OutOfRange>
+    fn try_swap<L, R>(self, lhs: L, rhs: R) -> Result<(), OutOfRange>
     where
-        Self::Item: ~const DerefMut,
+        Self: Sized,
+        Self::Item: ~const DerefMut<Target: Sized> + ~const Destruct,
         L: LengthValue,
         R: LengthValue
     {
         let n = self.length();
-        let bulk = self.each_mut();
 
         let j = length::value::min(lhs, rhs);
         let i = length::value::max(lhs, rhs);
@@ -2228,7 +2243,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             last: None
         };
 
-        bulk.take(length::value::add(i, [(); 1]))
+        self.take(length::value::add(i, [(); 1]))
             .skip(j)
             .step_by(length::value::sub(i, j))
             .for_each(&mut closure);
@@ -2241,7 +2256,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         {
             match (closure.first, closure.last)
             {
-                (Some(first), Some(last)) => { core::mem::swap(first, last); Ok(()) },
+                (Some(mut first), Some(mut last)) => { core::mem::swap(first.deref_mut(), last.deref_mut()); Ok(()) },
                 (Some(_), None) if length::value::eq(i, j) => Ok(()),
                 (Some(_), None) => Err(length::value::len(j)),
                 (None, None) | (None, Some(_)) => Err(length::value::len(i))
