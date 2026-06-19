@@ -40,7 +40,6 @@
 #![feature(iter_advance_by)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(associated_type_defaults)]
-#![feature(macro_metavar_expr_concat)]
 #![feature(const_eval_select)]
 #![feature(const_array)]
 #![cfg_attr(feature = "alloc", feature(allocator_api))]
