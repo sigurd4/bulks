@@ -70,7 +70,7 @@ where
 }
 impl<T, F, N> const Bulk for ResizeWith<T, F, N>
 where
-    T: ~const Bulk<Item: Copy + ~const Destruct>,
+    T: ~const Bulk<Item: ~const Destruct>,
     N: Length<Elem = ()> + ?Sized,
     F: ~const FnMut() -> T::Item + ~const Destruct
 {
@@ -118,7 +118,7 @@ where
 }
 impl<T, F, N> const DoubleEndedBulk for ResizeWith<T, F, N>
 where
-    T: ~const DoubleEndedBulk<Item: Copy + ~const Destruct> + ~const Bulk + ~const Destruct,
+    T: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk + ~const Destruct,
     N: Length<Elem = ()> + ?Sized,
     F: ~const Fn() -> T::Item + ~const Destruct,
     Self::IntoIter: DoubleEndedIterator
@@ -163,7 +163,7 @@ where
 }
 impl<T, F, N, NN, M, R> const SplitBulk<M> for ResizeWith<T, F, N>
 where
-    T: ~const SplitBulk<M, Item: Copy + ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
+    T: ~const SplitBulk<M, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
     N: Length<Elem = (), Value = NN> + ?Sized,
     F: ~const Fn() -> T::Item + ~const Destruct + Copy,
     NN: LengthValue<Metadata = N::Metadata, Length<()> = N, SaturatingSub<M> = R>,
