@@ -2193,6 +2193,28 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
     }
 
+    /// Consumes the bulk, and swaps two elements of it. Items must be mutably dereferenceable.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let mut a = *b"Com Truise";
+    /// 
+    /// std::assert_matches!(
+    ///     a.bulk_mut()
+    ///         .try_swap(0, 4),
+    ///     Ok(())
+    /// );
+    /// std::assert_matches!(
+    ///     a.bulk_mut()
+    ///         .try_swap(4, 10),
+    ///     Err(OutOfRange { i: 10, len: 10 })
+    /// );
+    /// 
+    /// assert_eq!(&a, b"Tom Cruise");
+    /// ```
     fn try_swap<L, R>(self, lhs: L, rhs: R) -> Result<(), OutOfRange>
     where
         Self: Sized,
