@@ -302,7 +302,7 @@ mod private
             }
         }
     }
-    unsafe impl<T> const IntoContained for T
+    const unsafe impl<T> IntoContained for T
     where
         T: ~const IntoBulk
     {
@@ -398,7 +398,7 @@ where
 {
 
 }
-impl<T, B> const IntoContainedBy<B> for T
+const impl<T, B> IntoContainedBy<B> for T
 where
     T: ~const IntoContained + EitherIntoBulk<B>,
     B: IntoIterator

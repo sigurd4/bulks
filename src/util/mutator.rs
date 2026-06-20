@@ -4,7 +4,7 @@ use array_trait::same::Same;
 
 pub struct Mutator<F>(pub(crate) F);
 
-impl<F, T> const FnOnce<(T,)> for Mutator<F>
+const impl<F, T> FnOnce<(T,)> for Mutator<F>
 where
     F: ~const FnOnce(&mut T),
     F: ~const Destruct
@@ -18,7 +18,7 @@ where
         x
     }
 }
-impl<F, T> const FnMut<(T,)> for Mutator<F>
+const impl<F, T> FnMut<(T,)> for Mutator<F>
 where
     F: ~const FnMut(&mut T)
 {
@@ -29,7 +29,7 @@ where
         x
     }
 }
-impl<F, T> const Fn<(T,)> for Mutator<F>
+const impl<F, T> Fn<(T,)> for Mutator<F>
 where
     F: ~const Fn(&mut T)
 {

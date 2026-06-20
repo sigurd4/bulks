@@ -34,7 +34,7 @@ pub struct Empty<T, P = T>(PhantomData<(T, P)>)
 where
     T: Borrow<P>;
 
-impl<T, P> const Clone for Empty<T, P>
+const impl<T, P> Clone for Empty<T, P>
 where
     T: Borrow<P>
 {
@@ -66,7 +66,7 @@ where
         core::iter::empty()
     }
 }
-impl<T> const IntoBulk for core::iter::Empty<T>
+const impl<T> IntoBulk for core::iter::Empty<T>
 {
     type IntoBulk = Empty<T>;
     
@@ -75,7 +75,7 @@ impl<T> const IntoBulk for core::iter::Empty<T>
         empty()
     }
 }
-impl<T, P> const Bulk for Empty<T, P>
+const impl<T, P> Bulk for Empty<T, P>
 where
     T: Borrow<P>
 {
@@ -131,7 +131,7 @@ where
         R::from_output(())
     }
 }
-impl<T, P> const DoubleEndedBulk for Empty<T, P>
+const impl<T, P> DoubleEndedBulk for Empty<T, P>
 where
     T: Borrow<P>
 {
@@ -152,7 +152,7 @@ where
         R::from_output(())
     }
 }
-impl<T, P, L> const SplitBulk<L> for Empty<T, P>
+const impl<T, P, L> SplitBulk<L> for Empty<T, P>
 where
     L: LengthValue,
     T: Borrow<P>
@@ -172,7 +172,7 @@ pub const trait EmptyBulk: ~const DoubleEndedBulk + StaticBulk<Length = [(); 0]>
 {
 
 }
-impl<T> const EmptyBulk for T
+const impl<T> EmptyBulk for T
 where
     T: ~const DoubleEndedBulk + StaticBulk<Length = [(); 0]>
 {

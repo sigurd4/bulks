@@ -17,7 +17,7 @@ where
         }
     }
 }
-impl<T, U, const REV: bool> const FnOnce<(T,)> for Stepper<U, REV>
+const impl<T, U, const REV: bool> FnOnce<(T,)> for Stepper<U, REV>
 where
     U: Step + Copy
 {
@@ -28,7 +28,7 @@ where
         (self.i, x)
     }
 }
-impl<T, U, const REV: bool> const FnMut<(T,)> for Stepper<U, REV>
+const impl<T, U, const REV: bool> FnMut<(T,)> for Stepper<U, REV>
 where
     U: ~const Step + Copy
 {

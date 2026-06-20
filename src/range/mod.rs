@@ -24,7 +24,7 @@ pub const trait BoundedRange<T>: ~const RangeBounds<T>
         matches!(self.end_bound(), Bound::Included(_))
     }
 }
-impl<T> const BoundedRange<T> for core::ops::Range<T>
+const impl<T> BoundedRange<T> for core::ops::Range<T>
 {
     fn steps(&self) -> (usize, Option<usize>)
     where
@@ -51,7 +51,7 @@ impl<T> const BoundedRange<T> for core::ops::Range<T>
         false
     }
 }
-impl<T> const BoundedRange<T> for core::ops::RangeInclusive<T>
+const impl<T> BoundedRange<T> for core::ops::RangeInclusive<T>
 {
     fn steps(&self) -> (usize, Option<usize>)
     where

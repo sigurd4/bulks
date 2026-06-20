@@ -197,7 +197,7 @@ where
         self.into_iter().rev().try_for_each(f)
     }
 }
-impl<A, B, L> const SplitBulk<L> for Zip<A, B>
+const impl<A, B, L> SplitBulk<L> for Zip<A, B>
 where
     A: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     B: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,

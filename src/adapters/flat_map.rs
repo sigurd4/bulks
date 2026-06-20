@@ -61,7 +61,7 @@ where
         }
     }
 }
-impl<I, U, F> const Bulk for FlatMap<I, F>
+const impl<I, U, F> Bulk for FlatMap<I, F>
 where
     I: ~const Bulk<Item: ~const Destruct>,
     F: ~const FnMut(I::Item) -> U + ~const Destruct,
@@ -108,7 +108,7 @@ where
             map: F,
             f: FF
         }
-        impl<F, FF, U, T> const FnOnce<(T,)> for Closure<F, FF>
+        const impl<F, FF, U, T> FnOnce<(T,)> for Closure<F, FF>
         where
             F: ~const FnOnce(T) -> U,
             U: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk>,
@@ -121,7 +121,7 @@ where
                 (self.map)(x).into_bulk().for_each(self.f)
             }
         }
-        impl<F, FF, U, T> const FnMut<(T,)> for Closure<F, FF>
+        const impl<F, FF, U, T> FnMut<(T,)> for Closure<F, FF>
         where
             F: ~const FnMut(T) -> U,
             U: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk>,
@@ -151,7 +151,7 @@ where
             map: F,
             f: FF
         }
-        impl<F, FF, U, T, R> const FnOnce<(T,)> for Closure<F, FF>
+        const impl<F, FF, U, T, R> FnOnce<(T,)> for Closure<F, FF>
         where
             F: ~const FnOnce(T) -> U,
             U: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk, Item: ~const Destruct>,
@@ -165,7 +165,7 @@ where
                 (self.map)(x).into_bulk().try_for_each(self.f)
             }
         }
-        impl<F, FF, U, T, R> const FnMut<(T,)> for Closure<F, FF>
+        const impl<F, FF, U, T, R> FnMut<(T,)> for Closure<F, FF>
         where
             F: ~const FnMut(T) -> U,
             U: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk, Item: ~const Destruct>,
@@ -185,7 +185,7 @@ where
         })
     }
 }
-impl<I, U, F> const DoubleEndedBulk for FlatMap<I, F>
+const impl<I, U, F> DoubleEndedBulk for FlatMap<I, F>
 where
     I: ~const DoubleEndedBulk<Item: ~const Destruct>,
     F: ~const FnMut(I::Item) -> U + ~const Destruct,
@@ -202,7 +202,7 @@ where
             map: F,
             f: FF
         }
-        impl<F, FF, U, T> const FnOnce<(T,)> for Closure<F, FF>
+        const impl<F, FF, U, T> FnOnce<(T,)> for Closure<F, FF>
         where
             F: ~const FnOnce(T) -> U,
             U: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk>,
@@ -215,7 +215,7 @@ where
                 (self.map)(x).into_bulk().rev_for_each(self.f)
             }
         }
-        impl<F, FF, U, T> const FnMut<(T,)> for Closure<F, FF>
+        const impl<F, FF, U, T> FnMut<(T,)> for Closure<F, FF>
         where
             F: ~const FnMut(T) -> U,
             U: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk>,
@@ -245,7 +245,7 @@ where
             map: F,
             f: FF
         }
-        impl<F, FF, U, T, R> const FnOnce<(T,)> for Closure<F, FF>
+        const impl<F, FF, U, T, R> FnOnce<(T,)> for Closure<F, FF>
         where
             F: ~const FnOnce(T) -> U,
             U: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk, Item: ~const Destruct>,
@@ -259,7 +259,7 @@ where
                 (self.map)(x).into_bulk().try_rev_for_each(self.f)
             }
         }
-        impl<F, FF, U, T, R> const FnMut<(T,)> for Closure<F, FF>
+        const impl<F, FF, U, T, R> FnMut<(T,)> for Closure<F, FF>
         where
             F: ~const FnMut(T) -> U,
             U: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk, Item: ~const Destruct>,

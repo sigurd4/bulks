@@ -50,7 +50,7 @@ where
         }
     }
 }
-impl<I, T> const Bulk for Intersperse<I>
+const impl<I, T> Bulk for Intersperse<I>
 where
     I: ~const Bulk<Item = T>,
     T: ~const Clone + ~const Destruct
@@ -105,7 +105,7 @@ where
         })
     }
 }
-impl<I, T> const DoubleEndedBulk for Intersperse<I>
+const impl<I, T> DoubleEndedBulk for Intersperse<I>
 where
     I: ~const DoubleEndedBulk<Item = T>,
     T: ~const Clone + ~const Destruct,
@@ -137,7 +137,7 @@ where
         })
     }
 }
-impl<I, T, L> const SplitBulk<L> for Intersperse<I>
+const impl<I, T, L> SplitBulk<L> for Intersperse<I>
 where
     I: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
     T: ~const Clone + ~const Destruct,
@@ -169,7 +169,7 @@ struct Closure<F, T>
     separator: T,
     insert: bool
 }
-impl<F, T> const FnOnce<(T,)> for Closure<F, T>
+const impl<F, T> FnOnce<(T,)> for Closure<F, T>
 where
     F: ~const FnMut(T) + ~const FnOnce(T),
     T: ~const Destruct
@@ -186,7 +186,7 @@ where
         f.call_once((x,))
     }
 }
-impl<F, T> const FnMut<(T,)> for Closure<F, T>
+const impl<F, T> FnMut<(T,)> for Closure<F, T>
 where
     F: ~const FnMut(T),
     T: ~const Clone
@@ -208,7 +208,7 @@ struct TryClosure<F, T>
     separator: T,
     insert: bool
 }
-impl<F, T, R> const FnOnce<(T,)> for TryClosure<F, T>
+const impl<F, T, R> FnOnce<(T,)> for TryClosure<F, T>
 where
     T: ~const Destruct,
     F: ~const FnMut(T) -> R + ~const Destruct,
@@ -226,7 +226,7 @@ where
         f(x)
     }
 }
-impl<F, T, R> const FnMut<(T,)> for TryClosure<F, T>
+const impl<F, T, R> FnMut<(T,)> for TryClosure<F, T>
 where
     T: ~const Clone + ~const Destruct,
     F: ~const FnMut(T) -> R,

@@ -16,7 +16,7 @@ impl<F> TakeOne<F>
     }
 }
 
-impl<F, Args> const FnOnce<Args> for TakeOne<F>
+const impl<F, Args> FnOnce<Args> for TakeOne<F>
 where
     F: ~const FnOnce<Args>,
     Args: Tuple
@@ -30,7 +30,7 @@ where
             .call_once(args)
     }
 }
-impl<F, Args> const FnMut<Args> for TakeOne<F>
+const impl<F, Args> FnMut<Args> for TakeOne<F>
 where
     F: ~const FnOnce<Args>,
     Args: Tuple

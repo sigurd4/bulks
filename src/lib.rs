@@ -399,7 +399,7 @@ pub mod asm
 #[cfg(test)]
 mod tests
 {
-    use crate::{option::MaybeBulk, *};
+    use crate::*;
 
     #[test]
     fn it_works()
@@ -447,7 +447,13 @@ mod tests
         assert_eq!(a, Some(2));
         assert_eq!(b, None);
 
-        fn maybe(_: impl IntoBulk<IntoBulk: MaybeBulk<Item = i32>>) {}
+        fn maybe<B>(bulk: B)
+        where
+            B: IntoBulk<Item = i32>,
+            Option<i32>: CollectionStrategy<B::IntoBulk, Option<i32>>
+        {
+            let (Some(_) | None): Option<i32> = bulk.into_bulk().collect();
+        }
 
         maybe(Some(1));
         maybe([1; 0]);

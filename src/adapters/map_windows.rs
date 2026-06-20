@@ -59,7 +59,7 @@ where
     }
 }
 
-impl<I: Bulk, F, U, const N: usize> const Bulk for MapWindows<I, F, N>
+const impl<I: Bulk, F, U, const N: usize> Bulk for MapWindows<I, F, N>
 where
     I: ~const Bulk<Item: ~const Destruct>,
     F: ~const FnMut(&[I::Item; N]) -> U + ~const Destruct
@@ -104,7 +104,7 @@ where
         })
     }
 }
-impl<I: Bulk, F, U, const N: usize> const DoubleEndedBulk for MapWindows<I, F, N>
+const impl<I: Bulk, F, U, const N: usize> DoubleEndedBulk for MapWindows<I, F, N>
 where
     I: ~const DoubleEndedBulk<Item: ~const Destruct>,
     F: ~const FnMut(&[I::Item; N]) -> U + ~const Destruct,
@@ -146,7 +146,7 @@ where
     f: FF,
     buffer: ArrayBuffer<T, N, REV>
 }
-impl<F, FF, T, U, const N: usize, const REV: bool> const FnOnce<(T,)> for Closure<F, FF, T, U, N, REV>
+const impl<F, FF, T, U, const N: usize, const REV: bool> FnOnce<(T,)> for Closure<F, FF, T, U, N, REV>
 where
     T: ~const Destruct,
     F: ~const FnMut(&[T; N]) -> U + ~const Destruct,
@@ -159,7 +159,7 @@ where
         self.call_mut(args)
     }
 }
-impl<F, FF, T, U, const N: usize, const REV: bool> const FnMut<(T,)> for Closure<F, FF, T, U, N, REV>
+const impl<F, FF, T, U, const N: usize, const REV: bool> FnMut<(T,)> for Closure<F, FF, T, U, N, REV>
 where
     T: ~const Destruct,
     F: ~const FnMut(&[T; N]) -> U,
@@ -185,7 +185,7 @@ where
     f: FF,
     buffer: ArrayBuffer<T, N, REV>
 }
-impl<F, FF, T, U, R, const N: usize, const REV: bool> const FnOnce<(T,)> for TryClosure<F, FF, T, U, R, N, REV>
+const impl<F, FF, T, U, R, const N: usize, const REV: bool> FnOnce<(T,)> for TryClosure<F, FF, T, U, R, N, REV>
 where
     T: ~const Destruct,
     F: ~const FnMut(&[T; N]) -> U + ~const Destruct,
@@ -199,7 +199,7 @@ where
         self.call_mut(args)
     }
 }
-impl<F, FF, T, U, R, const N: usize, const REV: bool> const FnMut<(T,)> for TryClosure<F, FF, T, U, R, N, REV>
+const impl<F, FF, T, U, R, const N: usize, const REV: bool> FnMut<(T,)> for TryClosure<F, FF, T, U, R, N, REV>
 where
     T: ~const Destruct,
     F: ~const FnMut(&[T; N]) -> U,

@@ -218,7 +218,7 @@ where
         self.into_iter().rev().try_for_each(f)
     }
 }
-impl<Lhs, Rhs, F, O, L> const SplitBulk<L> for Merge<Lhs, Rhs, F>
+const impl<Lhs, Rhs, F, O, L> SplitBulk<L> for Merge<Lhs, Rhs, F>
 where
     Lhs: ~const SplitBulk<L, Item: Into<O>>,
     Rhs: ~const SplitBulk<L, Item: Into<O>>,

@@ -56,7 +56,7 @@ macro_rules! impl_bulk {
                 self.slice.into_iter()
             }
         }
-        impl<$a, $t> const IntoBulk for $slice
+        const impl<$a, $t> IntoBulk for $slice
         where
             $t: $a
         {
@@ -69,7 +69,7 @@ macro_rules! impl_bulk {
                 }
             }
         }
-        impl<'a, T> const Bulk for slice::$bulk<'a, T>
+        const impl<'a, T> Bulk for slice::$bulk<'a, T>
         where
             T: 'a
         {
@@ -110,7 +110,7 @@ macro_rules! impl_bulk {
                 R: ~const Try<Output = (), Residual: ~const Destruct>
             $try_for_each
         }
-        impl<$a, $t> const DoubleEndedBulk for slice::$bulk<$a, $t>
+        const impl<$a, $t> DoubleEndedBulk for slice::$bulk<$a, $t>
         {
             #[inline]
             fn rev_for_each<F>($self_rev_for_each, mut $f_rev_for_each: F)

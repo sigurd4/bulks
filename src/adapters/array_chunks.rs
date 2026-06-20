@@ -161,7 +161,7 @@ where
         bulk.into_iter().array_chunks()
     }
 }
-impl<I, const N: usize> const Bulk for ArrayChunks<I, N>
+const impl<I, const N: usize> Bulk for ArrayChunks<I, N>
 where
     I: ~const Bulk<Item: ~const Destruct>,
 {
@@ -198,7 +198,7 @@ where
         Try::from_output(())
     }
 }
-impl<I, const N: usize> const DoubleEndedBulk for ArrayChunks<I, N>
+const impl<I, const N: usize> DoubleEndedBulk for ArrayChunks<I, N>
 where
     I: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk,
 {
@@ -225,7 +225,7 @@ where
         Try::from_output(())
     }
 }
-impl<I, const N: usize, L> const SplitBulk<L> for ArrayChunks<I, N>
+const impl<I, const N: usize, L> SplitBulk<L> for ArrayChunks<I, N>
 where
     I: ~const SplitBulk<length::value::SaturatingMul<L, [(); N]>, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
     L: LengthValue

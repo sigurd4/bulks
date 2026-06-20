@@ -8,8 +8,6 @@ pub mod option
 {
     use array_trait::length::Length;
 
-    use crate::{CollectionAdapter, FromBulk, StaticBulk};
-
     pub struct IntoBulk<T>
     {
         pub(super) option: Option<T>
@@ -25,44 +23,7 @@ pub mod option
         pub(super) option: &'a mut Option<T>
     }
 
-    pub trait MaybeLength = Length<Max<[(); 1]> = [(); 1], Elem = ()>;
-
-    pub trait Maybe: CollectionAdapter<Elem = Self::Item> + crate::IntoBulk<IntoBulk: MaybeBulk> + FromBulk<Self>
-    {
-        type Not: Maybe<Not = Self>;
-    }
-    impl<T> Maybe for Option<T>
-    {
-        type Not = Option<T>;
-    }
-    impl<T> Maybe for [T; 0]
-    {
-        type Not = [T; 1];
-    }
-    impl<T> Maybe for [T; 1]
-    {
-        type Not = [T; 0];
-    }
-
-    pub const trait MaybeBulk: ~const crate::Bulk<MaxLength: MaybeLength, MinLength: MaybeLength>
-    {
-        type Maybe: Maybe;
-    }
-
-    impl<A, T> const MaybeBulk for T
-    where
-        T: ~const crate::Bulk<Item = A, MaxLength: MaybeLength, MinLength: MaybeLength>
-    {
-        default type Maybe = Option<A>;
-    }
-    impl<A, T, const N: usize> const MaybeBulk for T
-    where
-        T: ~const crate::Bulk<Item = A> + StaticBulk<Array<()> = [(); N], Array<A> = [A; N]>,
-        [A; N]: Maybe<Item = A>,
-        [(); N]: MaybeLength
-    {
-        type Maybe = [A; N];
-    }
+    pub(crate) trait MaybeLength = Length<Max<[(); 1]> = [(); 1], Elem = ()>;
 }
 
 macro_rules! impl_option {
@@ -83,7 +44,7 @@ macro_rules! impl_option {
                 self.option.into_iter()
             }
         }
-        impl<$($a,)? $t> const IntoBulk for $option
+        const impl<$($a,)? $t> IntoBulk for $option
         {
             type IntoBulk = option::$bulk<$($a,)? $t>;
 
@@ -94,8 +55,9 @@ macro_rules! impl_option {
                 }
             }
         }
-        impl<$($a,)? $t> const Bulk for option::$bulk<$($a,)? $t>
+        const impl<$($a,)? $t> Bulk for option::$bulk<$($a,)? $t>
         {
+            type Length = [()];
             type MinLength = [(); 0];
             type MaxLength = [(); 1];
 
@@ -171,7 +133,7 @@ macro_rules! impl_option {
         }
     };
 }
-impl<T, L> const SplitBulk<L> for option::IntoBulk<T>
+const impl<T, L> SplitBulk<L> for option::IntoBulk<T>
 where
     L: LengthValue
 {

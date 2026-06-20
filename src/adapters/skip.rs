@@ -44,7 +44,7 @@ where
             .skip(length::len_metadata::<N>(n))
     }
 }
-impl<T, N> const Bulk for Skip<T, N>
+const impl<T, N> Bulk for Skip<T, N>
 where
     T: ~const Bulk<Item: ~const Destruct>,
     N: Length<Elem = ()> + ?Sized
@@ -73,7 +73,7 @@ where
             f: F,
             n: usize
         }
-        impl<F, T> const FnOnce<(T,)> for Closure<F>
+        const impl<F, T> FnOnce<(T,)> for Closure<F>
         where
             T: ~const Destruct,
             F: ~const FnOnce(T) + ~const Destruct
@@ -89,7 +89,7 @@ where
                 }
             }
         }
-        impl<F, T> const FnMut<(T,)> for Closure<F>
+        const impl<F, T> FnMut<(T,)> for Closure<F>
         where
             T: ~const Destruct,
             F: ~const FnMut(T)
@@ -125,7 +125,7 @@ where
             f: F,
             n: usize
         }
-        impl<F, T, R> const FnOnce<(T,)> for Closure<F>
+        const impl<F, T, R> FnOnce<(T,)> for Closure<F>
         where
             T: ~const Destruct,
             F: ~const FnOnce(T) -> R + ~const Destruct,
@@ -143,7 +143,7 @@ where
                 R::from_output(())
             }
         }
-        impl<F, T, R> const FnMut<(T,)> for Closure<F>
+        const impl<F, T, R> FnMut<(T,)> for Closure<F>
         where
             T: ~const Destruct,
             F: ~const FnMut(T) -> R,
@@ -171,7 +171,7 @@ where
         })
     }
 }
-impl<T, N> const DoubleEndedBulk for Skip<T, N>
+const impl<T, N> DoubleEndedBulk for Skip<T, N>
 where
     T: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk,
     N: Length<Elem = ()> + ?Sized
@@ -196,7 +196,7 @@ where
         bulk.rev().take(m).try_for_each(f)
     }
 }
-impl<T, N, NN, M, L, R> const SplitBulk<M> for Skip<T, N>
+const impl<T, N, NN, M, L, R> SplitBulk<M> for Skip<T, N>
 where
     T: ~const SplitBulk<L, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
     N: Length<Elem = (), Value = NN> + ?Sized,

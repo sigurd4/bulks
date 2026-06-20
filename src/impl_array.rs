@@ -76,7 +76,7 @@ macro_rules! impl_bulk {
                 array.into_iter()
             }
         }
-        impl<$($a,)? $t, const $n: usize> const IntoBulk for $array
+        const impl<$($a,)? $t, const $n: usize> IntoBulk for $array
         {
             type IntoBulk = array::$bulk<$($a,)? $t, $n>;
             
@@ -88,7 +88,7 @@ macro_rules! impl_bulk {
                 }
             }
         }
-        impl<$($a,)? $t, const $n: usize> const Bulk for array::$bulk<$($a,)? $t, $n>
+        const impl<$($a,)? $t, const $n: usize> Bulk for array::$bulk<$($a,)? $t, $n>
         {
             type MinLength = [(); $n];
             type MaxLength = [(); $n];
@@ -132,7 +132,7 @@ macro_rules! impl_bulk {
                 R: ~const Try<Output = (), Residual: ~const Destruct>
             $try_for_each
         }
-        impl<$($a,)? $t, const $n: usize> const DoubleEndedBulk for array::$bulk<$($a,)? $t, $n>
+        const impl<$($a,)? $t, const $n: usize> DoubleEndedBulk for array::$bulk<$($a,)? $t, $n>
         {
             #[inline]
             fn rev_for_each<F>($self_rev_for_each, mut $f_rev_for_each: F)
@@ -164,7 +164,7 @@ macro_rules! impl_bulk {
                 split.same().ok().unwrap()
             }
         }
-        impl<$($a,)? T, const N: usize, const M: usize> const SplitBulk<[(); M]> for array::$bulk<$($a,)? T, N>
+        const impl<$($a,)? T, const N: usize, const M: usize> SplitBulk<[(); M]> for array::$bulk<$($a,)? T, N>
         where
             [(); N.saturating_sub(M)]:,
             [(); N.min(M)]:

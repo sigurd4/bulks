@@ -51,7 +51,7 @@ where
     }
 }
 
-impl<I> const Default for Rev<I>
+const impl<I> Default for Rev<I>
 where
     I: ~const Bulk + DoubleEndedBulk + ~const Default
 {
@@ -73,7 +73,7 @@ where
         self.into_inner().into_iter().rev()
     }
 }
-impl<I> const Bulk for Rev<I>
+const impl<I> Bulk for Rev<I>
 where
     I: ~const Bulk + ~const DoubleEndedBulk
 {
@@ -109,7 +109,7 @@ where
         bulk.try_rev_for_each(f)
     }
 }
-impl<I> const DoubleEndedBulk for Rev<I>
+const impl<I> DoubleEndedBulk for Rev<I>
 where
     I: ~const Bulk + ~const DoubleEndedBulk
 {
@@ -132,7 +132,7 @@ where
         bulk.try_for_each(f)
     }
 }
-impl<I, N, L, R> const SplitBulk<L> for Rev<I>
+const impl<I, N, L, R> SplitBulk<L> for Rev<I>
 where
     I: ~const SplitBulk<R, Left: ~const Bulk + DoubleEndedBulk, Right: ~const Bulk + DoubleEndedBulk> + ~const Bulk<Length: Length<Value = N> + Pointee<Metadata = N::Metadata>> + ~const DoubleEndedBulk,
     N: LengthValue<SaturatingSub<L> = R>,

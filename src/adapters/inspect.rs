@@ -60,7 +60,7 @@ where
         bulk.into_iter().inspect(f)
     }
 }
-impl<I, F> const Bulk for Inspect<I, F>
+const impl<I, F> Bulk for Inspect<I, F>
 where
     I: ~const Bulk,
     F: ~const FnMut(&I::Item) + ~const Destruct
@@ -114,7 +114,7 @@ where
         })
     }
 }
-impl<I, F> const DoubleEndedBulk for Inspect<I, F>
+const impl<I, F> DoubleEndedBulk for Inspect<I, F>
 where
     I: ~const DoubleEndedBulk,
     F: ~const FnMut(&I::Item) + ~const Destruct
@@ -144,7 +144,7 @@ where
         })
     }
 }
-impl<I, F, L> const SplitBulk<L> for Inspect<I, F>
+const impl<I, F, L> SplitBulk<L> for Inspect<I, F>
 where
     I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
     F: ~const FnMut(&I::Item) + ~const Clone + ~const Destruct,
@@ -170,7 +170,7 @@ struct Closure<F, FF>
     inspect: F,
     f: FF
 }
-impl<F, FF, T, R> const FnOnce<(T,)> for Closure<F, FF>
+const impl<F, FF, T, R> FnOnce<(T,)> for Closure<F, FF>
 where
     F: ~const FnOnce(&T),
     FF: ~const FnOnce(T) -> R
@@ -183,7 +183,7 @@ where
         (self.f)(x)
     }
 }
-impl<F, FF, T, R> const FnMut<(T,)> for Closure<F, FF>
+const impl<F, FF, T, R> FnMut<(T,)> for Closure<F, FF>
 where
     F: ~const FnMut(&T),
     FF: ~const FnMut(T) -> R

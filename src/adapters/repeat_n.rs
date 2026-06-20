@@ -106,7 +106,7 @@ where
         core::iter::repeat_n(element, length::len_metadata::<N>(n))
     }
 }
-impl<A, N> const Bulk for RepeatN<A, N>
+const impl<A, N> Bulk for RepeatN<A, N>
 where
     A: ~const Clone + ~const Destruct,
     N: Length<Elem = ()> + ?Sized
@@ -158,7 +158,7 @@ where
         R::from_output(())
     }
 }
-impl<A, N> const DoubleEndedBulk for RepeatN<A, N>
+const impl<A, N> DoubleEndedBulk for RepeatN<A, N>
 where
     A: ~const Clone + ~const Destruct,
     N: Length<Elem = ()> + ?Sized
@@ -179,7 +179,7 @@ where
         self.try_for_each(f)
     }
 }
-impl<A, N, M, L, R> const SplitBulk<M> for RepeatN<A, N>
+const impl<A, N, M, L, R> SplitBulk<M> for RepeatN<A, N>
 where
     N: Length<Elem = (), Value: LengthValue<Min<M> = L, SaturatingSub<M> = R>>,
     A: ~const Clone + ~const Destruct,
@@ -202,7 +202,7 @@ where
     }
 }
 
-impl<A, N> const From<RepeatN<A, N>> for RepeatNWith<YieldOnce<A>, N>
+const impl<A, N> From<RepeatN<A, N>> for RepeatNWith<YieldOnce<A>, N>
 where
     A: Clone,
     N: Length<Elem = ()>

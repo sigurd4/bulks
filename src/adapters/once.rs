@@ -43,7 +43,7 @@ impl<T> IntoIterator for Once<T>
         core::iter::once(self.0)
     }
 }
-impl<T> const Bulk for Once<T>
+const impl<T> Bulk for Once<T>
 {
     type MinLength = [(); 1];
     type MaxLength = [(); 1];
@@ -89,7 +89,7 @@ impl<T> const Bulk for Once<T>
         f(self.0)
     }
 }
-impl<T> const DoubleEndedBulk for Once<T>
+const impl<T> DoubleEndedBulk for Once<T>
 {
     fn rev_for_each<FF>(self, f: FF)
     where
@@ -108,7 +108,7 @@ impl<T> const DoubleEndedBulk for Once<T>
         self.try_for_each(f)
     }
 }
-impl<T, L> const SplitBulk<L> for Once<T>
+const impl<T, L> SplitBulk<L> for Once<T>
 where
     L: LengthValue,
     OnceWith<YieldOnce<T>>: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk>
@@ -128,20 +128,20 @@ pub const trait OnceBulk: ~const DoubleEndedBulk + StaticBulk<Array<<Self as Int
 {
 
 }
-impl<T> const OnceBulk for T
+const impl<T> OnceBulk for T
 where
     T: ~const DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 1]>
 {
 
 }
-impl<A> const From<Once<A>> for OnceWith<YieldOnce<A>>
+const impl<A> From<Once<A>> for OnceWith<YieldOnce<A>>
 {
     fn from(value: Once<A>) -> Self
     {
         crate::once_with(YieldOnce::new(value.0))
     }
 }
-impl<A> const From<Once<A>> for RepeatN<A, [(); 1]>
+const impl<A> From<Once<A>> for RepeatN<A, [(); 1]>
 where
     A: Clone
 {
@@ -150,7 +150,7 @@ where
         crate::repeat_n(value.0, [(); 1])
     }
 }
-impl<A> const From<Once<A>> for RepeatNWith<TakeOne<YieldOnce<A>>, [(); 1]>
+const impl<A> From<Once<A>> for RepeatNWith<TakeOne<YieldOnce<A>>, [(); 1]>
 {
     fn from(value: Once<A>) -> Self
     {

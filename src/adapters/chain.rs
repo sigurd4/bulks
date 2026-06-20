@@ -91,7 +91,7 @@ where
         }
     }
 }
-impl<A, B, T> const Bulk for Chain<A, B>
+const impl<A, B, T> Bulk for Chain<A, B>
 where
     A: ~const Bulk<Item = T> + ~const Destruct,
     B: ~const Bulk<Item = T> + ~const Destruct
@@ -146,7 +146,7 @@ where
         b.try_for_each(f)
     }
 }
-impl<A, B, T> const DoubleEndedBulk for Chain<A, B>
+const impl<A, B, T> DoubleEndedBulk for Chain<A, B>
 where
     A: ~const DoubleEndedBulk<Item = T> + ~const Destruct,
     B: ~const DoubleEndedBulk<Item = T> + ~const Destruct,
@@ -176,7 +176,7 @@ where
         a.try_rev_for_each(f)
     }
 }
-impl<A, B, T, D, L, R> const SplitBulk<L> for Chain<A, B>
+const impl<A, B, T, D, L, R> SplitBulk<L> for Chain<A, B>
 where
     A: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk, Length: Length<Value = D>> + ~const Bulk + ~const Destruct,
     B: ~const SplitBulk<R, Item = T, Left: ~const Bulk, Right: ~const Bulk> + ~const Destruct,

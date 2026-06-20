@@ -29,7 +29,7 @@ where
     }
 }
 
-impl<I, T> const Default for Enumerate<I>
+const impl<I, T> Default for Enumerate<I>
 where
     I: ~const Bulk<Item = T> + ~const Default
 {
@@ -52,7 +52,7 @@ where
         bulk.into_iter().enumerate()
     }
 }
-impl<I, T> const Bulk for Enumerate<I>
+const impl<I, T> Bulk for Enumerate<I>
 where
     I: ~const Bulk<Item = T>,
     T: ~const Destruct
@@ -136,7 +136,7 @@ where
         })
     }
 }
-impl<I, T> const DoubleEndedBulk for Enumerate<I>
+const impl<I, T> DoubleEndedBulk for Enumerate<I>
 where
     I: ~const DoubleEndedBulk<Item = T> + ~const Bulk,
     T: ~const Destruct
@@ -169,7 +169,7 @@ where
         })
     }
 }
-impl<I, T, L> const SplitBulk<L> for Enumerate<I>
+const impl<I, T, L> SplitBulk<L> for Enumerate<I>
 where
     I: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
     T: ~const Destruct,
@@ -196,7 +196,7 @@ struct Closure<F, const REV: bool>
     i: usize,
     f: F
 }
-impl<F, T, R, const REV: bool> const FnOnce<(T,)> for Closure<F, REV>
+const impl<F, T, R, const REV: bool> FnOnce<(T,)> for Closure<F, REV>
 where
     F: ~const FnOnce((usize, T)) -> R
 {
@@ -207,7 +207,7 @@ where
         (self.f)((self.i - REV as usize, x))
     }
 }
-impl<F, T, R, const REV: bool> const FnMut<(T,)> for Closure<F, REV>
+const impl<F, T, R, const REV: bool> FnMut<(T,)> for Closure<F, REV>
 where
     F: ~const FnMut((usize, T)) -> R
 {
@@ -225,60 +225,6 @@ where
         result
     }
 }
-/*impl<'a, I, T> const RandomAccessBulk<'a> for Enumerate<I>
-where
-    I: ~const RandomAccessBulk<'a, Item = T>,
-    T: ~const Destruct
-{
-    type ItemRef = (usize, I::ItemRef);
-    type EachRef = Enumerate<I::EachRef>;
-
-    fn each_ref(Self { bulk }: &'a Self) -> Self::EachRef
-    {
-        bulk.each_ref().enumerate()
-    }
-}
-impl<'a, I, T> const RandomAccessBulkSpec<'a> for Enumerate<I>
-where
-    I: ~const RandomAccessBulk<'a, Item = T>,
-    T: ~const Destruct
-{
-    fn _get<L>(Self { bulk }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk<'a>>::ItemRef>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        let x = bulk.get(i)?;
-        Some((length::value::len(i), x))
-    }
-}
-impl<'a, I, T> const InplaceBulk<'a> for Enumerate<I>
-where
-    I: ~const InplaceBulk<'a, Item = T>,
-    T: ~const Destruct
-{
-    type ItemMut = (usize, I::ItemMut);
-    type EachMut = Enumerate<I::EachMut>;
-
-    fn each_mut(Self { bulk }: &'a mut Self) -> Self::EachMut
-    {
-        bulk.each_mut().enumerate()
-    }
-}
-impl<'a, I, T> const InplaceBulkSpec<'a> for Enumerate<I>
-where
-    I: ~const InplaceBulk<'a, Item = T>,
-    T: ~const Destruct
-{
-    fn _get_mut<L>(Self { bulk }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk<'a>>::ItemMut>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        let x = bulk.get_mut(i)?;
-        Some((length::value::len(i), x))
-    }
-}*/
 
 #[cfg(test)]
 mod test

@@ -31,7 +31,7 @@ where
     }
 }
 
-impl<'a, I, T> const Default for Copied<I>
+const impl<'a, I, T> Default for Copied<I>
 where
     I: ~const Bulk<Item = &'a T> + ~const Default,
     T: Copy + 'a
@@ -56,7 +56,7 @@ where
         bulk.into_iter().copied()
     }
 }
-impl<'a, I, T> const Bulk for Copied<I>
+const impl<'a, I, T> Bulk for Copied<I>
 where
     I: ~const Bulk<Item = &'a T>,
     T: Copy + 'a
@@ -125,7 +125,7 @@ where
         })
     }
 }
-impl<'a, I, T> const DoubleEndedBulk for Copied<I>
+const impl<'a, I, T> DoubleEndedBulk for Copied<I>
 where
     I: ~const DoubleEndedBulk<Item = &'a T>,
     T: Copy + 'a
@@ -153,7 +153,7 @@ where
         })
     }
 }
-impl<'a, I, T, L> const SplitBulk<L> for Copied<I>
+const impl<'a, I, T, L> SplitBulk<L> for Copied<I>
 where
     I: ~const SplitBulk<L, Item = &'a T, Left: ~const Bulk, Right: ~const Bulk>,
     T: Copy + 'a,
@@ -178,7 +178,7 @@ struct Closure<F>
 {
     f: F
 }
-impl<F, T, R> const FnOnce<(&T,)> for Closure<F>
+const impl<F, T, R> FnOnce<(&T,)> for Closure<F>
 where
     F: ~const FnOnce(T) -> R,
     T: Copy
@@ -190,7 +190,7 @@ where
         (self.f)(*x)
     }
 }
-impl<F, T, R> const FnMut<(&T,)> for Closure<F>
+const impl<F, T, R> FnMut<(&T,)> for Closure<F>
 where
     F: ~const FnMut(T) -> R,
     T: Copy

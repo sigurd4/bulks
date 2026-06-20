@@ -51,7 +51,7 @@ pub const trait AsBulk
     }
 }
 
-impl<T> const AsBulk for T
+const impl<T> AsBulk for T
 where
     T: ?Sized
 {
@@ -81,7 +81,7 @@ pub const trait IntoBulk: IntoIterator<Item: Thin, IntoIter: ExactSizeIterator>
     fn into_bulk(self) -> Self::IntoBulk;
 }
 
-impl<T> const IntoBulk for T
+const impl<T> IntoBulk for T
 where 
     Self: ~const Bulk
 {

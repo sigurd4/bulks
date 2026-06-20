@@ -108,7 +108,7 @@ where
         bulk.into_iter().map(f)
     }
 }
-impl<I, F> const Bulk for Map<I, F>
+const impl<I, F> Bulk for Map<I, F>
 where
     I: ~const Bulk<Item: ~const Destruct>,
     F: ~const FnMut<(I::Item,)> + ~const Destruct
@@ -160,7 +160,7 @@ where
         })
     }
 }
-impl<I, F> const DoubleEndedBulk for Map<I, F>
+const impl<I, F> DoubleEndedBulk for Map<I, F>
 where
     I: ~const DoubleEndedBulk<Item: ~const Destruct>,
     F: ~const FnMut<(I::Item,)> + ~const Destruct
@@ -189,7 +189,7 @@ where
         })
     }
 }
-impl<I, F, L> const SplitBulk<L> for Map<I, F>
+const impl<I, F, L> SplitBulk<L> for Map<I, F>
 where
     I: ~const SplitBulk<L, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
     F: ~const FnMut<(I::Item,)> + ~const Clone + ~const Destruct,
@@ -215,7 +215,7 @@ struct Closure<M, F>
     map: M,
     f: F
 }
-impl<M, F, T, U, R> const FnOnce<(T,)> for Closure<M, F>
+const impl<M, F, T, U, R> FnOnce<(T,)> for Closure<M, F>
 where
     M: ~const FnOnce(T) -> U,
     F: ~const FnOnce(U) -> R
@@ -228,7 +228,7 @@ where
         f(map(x))
     }
 }
-impl<M, F, T, U, R> const FnMut<(T,)> for Closure<M, F>
+const impl<M, F, T, U, R> FnMut<(T,)> for Closure<M, F>
 where
     M: ~const FnMut(T) -> U,
     F: ~const FnMut(U) -> R

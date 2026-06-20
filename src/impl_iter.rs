@@ -126,7 +126,7 @@ where
     }
 }
 
-impl<R> const Bulk for iter::Bulk<R>
+const impl<R> Bulk for iter::Bulk<R>
 where
     R: ~const BoundedRange<R::Item> + ExactSizeIterator<Item: Copy + ~const Step> + ~const Destruct,
 {

@@ -74,7 +74,7 @@ where
         vec_spec::CollectVecSpec::<Self::TryNearest>::try_collect_vec(self)
     }
 }
-impl<I> const CollectNearest for I
+const impl<I> CollectNearest for I
 where
     I: ~const Bulk + StaticBulk
 {

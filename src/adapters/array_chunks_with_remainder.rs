@@ -47,7 +47,7 @@ where
             skip: usize
         }
 
-        impl<'a, T, F, const N: usize, const REV: bool> const FnOnce<(T,)> for Closure<'a, T, F, N, REV>
+        const impl<'a, T, F, const N: usize, const REV: bool> FnOnce<(T,)> for Closure<'a, T, F, N, REV>
         where
             T: ~const Destruct,
             F: ~const FnMut([T; N]) + ~const Destruct
@@ -59,7 +59,7 @@ where
                 self.call_mut(args)
             }
         }
-        impl<'a, T, F, const N: usize, const REV: bool> const FnMut<(T,)> for Closure<'a, T, F, N, REV>
+        const impl<'a, T, F, const N: usize, const REV: bool> FnMut<(T,)> for Closure<'a, T, F, N, REV>
         where
             T: ~const Destruct,
             F: ~const FnMut([T; N]) + ~const Destruct
@@ -107,7 +107,7 @@ where
             skip: usize
         }
 
-        impl<'a, T, F, R, const N: usize, const REV: bool> const FnOnce<(T,)> for Closure<'a, T, F, R, N, REV>
+        const impl<'a, T, F, R, const N: usize, const REV: bool> FnOnce<(T,)> for Closure<'a, T, F, R, N, REV>
         where
             T: ~const Destruct,
             F: ~const FnMut([T; N]) -> R + ~const Destruct,
@@ -120,7 +120,7 @@ where
                 self.call_mut(args)
             }
         }
-        impl<'a, T, F, R, const N: usize, const REV: bool> const FnMut<(T,)> for Closure<'a, T, F, R, N, REV>
+        const impl<'a, T, F, R, const N: usize, const REV: bool> FnMut<(T,)> for Closure<'a, T, F, R, N, REV>
         where
             T: ~const Destruct,
             F: ~const FnMut([T; N]) -> R + ~const Destruct,
@@ -166,7 +166,7 @@ where
         iter::ArrayChunksWithRemainder::new(bulk.into_iter(), remainder)
     }
 }
-impl<'a, I, const N: usize, const REV: bool> const Bulk for ArrayChunksWithRemainder<'a, I, N, REV>
+const impl<'a, I, const N: usize, const REV: bool> Bulk for ArrayChunksWithRemainder<'a, I, N, REV>
 where
     I: ~const Bulk<Item: ~const Destruct>
 {

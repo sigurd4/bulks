@@ -48,7 +48,7 @@ where
             .map(Stepper::new(initial_count))
     }
 }
-impl<I, T, U> const Bulk for EnumerateFrom<I, U>
+const impl<I, T, U> Bulk for EnumerateFrom<I, U>
 where
     I: ~const Bulk<Item = T>,
     T: ~const Destruct,
@@ -117,7 +117,7 @@ where
         })
     }
 }
-impl<I, T, U> const DoubleEndedBulk for EnumerateFrom<I, U>
+const impl<I, T, U> DoubleEndedBulk for EnumerateFrom<I, U>
 where
     I: ~const DoubleEndedBulk<Item = T> + ~const Bulk,
     T: ~const Destruct,
@@ -150,7 +150,7 @@ where
         })
     }
 }
-impl<I, T, U, L> const SplitBulk<L> for EnumerateFrom<I, U>
+const impl<I, T, U, L> SplitBulk<L> for EnumerateFrom<I, U>
 where
     I: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
     T: ~const Destruct,
@@ -180,7 +180,7 @@ where
     i: Stepper<U, REV>,
     f: F
 }
-impl<F, T, U, R, const REV: bool> const FnOnce<(T,)> for Closure<F, U, REV>
+const impl<F, T, U, R, const REV: bool> FnOnce<(T,)> for Closure<F, U, REV>
 where
     F: ~const FnOnce((U, T)) -> R,
     U: Step + Copy,
@@ -194,7 +194,7 @@ where
         f(i.call_once(args))
     }
 }
-impl<F, T, U, R, const REV: bool> const FnMut<(T,)> for Closure<F, U, REV>
+const impl<F, T, U, R, const REV: bool> FnMut<(T,)> for Closure<F, U, REV>
 where
     F: ~const FnMut((U, T)) -> R,
     U: Step + Copy,
@@ -206,64 +206,6 @@ where
         f(i.call_mut(args))
     }
 }
-/*impl<'a, I, T, U> const RandomAccessBulk<'a> for EnumerateFrom<I, U>
-where
-    I: ~const RandomAccessBulk<'a, Item = T>,
-    T: ~const Destruct,
-    U: ~const Step + Copy + ~const Destruct + 'a
-{
-    type ItemRef = (U, I::ItemRef);
-    type EachRef = EnumerateFrom<I::EachRef, U>;
-
-    fn each_ref(Self { bulk, initial_count }: &'a Self) -> Self::EachRef
-    {
-        bulk.each_ref().enumerate_from(*initial_count)
-    }
-}
-impl<'a, I, T, U> const RandomAccessBulkSpec<'a> for EnumerateFrom<I, U>
-where
-    I: ~const RandomAccessBulk<'a, Item = T>,
-    T: ~const Destruct,
-    U: ~const Step + Copy + ~const Destruct
-{
-    fn _get<L>(Self { bulk, initial_count }: &'a Self, i: L) -> Option<<Self as RandomAccessBulk<'a>>::ItemRef>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        let x = bulk.get(i)?;
-        Some((Step::forward(*initial_count, length::value::len(i)), x))
-    }
-}
-impl<'a, I, T, U> const InplaceBulk<'a> for EnumerateFrom<I, U>
-where
-    I: ~const InplaceBulk<'a, Item = T>,
-    T: ~const Destruct,
-    U: ~const Step + Copy + ~const Destruct + 'a
-{
-    type ItemMut = (U, I::ItemMut);
-    type EachMut = EnumerateFrom<I::EachMut, U>;
-
-    fn each_mut(Self { bulk, initial_count }: &'a mut Self) -> Self::EachMut
-    {
-        bulk.each_mut().enumerate_from(*initial_count)
-    }
-}
-impl<'a, I, T, U> const InplaceBulkSpec<'a> for EnumerateFrom<I, U>
-where
-    I: ~const InplaceBulk<'a, Item = T>,
-    T: ~const Destruct,
-    U: ~const Step + Copy + ~const Destruct
-{
-    fn _get_mut<L>(Self { bulk, initial_count }: &'a mut Self, i: L) -> Option<<Self as InplaceBulk<'a>>::ItemMut>
-    where
-        L: LengthValue,
-        Self: 'a
-    {
-        let x = bulk.get_mut(i)?;
-        Some((Step::forward(*initial_count, length::value::len(i)), x))
-    }
-}*/
 
 #[cfg(test)]
 mod test

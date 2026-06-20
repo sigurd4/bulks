@@ -62,7 +62,7 @@ where
         core::iter::once_with(self.0)
     }
 }
-impl<F, A> const Bulk for OnceWith<F>
+const impl<F, A> Bulk for OnceWith<F>
 where
     F: ~const FnOnce() -> A
 {
@@ -109,7 +109,7 @@ where
         f(self.0())
     }
 }
-impl<F, A> const DoubleEndedBulk for OnceWith<F>
+const impl<F, A> DoubleEndedBulk for OnceWith<F>
 where
     F: ~const FnOnce() -> A
 {
@@ -130,7 +130,7 @@ where
         self.try_for_each(f)
     }
 }
-impl<F, A, L> const SplitBulk<L> for OnceWith<F>
+const impl<F, A, L> SplitBulk<L> for OnceWith<F>
 where
     F: ~const FnOnce() -> A,
     L: LengthValue,
@@ -147,7 +147,7 @@ where
     }
 }
 
-impl<F, A> const From<OnceWith<F>> for Once<A>
+const impl<F, A> From<OnceWith<F>> for Once<A>
 where
     F: ~const FnOnce() -> A
 {
@@ -156,7 +156,7 @@ where
         crate::once(value.0())
     }
 }
-impl<F, A> const From<OnceWith<F>> for RepeatN<A, [(); 1]>
+const impl<F, A> From<OnceWith<F>> for RepeatN<A, [(); 1]>
 where
     F: ~const FnOnce() -> A,
     A: Clone
@@ -166,7 +166,7 @@ where
         crate::repeat_n((value.0)(), [(); 1])
     }
 }
-impl<F, A> const From<OnceWith<F>> for RepeatNWith<F, [(); 1]>
+const impl<F, A> From<OnceWith<F>> for RepeatNWith<F, [(); 1]>
 where
     F: FnMut() -> A
 {
@@ -175,7 +175,7 @@ where
         crate::repeat_n_with(value.0, [(); 1])
     }
 }
-impl<F, A> const From<OnceWith<F>> for RepeatNWith<TakeOne<F>, [(); 1]>
+const impl<F, A> From<OnceWith<F>> for RepeatNWith<TakeOne<F>, [(); 1]>
 where
     F: FnOnce() -> A
 {

@@ -82,7 +82,7 @@ where
         core::iter::repeat_with(repeater).take(length::value::len_metadata::<N::Value>(n))
     }
 }
-impl<A, G, N> const Bulk for RepeatNWith<G, N>
+const impl<A, G, N> Bulk for RepeatNWith<G, N>
 where
     G: ~const FnMut() -> A + ~const Destruct,
     N: Length<Elem = ()> + ?Sized
@@ -127,7 +127,7 @@ where
         R::from_output(())
     }
 }
-impl<A, G, N> const DoubleEndedBulk for RepeatNWith<G, N>
+const impl<A, G, N> DoubleEndedBulk for RepeatNWith<G, N>
 where
     G: ~const FnMut() -> A + ~const Destruct,
     N: Length<Elem = ()> + ?Sized,
@@ -150,7 +150,7 @@ where
         self.try_for_each(f)
     }
 }
-impl<A, G, N, M, L, R, NN> const SplitBulk<M> for RepeatNWith<G, N>
+const impl<A, G, N, M, L, R, NN> SplitBulk<M> for RepeatNWith<G, N>
 where
     N: Length<Elem = (), Value = NN>,
     NN: LengthValue<Min<M> = L, SaturatingSub<M> = R, Metadata = N::Metadata>,

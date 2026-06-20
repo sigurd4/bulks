@@ -70,7 +70,7 @@ pub(crate) macro collect_array_with {
                 guard: &'a mut Guard<'b, T>
             }
 
-            impl<'a, 'b, T> const FnOnce<(T,)> for Closure<'a, 'b, T>
+            const impl<'a, 'b, T> FnOnce<(T,)> for Closure<'a, 'b, T>
             {
                 type Output = ();
 
@@ -79,7 +79,7 @@ pub(crate) macro collect_array_with {
                     self.call_mut(args)
                 }
             }
-            impl<'a, 'b, T> const FnMut<(T,)> for Closure<'a, 'b, T>
+            const impl<'a, 'b, T> FnMut<(T,)> for Closure<'a, 'b, T>
             {
                 extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
                 {
@@ -125,7 +125,7 @@ pub(crate) macro try_collect_array_with {
                 guard: &'a mut Guard<'b, <T as Try>::Output>
             }
 
-            impl<'a, 'b, T> const FnOnce<(T,)> for Closure<'a, 'b, T>
+            const impl<'a, 'b, T> FnOnce<(T,)> for Closure<'a, 'b, T>
             where
                 T: ~const Try<Residual: Residual<(), TryType: ~const Try>>
             {
@@ -139,7 +139,7 @@ pub(crate) macro try_collect_array_with {
                     Try::from_output(())
                 }
             }
-            impl<'a, 'b, T> const FnMut<(T,)> for Closure<'a, 'b, T>
+            const impl<'a, 'b, T> FnMut<(T,)> for Closure<'a, 'b, T>
             where
                 T: ~const Try<Residual: Residual<(), TryType: ~const Try>>
             {

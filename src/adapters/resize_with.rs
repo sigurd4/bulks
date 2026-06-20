@@ -68,7 +68,7 @@ where
         }
     }
 }
-impl<T, F, N> const Bulk for ResizeWith<T, F, N>
+const impl<T, F, N> Bulk for ResizeWith<T, F, N>
 where
     T: ~const Bulk<Item: ~const Destruct>,
     N: Length<Elem = ()> + ?Sized,
@@ -116,7 +116,7 @@ where
         R::from_output(())
     }
 }
-impl<T, F, N> const DoubleEndedBulk for ResizeWith<T, F, N>
+const impl<T, F, N> DoubleEndedBulk for ResizeWith<T, F, N>
 where
     T: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk + ~const Destruct,
     N: Length<Elem = ()> + ?Sized,
@@ -161,7 +161,7 @@ where
             .try_for_each(f)
     }
 }
-impl<T, F, N, NN, M, R> const SplitBulk<M> for ResizeWith<T, F, N>
+const impl<T, F, N, NN, M, R> SplitBulk<M> for ResizeWith<T, F, N>
 where
     T: ~const SplitBulk<M, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
     N: Length<Elem = (), Value = NN> + ?Sized,

@@ -207,7 +207,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                 {
                     fn update<const N: usize>(refs: &mut [Result<Self, usize>; N], k: &mut usize, i: usize, x: Self);
                 }
-                impl<T> const ManySpec for T
+                const impl<T> ManySpec for T
                 where
                     T: ~const Destruct
                 {
@@ -241,7 +241,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                         }
                     }
                 }
-                impl<T> const ManySpec for T
+                const impl<T> ManySpec for T
                 where
                     T: Copy + ~const Destruct
                 {
@@ -278,7 +278,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             }
         }
 
-        impl<'a, T, const N: usize> const FnOnce<((usize, T),)> for Functor<'a, T, N>
+        const impl<'a, T, const N: usize> FnOnce<((usize, T),)> for Functor<'a, T, N>
         where
             T: ~const Destruct
         {
@@ -289,7 +289,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                 self.call_mut(args)
             }
         }
-        impl<'a, T, const N: usize> const FnMut<((usize, T),)> for Functor<'a, T, N>
+        const impl<'a, T, const N: usize> FnMut<((usize, T),)> for Functor<'a, T, N>
         where
             T: ~const Destruct
         {
@@ -487,7 +487,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             z: &'a mut Option<B>,
             f: F
         }
-        impl<'a, B, F, T> const FnOnce<(T,)> for Closure<'a, B, F>
+        const impl<'a, B, F, T> FnOnce<(T,)> for Closure<'a, B, F>
         where
             B: ~const Destruct,
             F: ~const FnOnce(B, T) -> B,
@@ -501,7 +501,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                 let _ = z.insert((f)(zz, x));
             }
         }
-        impl<'a, B, F, T> const FnMut<(T,)> for Closure<'a, B, F>
+        const impl<'a, B, F, T> FnMut<(T,)> for Closure<'a, B, F>
         where
             B: ~const Destruct,
             F: ~const FnMut(B, T) -> B,
@@ -538,7 +538,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             z: &'a mut Option<B>,
             f: F
         }
-        impl<'a, B, F, T, R> const FnOnce<(T,)> for Closure<'a, B, F>
+        const impl<'a, B, F, T, R> FnOnce<(T,)> for Closure<'a, B, F>
         where
             B: ~const Destruct,
             F: ~const FnOnce(B, T) -> R,
@@ -554,7 +554,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                 ControlFlow::Continue(())
             }
         }
-        impl<'a, B, F, T, R> const FnMut<(T,)> for Closure<'a, B, F>
+        const impl<'a, B, F, T, R> FnMut<(T,)> for Closure<'a, B, F>
         where
             B: ~const Destruct,
             F: ~const FnMut(B, T) -> R,
@@ -592,7 +592,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         {
             f: F
         }
-        impl<F, T> const FnOnce<(Option<T>, T)> for Closure<F>
+        const impl<F, T> FnOnce<(Option<T>, T)> for Closure<F>
         where
             F: ~const FnOnce(T, T) -> T + ~const Destruct
         {
@@ -609,7 +609,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                 }
             }
         }
-        impl<F, T> const FnMut<(Option<T>, T)> for Closure<F>
+        const impl<F, T> FnMut<(Option<T>, T)> for Closure<F>
         where
             F: ~const FnMut(T, T) -> T
         {
@@ -641,7 +641,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         {
             f: F
         }
-        impl<F, T, R> const FnOnce<(Option<T>, T)> for Closure<F>
+        const impl<F, T, R> FnOnce<(Option<T>, T)> for Closure<F>
         where
             F: ~const FnOnce(T, T) -> R + ~const Destruct,
             R: ~const Try<Output = T, Residual: ~const Destruct>
@@ -661,7 +661,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                 ))
             }
         }
-        impl<F, T, R> const FnMut<(Option<T>, T)> for Closure<F>
+        const impl<F, T, R> FnMut<(Option<T>, T)> for Closure<F>
         where
             F: ~const FnMut(T, T) -> R,
             R: ~const Try<Output = T, Residual: ~const Destruct>
@@ -2236,7 +2236,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             first: Option<T>,
             last: Option<T>
         }
-        impl<T> const FnOnce<(T,)> for Closure<T>
+        const impl<T> FnOnce<(T,)> for Closure<T>
         where
             T: ~const Destruct
         {
@@ -2247,7 +2247,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                 self.call_mut(args)
             }
         }
-        impl<T> const FnMut<(T,)> for Closure<T>
+        const impl<T> FnMut<(T,)> for Closure<T>
         where
             T: ~const Destruct
         {

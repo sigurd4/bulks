@@ -282,7 +282,7 @@ where
         bulk
     }
 }
-impl<A, B, const N: usize> const CollectionStrategy<B, [A; N]> for [A; N]
+const impl<A, B, const N: usize> CollectionStrategy<B, [A; N]> for [A; N]
 where
     B: ~const Bulk<Item = A> + StaticBulk<Array<A> = [A; N]>
 {
@@ -293,7 +293,7 @@ where
         bulk.collect_array()
     }
 }
-impl<A, B, const N: usize> const CollectionStrategy<B, Option<[A; N]>> for [Option<A>; N]
+const impl<A, B, const N: usize> CollectionStrategy<B, Option<[A; N]>> for [Option<A>; N]
 where
     B: ~const Bulk<Item = Option<A>> + StaticBulk<Array<A> = [A; N]>,
     A: ~const Destruct
@@ -305,7 +305,7 @@ where
         bulk.try_collect_array()
     }
 }
-impl<A, B, E, const N: usize> const CollectionStrategy<B, Result<[A; N], E>> for [Result<A, E>; N]
+const impl<A, B, E, const N: usize> CollectionStrategy<B, Result<[A; N], E>> for [Result<A, E>; N]
 where
     B: ~const Bulk<Item = Result<A, E>> + StaticBulk<Array<A> = [A; N]>,
     A: ~const Destruct,
@@ -318,9 +318,9 @@ where
         bulk.try_collect_array()
     }
 }
-impl<A, B> const CollectionStrategy<B, Option<A>> for Option<A>
+const impl<A, B> CollectionStrategy<B, Option<A>> for Option<A>
 where
-    B: ~const Bulk<Item = A, MinLength: MaybeLength, MaxLength: MaybeLength, Length: MaybeLength> + ?Sized
+    B: ~const Bulk<Item = A, MinLength: MaybeLength, MaxLength: MaybeLength> + ?Sized
 {
     fn adapt(bulk: B) -> <Self as CollectionAdapter>::Strategy<B, Option<A>>
     where
@@ -347,7 +347,7 @@ where
         bulk
     }
 }
-impl<A, B, R, T, Y, const N: usize> const TryCollectionAdapter<B, [T; N]> for [A; N]
+const impl<A, B, R, T, Y, const N: usize> TryCollectionAdapter<B, [T; N]> for [A; N]
 where
     B: ~const Bulk<Item = R> + StaticBulk<Array<T> = [T; N]>,
     R: ~const Try<Output = T, Residual: Residual<(), TryType: ~const Try> + ~const Residual<[T; N], TryType = Y> + ~const Destruct> + ~const Destruct,
@@ -382,7 +382,7 @@ where
 
 // Collect options
 
-impl<A> const FromBulk<Option<A>> for Option<A>
+const impl<A> FromBulk<Option<A>> for Option<A>
 where
     A: ~const Destruct
 {
@@ -408,7 +408,7 @@ where
 
 // Collect arrays
 
-impl<A, const N: usize> const FromBulk<[A; N]> for [A; N]
+const impl<A, const N: usize> FromBulk<[A; N]> for [A; N]
 where
     A: ~const Destruct
 {
@@ -427,7 +427,7 @@ where
         <[A; N] as TryCollectionAdapter<I::IntoBulk, Self>>::try_adapt(bulk.into_bulk())
     }
 }
-impl<A, const N: usize> const FromBulk<[Option<A>; N]> for Option<[A; N]>
+const impl<A, const N: usize> FromBulk<[Option<A>; N]> for Option<[A; N]>
 where
     A: ~const Destruct
 {
@@ -446,7 +446,7 @@ where
         <[Option<A>; N] as TryCollectionAdapter<I::IntoBulk, Self>>::try_adapt(bulk.into_bulk())
     }
 }
-impl<A, E, const N: usize> const FromBulk<[Result<A, E>; N]> for Result<[A; N], E>
+const impl<A, E, const N: usize> FromBulk<[Result<A, E>; N]> for Result<[A; N], E>
 where
     A: ~const Destruct,
     E: ~const Destruct

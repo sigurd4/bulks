@@ -73,7 +73,7 @@ where
         length::len_metadata::<S>(start)..(length::len_metadata::<E>(end) + 1)
     }
 }
-impl<S, E> const Bulk for RangeInclusive<S, E>
+const impl<S, E> Bulk for RangeInclusive<S, E>
 where
     S: Length<Elem = ()> + ?Sized,
     E: Length<Elem = ()> + ?Sized
@@ -149,7 +149,7 @@ where
         R::from_output(())
     }
 }
-impl<S, E> const DoubleEndedBulk for RangeInclusive<S, E>
+const impl<S, E> DoubleEndedBulk for RangeInclusive<S, E>
 where
     S: Length<Elem = ()> + ?Sized,
     E: Length<Elem = ()> + ?Sized
@@ -193,7 +193,7 @@ where
         R::from_output(())
     }
 }
-impl<S, E, L> const SplitBulk<L> for RangeInclusive<S, E>
+const impl<S, E, L> SplitBulk<L> for RangeInclusive<S, E>
 where
     S: Length<Elem = ()> + ?Sized,
     E: Length<Elem = ()> + ?Sized,

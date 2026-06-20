@@ -67,7 +67,7 @@ impl<T> Guard<'_, T> {
         }
     }
 }
-impl<T> const Drop for Guard<'_, T>
+const impl<T> Drop for Guard<'_, T>
 where
     T: ~const Destruct
 {
