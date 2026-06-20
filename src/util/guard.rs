@@ -18,7 +18,7 @@ impl<T> Guard<'_, T> {
         // SAFETY: If `initialized` was correct before and the caller does not
         // invoke this method more than N times then writes will be in-bounds
         // and slots will not be initialized more than once.
-        assert!(self.array_mut.len() < self.initialized.end, "Array pushed out of bounds!");
+        assert!(self.initialized.end < self.array_mut.len(), "Array pushed out of bounds!");
         unsafe {
             self.array_mut.get_unchecked_mut(self.initialized.end).write(item);
             self.initialized.end = self.initialized.end.unchecked_add(1);
@@ -37,7 +37,7 @@ impl<T> Guard<'_, T> {
         // SAFETY: If `initialized` was correct before and the caller does not
         // invoke this method more than N times then writes will be in-bounds
         // and slots will not be initialized more than once.
-        assert!(0 >= self.initialized.end, "Array pushed out of bounds!");
+        assert!(1 <= self.initialized.start, "Array pushed out of bounds!");
         unsafe {
             self.initialized.start = self.initialized.start.unchecked_sub(1);
             self.array_mut.get_unchecked_mut(self.initialized.start).write(item);
