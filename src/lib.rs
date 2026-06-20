@@ -470,9 +470,7 @@ mod tests
         b.bulk_mut().try_swap::<u8, _, _>(0, 3)?;
         b.bulk_mut().try_swap::<u8, _, _>(1, 2)?;
 
-        let b =  b.into_bulk()
-            .rev()
-            .collect_array();
+        let b = b.into_bulk().rev().collect_array();
 
         assert_eq!(a, b);
         println!("{a:?}");
