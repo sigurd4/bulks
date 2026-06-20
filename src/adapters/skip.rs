@@ -49,6 +49,7 @@ where
     T: ~const Bulk<Item: ~const Destruct>,
     N: Length<Elem = ()> + ?Sized
 {
+    type Length = length::SaturatingSub<T::Length, N>;
     type MinLength = length::SaturatingSub<T::MinLength, N>;
     type MaxLength = length::SaturatingSub<T::MaxLength, N>;
 
@@ -60,7 +61,7 @@ where
     fn is_empty(&self) -> bool
     {
         let Self { bulk, n } = self;
-        bulk.len() > length::len_metadata::<N>(*n)
+        bulk.len() <= length::len_metadata::<N>(*n)
     }
 
     fn for_each<F>(self, f: F)
@@ -182,8 +183,8 @@ where
         F: ~const FnMut(Self::Item) + ~const Destruct
     {
         let Self { bulk, n } = self;
-        let m = bulk.len() - length::len_metadata::<N>(n);
-        bulk.rev().take(m).for_each(f)
+        let m = bulk.len().saturating_sub(length::len_metadata::<N>(n));
+        bulk.rev().skip(m).for_each(f)
     }
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
@@ -192,8 +193,8 @@ where
         R: ~const Try<Output = (), Residual: ~const Destruct>
     {
         let Self { bulk, n } = self;
-        let m = bulk.len() - length::len_metadata::<N>(n);
-        bulk.rev().take(m).try_for_each(f)
+        let m = bulk.len().saturating_sub(length::len_metadata::<N>(n));
+        bulk.rev().skip(m).try_for_each(f)
     }
 }
 const impl<T, N, NN, M, L, R> SplitBulk<M> for Skip<T, N>

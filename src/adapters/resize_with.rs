@@ -89,7 +89,7 @@ where
         FF: ~const FnMut(Self::Item) + ~const Destruct
     {
         let Self { bulk, n, mut padder } = self;
-        let mut m = bulk.len();
+        let mut m = length::value::len(bulk.length());
         bulk.take(length::value::from_metadata::<N::Value>(n))
             .for_each(&mut f);
         while m < length::len_metadata::<N>(n)
@@ -105,7 +105,7 @@ where
         R: ~const Try<Output = (), Residual: ~const Destruct>
     {
         let Self { bulk, n, mut padder } = self;
-        let mut m = bulk.len();
+        let mut m = length::value::len(bulk.length());
         bulk.take(length::value::from_metadata::<N::Value>(n))
             .try_for_each(&mut f)?;
         while m < length::len_metadata::<N>(n)
@@ -129,7 +129,7 @@ where
         FF: ~const FnMut(Self::Item) + ~const Destruct
     {
         let Self { bulk, n, padder } = self;
-        let mut m = bulk.len();
+        let mut m = length::value::len(bulk.length());
         while m < length::len_metadata::<N>(n)
         {
             f(padder());
@@ -148,7 +148,7 @@ where
         R: ~const Try<Output = (), Residual: ~const Destruct>
     {
         let Self { bulk, n, padder } = self;
-        let mut m = bulk.len();
+        let mut m = length::value::len(bulk.length());
         while m < length::len_metadata::<N>(n)
         {
             f(padder())?;
@@ -189,7 +189,7 @@ where
 #[cfg(test)]
 mod test
 {
-    use crate::Bulk;
+    use crate::{AsBulk, Bulk};
 
     #[test]
     fn it_works()
@@ -200,5 +200,20 @@ mod test
             .collect::<Vec<_>, _>();
 
         println!("{a:?}")
+    }
+    
+    #[test]
+    fn edge_case()
+    {
+        let mut a = [1, 2, 3, 4, 5, 6, 7];
+        let b = a.bulk_mut()
+            .skip(0)
+            .step_by(3)
+            .map(Some)
+            .resize_with([(); 3], || None)
+            .try_collect_array()
+            .unwrap();
+
+        println!("{b:?}")
     }
 }

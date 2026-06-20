@@ -58,7 +58,13 @@ where
     fn len(&self) -> usize
     {
         let Self { bulk, step } = self;
-        bulk.len()/length::len_metadata::<N>(*step)
+        let len = bulk.len();
+        if len <= 1
+        {
+            return len
+        }
+        let step = length::len_metadata::<N>(*step);
+        len/step + (len % step != 0) as usize
     }
 
     fn for_each<F>(self, f: F)
