@@ -697,6 +697,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # Examples
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [1, 2, 3];
     /// let b: [u32; 0] = [];
     ///
@@ -720,6 +722,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # Examples
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [1, 2, 3];
     /// let b: [u32; 0] = [];
     ///
@@ -744,6 +748,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # Examples
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(a.into_iter().max_by_key(|x| x.abs()).unwrap(), -10);
     /// ```
@@ -800,6 +806,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # Examples
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(a.into_bulk().max_by(|x, y| x.cmp(y)).unwrap(), 5);
     /// ```
@@ -848,6 +856,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # Examples
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(a.into_bulk().min_by_key(|x| x.abs()).unwrap(), 0);
     /// ```
@@ -904,6 +914,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # Examples
     ///
     /// ```
+    /// use bulks::*;
+    /// 
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(a.into_bulk().min_by(|x, y| x.cmp(y)).unwrap(), -10);
     /// ```
