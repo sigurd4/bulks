@@ -753,7 +753,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(a.into_iter().max_by_key(|x| x.abs()).unwrap(), -10);
     /// ```
-    fn max_by_key<B: Ord, F>(self, keygen: F) -> Option<Self::Item>
+    fn max_by_key<B, F>(self, keygen: F) -> Option<Self::Item>
     where
         Self: Sized,
         Self::Item: ~const Destruct,
@@ -861,7 +861,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(a.into_bulk().min_by_key(|x| x.abs()).unwrap(), 0);
     /// ```
-    fn min_by_key<B: Ord, F>(self, keygen: F) -> Option<Self::Item>
+    fn min_by_key<B, F>(self, keygen: F) -> Option<Self::Item>
     where
         Self: Sized,
         Self::Item: ~const Destruct,
