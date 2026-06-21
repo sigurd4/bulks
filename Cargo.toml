@@ -17,5 +17,5 @@ ndarray = ["dep:ndarray"]
 moddef = "0.3.0"
 currying = {version = "0.4.1", default-features = false, features = ["8", "rcurry"]}
 array_trait = {version = "1.1.23", default-features = false, features = ["length"]}
-ndarray = {version = "0.17.2", optional = true}
+ndarray = {version = "0.17.2", optional = true, default-features = false}
 thiserror = "2.0.18"
