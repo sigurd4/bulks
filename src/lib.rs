@@ -348,6 +348,7 @@ moddef::moddef!(
         adapters,
         impl_array,
         impl_iter,
+        impl_ndarray for cfg(feature = "ndarray"),
         impl_slice,
         impl_vec for cfg(feature = "alloc"),
         impl_option,
@@ -467,8 +468,8 @@ mod tests
 
         let mut b = a;
 
-        b.bulk_mut().try_swap::<u8, _, _>(0, 3)?;
-        b.bulk_mut().try_swap::<u8, _, _>(1, 2)?;
+        b.bulk_mut().try_swap::<u8>(0, 3)?;
+        b.bulk_mut().try_swap::<u8>(1, 2)?;
 
         let b = b.into_bulk().rev().collect_array();
 

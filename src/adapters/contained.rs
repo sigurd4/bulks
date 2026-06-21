@@ -71,6 +71,7 @@ impl<I> Bulk for Contained<I>
 where
     I: Iterator
 {
+    default type Length = <I as private::InfiniteSpec>::Length;
     default type MinLength = <I as private::InfiniteSpec>::Length;
     default type MaxLength = <I as private::InfiniteSpec>::Length;
 
@@ -129,6 +130,7 @@ impl<I> Bulk for Contained<I>
 where
     I: ExactSizeIterator
 {
+    type Length = <I as private::InfiniteSpec>::Length;
     type MinLength = <I as private::InfiniteSpec>::Length;
     type MaxLength = <I as private::InfiniteSpec>::Length;
 

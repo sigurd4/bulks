@@ -61,6 +61,7 @@ where
     I: ~const Bulk<Item = &'a T>,
     T: Copy + 'a
 {
+    type Length = I::Length;
     type MinLength = I::MinLength;
     type MaxLength = I::MaxLength;
 

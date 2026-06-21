@@ -65,6 +65,7 @@ where
     I: ~const Bulk,
     F: ~const FnMut(&I::Item) + ~const Destruct
 {
+    type Length = I::Length;
     type MinLength = I::MinLength;
     type MaxLength = I::MaxLength;
     

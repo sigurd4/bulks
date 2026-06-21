@@ -54,6 +54,7 @@ where
     T: ~const Destruct,
     U: ~const Step + Copy + ~const Destruct
 {
+    type Length = I::Length;
     type MinLength = I::MinLength;
     type MaxLength = I::MaxLength;
     

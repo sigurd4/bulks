@@ -57,6 +57,7 @@ const impl<I> Bulk for Flatten<I>
 where
     I: ~const Bulk<Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct>
 {
+    type Length = length::Mul<I::Length, <<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<()>>;
     type MinLength = length::Mul<I::MinLength, <<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<()>>;
     type MaxLength = length::Mul<I::MaxLength, <<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<()>>;
 

@@ -87,6 +87,7 @@ where
     G: ~const FnMut() -> A + ~const Destruct,
     N: Length<Elem = ()> + ?Sized
 {
+    type Length = N;
     type MinLength = N;
     type MaxLength = N;
 

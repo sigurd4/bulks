@@ -96,8 +96,9 @@ where
     A: ~const Bulk<Item = T> + ~const Destruct,
     B: ~const Bulk<Item = T> + ~const Destruct
 {
+    type Length = length::Add<A::Length, B::Length>;
     type MinLength = length::Add<A::MinLength, B::MinLength>;
-    type MaxLength = length::Add<A::MinLength, B::MinLength>;
+    type MaxLength = length::Add<A::MaxLength, B::MaxLength>;
 
     fn len(&self) -> usize
     {

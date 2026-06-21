@@ -52,6 +52,7 @@ where
     T: ~const Bulk<Item: ~const Destruct>,
     N: Length<Elem = ()> + ?Sized
 {
+    type Length = length::DivCeil<T::Length, N>;
     type MinLength = length::DivCeil<T::MinLength, N>;
     type MaxLength = length::DivCeil<T::MaxLength, N>;
 

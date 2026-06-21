@@ -67,6 +67,7 @@ where
     F: ~const FnMut(I::Item) -> U + ~const Destruct,
     U: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk>
 {
+    type Length = length::Mul<I::Length, <U::IntoBulk as StaticBulk>::Array<()>>;
     type MinLength = length::Mul<I::MinLength, <U::IntoBulk as StaticBulk>::Array<()>>;
     type MaxLength = length::Mul<I::MaxLength, <U::IntoBulk as StaticBulk>::Array<()>>;
 

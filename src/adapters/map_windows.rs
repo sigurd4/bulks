@@ -64,6 +64,7 @@ where
     I: ~const Bulk<Item: ~const Destruct>,
     F: ~const FnMut(&[I::Item; N]) -> U + ~const Destruct
 {
+    type Length = length::Windowed<I::Length, [(); N]>;
     type MinLength = length::Windowed<I::MinLength, [(); N]>;
     type MaxLength = length::Windowed<I::MaxLength, [(); N]>;
 

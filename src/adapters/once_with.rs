@@ -66,6 +66,7 @@ const impl<F, A> Bulk for OnceWith<F>
 where
     F: ~const FnOnce() -> A
 {
+    type Length = [(); 1];
     type MinLength = [(); 1];
     type MaxLength = [(); 1];
 

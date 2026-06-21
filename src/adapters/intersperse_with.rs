@@ -56,6 +56,7 @@ where
     I: ~const Bulk<Item = T>,
     G: ~const FnMut() -> T + ~const Destruct
 {
+    type Length = length::Interspersed<I::Length>;
     type MinLength = length::Interspersed<I::MinLength>;
     type MaxLength = length::Interspersed<I::MaxLength>;
 

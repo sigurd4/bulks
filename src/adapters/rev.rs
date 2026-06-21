@@ -77,6 +77,7 @@ const impl<I> Bulk for Rev<I>
 where
     I: ~const Bulk + ~const DoubleEndedBulk
 {
+    type Length = I::Length;
     type MinLength = I::MinLength;
     type MaxLength = I::MaxLength;
     

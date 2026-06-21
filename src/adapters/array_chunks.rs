@@ -165,6 +165,7 @@ const impl<I, const N: usize> Bulk for ArrayChunks<I, N>
 where
     I: ~const Bulk<Item: ~const Destruct>,
 {
+    type Length = length::Div<I::Length, [(); N]>;
     type MinLength = length::Div<I::MinLength, [(); N]>;
     type MaxLength = length::Div<I::MaxLength, [(); N]>;
 

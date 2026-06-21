@@ -79,6 +79,7 @@ const impl<T, P> Bulk for Empty<T, P>
 where
     T: Borrow<P>
 {
+    type Length = [(); 0];
     type MinLength = [(); 0];
     type MaxLength = [(); 0];
 
