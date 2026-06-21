@@ -1,4 +1,4 @@
-use core::{borrow::BorrowMut, fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, FromResidual, Mul, Residual, Try}};
+use core::{borrow::BorrowMut, cmp::Ordering, fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, FromResidual, Mul, Residual, Try}};
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
@@ -687,6 +687,260 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             ControlFlow::Break(residual) => FromResidual::from_residual(residual),
             ControlFlow::Continue(output) => Try::from_output(output)
         }
+    }
+
+    /// Returns the maximum element of a bulk.
+    ///
+    /// If several elements are equally maximum, the last element is
+    /// returned. If the bulk is empty, [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    /// let b: [u32; 0] = [];
+    ///
+    /// assert_eq!(a.into_bulk().max(), Some(3));
+    /// assert_eq!(b.into_bulk().max(), None);
+    /// ```
+    #[inline]
+    fn max(self) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: ~const Ord + ~const Destruct,
+    {
+        self.max_by(Ord::cmp)
+    }
+
+    /// Returns the minimum element of a bulk.
+    ///
+    /// If several elements are equally minimum, the first element is returned.
+    /// If the bulk is empty, [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    /// let b: [u32; 0] = [];
+    ///
+    /// assert_eq!(a.into_bulk().min(), Some(1));
+    /// assert_eq!(b.into_bulk().min(), None);
+    /// ```
+    #[inline]
+    fn min(self) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: ~const Ord + ~const Destruct,
+    {
+        self.min_by(Ord::cmp)
+    }
+
+    /// Returns the element that gives the maximum value from the
+    /// specified function.
+    ///
+    /// If several elements are equally maximum, the last element is
+    /// returned. If the iterator is empty, [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [-3_i32, 0, 1, 5, -10];
+    /// assert_eq!(a.into_iter().max_by_key(|x| x.abs()).unwrap(), -10);
+    /// ```
+    fn max_by_key<B: Ord, F>(self, keygen: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(&Self::Item) -> B + ~const Destruct,
+        B: ~const Ord + ~const Destruct
+    {
+        struct Keygen<F>
+        {
+            keygen: F
+        }
+        const impl<T, F, K> FnOnce<(T,)> for Keygen<F>
+        where
+            F: ~const FnMut(&T) -> K + ~const Destruct
+        {
+            type Output = (K, T);
+
+            extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        const impl<T, F, K> FnMut<(T,)> for Keygen<F>
+        where
+            F: ~const FnMut(&T) -> K
+        {
+            extern "rust-call" fn call_mut(&mut self, (value,): (T,)) -> Self::Output
+            {
+                let key = (self.keygen)(&value);
+                (key, value)
+            }
+        }
+
+        const fn compare_keys<T, K>((lhs_key, _): &(K, T), (rhs_key, _): &(K, T)) -> Ordering
+        where
+            K: ~const Ord
+        {
+            lhs_key.cmp(rhs_key)
+        }
+
+        let (_, x) = self.map(Keygen { keygen }).max_by(compare_keys)?;
+        Some(x)
+    }
+
+    /// Returns the element that gives the maximum value with respect to the
+    /// specified comparison function.
+    ///
+    /// If several elements are equally maximum, the last element is
+    /// returned. If the bulk is empty, [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [-3_i32, 0, 1, 5, -10];
+    /// assert_eq!(a.into_bulk().max_by(|x, y| x.cmp(y)).unwrap(), 5);
+    /// ```
+    fn max_by<F>(self, compare: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(&Self::Item, &Self::Item) -> Ordering + ~const Destruct
+    {
+        struct Functor<F>
+        {
+            compare: F
+        }
+        const impl<F, T> FnOnce<(T, T)> for Functor<F>
+        where
+            F: ~const FnMut(&T, &T) -> Ordering + ~const Destruct,
+            T: ~const Destruct
+        {
+            type Output = T;
+
+            extern "rust-call" fn call_once(mut self, args: (T, T)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        const impl<F, T> FnMut<(T, T)> for Functor<F>
+        where
+            F: ~const FnMut(&T, &T) -> Ordering,
+            T: ~const Destruct
+        {
+            extern "rust-call" fn call_mut(&mut self, (v1, v2): (T, T)) -> Self::Output
+            {
+                core::cmp::max_by(v1, v2, &mut self.compare)
+            }
+        }
+
+        self.reduce(Functor { compare })
+    }
+
+    /// Returns the element that gives the minimum value from the
+    /// specified function.
+    ///
+    /// If several elements are equally minimum, the first element is
+    /// returned. If the bulk is empty, [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [-3_i32, 0, 1, 5, -10];
+    /// assert_eq!(a.into_bulk().min_by_key(|x| x.abs()).unwrap(), 0);
+    /// ```
+    fn min_by_key<B: Ord, F>(self, keygen: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(&Self::Item) -> B + ~const Destruct,
+        B: ~const Ord + ~const Destruct
+    {
+        struct Keygen<F>
+        {
+            keygen: F
+        }
+        const impl<T, F, K> FnOnce<(T,)> for Keygen<F>
+        where
+            F: ~const FnMut(&T) -> K + ~const Destruct
+        {
+            type Output = (K, T);
+
+            extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        const impl<T, F, K> FnMut<(T,)> for Keygen<F>
+        where
+            F: ~const FnMut(&T) -> K
+        {
+            extern "rust-call" fn call_mut(&mut self, (value,): (T,)) -> Self::Output
+            {
+                let key = (self.keygen)(&value);
+                (key, value)
+            }
+        }
+
+        const fn compare_keys<T, K>((lhs_key, _): &(K, T), (rhs_key, _): &(K, T)) -> Ordering
+        where
+            K: ~const Ord
+        {
+            lhs_key.cmp(rhs_key)
+        }
+
+        let (_, x) = self.map(Keygen { keygen }).min_by(compare_keys)?;
+        Some(x)
+    }
+
+    /// Returns the element that gives the minimum value with respect to the
+    /// specified comparison function.
+    ///
+    /// If several elements are equally minimum, the first element is
+    /// returned. If the bulk is empty, [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [-3_i32, 0, 1, 5, -10];
+    /// assert_eq!(a.into_bulk().min_by(|x, y| x.cmp(y)).unwrap(), -10);
+    /// ```
+    fn min_by<F>(self, compare: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: ~const Destruct,
+        F: ~const FnMut(&Self::Item, &Self::Item) -> Ordering + ~const Destruct
+    {
+        struct Functor<F>
+        {
+            compare: F
+        }
+        const impl<F, T> FnOnce<(T, T)> for Functor<F>
+        where
+            F: ~const FnMut(&T, &T) -> Ordering + ~const Destruct,
+            T: ~const Destruct
+        {
+            type Output = T;
+
+            extern "rust-call" fn call_once(mut self, args: (T, T)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        const impl<F, T> FnMut<(T, T)> for Functor<F>
+        where
+            F: ~const FnMut(&T, &T) -> Ordering,
+            T: ~const Destruct
+        {
+            extern "rust-call" fn call_mut(&mut self, (v1, v2): (T, T)) -> Self::Output
+            {
+                core::cmp::min_by(v1, v2, &mut self.compare)
+            }
+        }
+
+        self.reduce(Functor { compare })
     }
     
     /// Creates a bulk starting at the same point, but stepping by
