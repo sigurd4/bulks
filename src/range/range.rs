@@ -4,7 +4,7 @@ use array_trait::length::{self, Length, LengthValue};
 
 use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 pub struct Range<S = [()], E = S>
 where
@@ -13,6 +13,21 @@ where
 {
     pub(super) start: S::Metadata,
     pub(super) end: E::Metadata
+}
+
+impl<S, E> Clone for Range<S, E>
+where
+    S: Length<Elem = ()> + ?Sized,
+    E: Length<Elem = ()> + ?Sized
+{
+    fn clone(&self) -> Self
+    {
+        let Self { start, end } = self;
+        Self {
+            start: *start,
+            end: *end
+        }
+    }
 }
 
 impl<S, E> Range<S, E>
