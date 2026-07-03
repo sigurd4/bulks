@@ -57,7 +57,6 @@ where
 /// This `struct` is created by the [`repeat_n()`] function.
 /// See its documentation for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
-#[derive(Clone)]
 pub struct RepeatN<A, N = [()]>
 where
     A: Clone,
@@ -65,6 +64,21 @@ where
 {
     element: A,
     n: <N as Pointee>::Metadata
+}
+
+impl<A, N> Clone for RepeatN<A, N>
+where
+    A: Clone,
+    N: Length<Elem = ()> + ?Sized
+{
+    fn clone(&self) -> Self
+    {
+        let Self { element, n } = self;
+        Self {
+            element: element.clone(),
+            n: *n
+        }
+    }
 }
 
 impl<A, N> RepeatN<A, N>

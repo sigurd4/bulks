@@ -47,7 +47,6 @@ where
 /// This `struct` is created by the [`repeat_n_with()`] function.
 /// See its documentation for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
-#[derive(Clone)]
 pub struct RepeatNWith<G, N = [()]>
 where
     G: FnMut<()>,
@@ -55,6 +54,21 @@ where
 {
     repeater: G,
     n: <N as Pointee>::Metadata
+}
+
+impl<G, N> Clone for RepeatNWith<G, N>
+where
+    G: FnMut<()> + Clone,
+    N: Length<Elem = ()> + ?Sized
+{
+    fn clone(&self) -> Self
+    {
+        let Self { repeater, n } = self;
+        Self {
+            repeater: repeater.clone(),
+            n: *n
+        }
+    }
 }
 
 impl<A, G, N> fmt::Debug for RepeatNWith<G, N>
