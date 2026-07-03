@@ -2188,11 +2188,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///     .collect_array();
     /// assert_eq!(v, [1, 3, 3, 7, 9, 9]);
     /// ```
-    fn resize<N>(self, n: N::Value, element: Self::Item) -> Resize<Self, N>
+    fn resize<N>(self, n: N, element: Self::Item) -> Resize<Self, N::Length<()>>
     where
         Self: Sized,
         Self::Item: Copy,
-        N: Length<Elem = ()> + ?Sized
+        N: LengthValue + ?Sized
     {
         Resize::new(self, n, element)
     }
