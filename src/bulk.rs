@@ -2320,7 +2320,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     where
         Self: Sized,
         Self::Item: Copy,
-        N: LengthValue + ?Sized
+        N: LengthValue
     {
         Resize::new(self, n, element)
     }
