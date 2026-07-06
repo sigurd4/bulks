@@ -689,6 +689,82 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
     }
 
+    fn all<F>(self, f: F) -> bool
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) -> bool + ~const Destruct,
+        Self::Item: ~const Destruct
+    {
+        struct Functor<F>(F);
+        const impl<F, T> FnOnce<((), T,)> for Functor<F>
+        where
+            F: ~const FnMut(T) -> bool + ~const Destruct
+        {
+            type Output = ControlFlow<()>;
+
+            extern "rust-call" fn call_once(mut self, args: ((), T,)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        const impl<F, T> FnMut<((), T,)> for Functor<F>
+        where
+            F: ~const FnMut(T) -> bool
+        {
+            extern "rust-call" fn call_mut(&mut self, ((), x,): ((), T,)) -> Self::Output
+            {
+                if self.0(x)
+                {
+                    ControlFlow::Continue(())
+                }
+                else
+                {
+                    ControlFlow::Break(())
+                }
+            }
+        }
+
+        self.try_fold((), Functor(f)) == ControlFlow::Continue(())
+    }
+
+    fn any<F>(self, f: F) -> bool
+    where
+        Self: Sized,
+        F: ~const FnMut(Self::Item) -> bool + ~const Destruct,
+        Self::Item: ~const Destruct
+    {
+        struct Functor<F>(F);
+        const impl<F, T> FnOnce<((), T,)> for Functor<F>
+        where
+            F: ~const FnMut(T) -> bool + ~const Destruct
+        {
+            type Output = ControlFlow<()>;
+
+            extern "rust-call" fn call_once(mut self, args: ((), T,)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        const impl<F, T> FnMut<((), T,)> for Functor<F>
+        where
+            F: ~const FnMut(T) -> bool
+        {
+            extern "rust-call" fn call_mut(&mut self, ((), x,): ((), T,)) -> Self::Output
+            {
+                if self.0(x)
+                {
+                    ControlFlow::Break(())
+                }
+                else
+                {
+                    ControlFlow::Continue(())
+                }
+            }
+        }
+
+        self.try_fold((), Functor(f)) == ControlFlow::Break(())
+    }
+
     /// Returns the maximum element of a bulk.
     ///
     /// If several elements are equally maximum, the last element is
