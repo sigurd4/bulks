@@ -689,6 +689,32 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
     }
 
+    /// Tests if every element of the bulk matches a predicate.
+    ///
+    /// `all()` takes a closure that returns `true` or `false`. It applies
+    /// this closure to each element of the bulk, and if they all return
+    /// `true`, then so does `all()`. If any of them return `false`, it
+    /// returns `false`.
+    ///
+    /// `all()` is short-circuiting; in other words, it will stop processing
+    /// as soon as it finds a `false`, given that no matter what else happens,
+    /// the result will also be `false`.
+    ///
+    /// An empty bulk returns `true`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let a = [1, 2, 3];
+    ///
+    /// assert!(a.into_bulk().all(|x| x > 0));
+    ///
+    /// assert!(!a.into_bulk().all(|x| x > 2));
+    /// ```
     fn all<F>(self, f: F) -> bool
     where
         Self: Sized,
@@ -727,6 +753,32 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         self.try_fold((), Functor(f)) == ControlFlow::Continue(())
     }
 
+    /// Tests if any element of the bulk matches a predicate.
+    ///
+    /// `any()` takes a closure that returns `true` or `false`. It applies
+    /// this closure to each element of the bulk, and if any of them return
+    /// `true`, then so does `any()`. If they all return `false`, it
+    /// returns `false`.
+    ///
+    /// `any()` is short-circuiting; in other words, it will stop processing
+    /// as soon as it finds a `true`, given that no matter what else happens,
+    /// the result will also be `true`.
+    ///
+    /// An empty bulk returns `false`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    /// 
+    /// let a = [1, 2, 3];
+    ///
+    /// assert!(a.into_bulk().any(|x| x > 0));
+    ///
+    /// assert!(!a.into_bulk().any(|x| x > 5));
+    /// ```
     fn any<F>(self, f: F) -> bool
     where
         Self: Sized,
