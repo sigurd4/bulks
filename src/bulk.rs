@@ -2,9 +2,7 @@ use core::{borrow::BorrowMut, cmp::Ordering, fmt::Display, iter::Step, marker::D
 
 use array_trait::{length::{self, Length, LengthValue, Value}};
 
-#[cfg(not(feature = "alloc"))]
-use crate::Nearest;
-use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, Resize, ResizeWith, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionStrategy, Zip, util};
+use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, Nearest, Resize, ResizeWith, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionStrategy, Zip, util};
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
 

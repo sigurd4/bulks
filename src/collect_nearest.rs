@@ -7,7 +7,7 @@ use array_trait::length::Length;
 
 use crate::{AsBulk, Bulk,  CollectionAdapter, CollectionStrategy, FromBulk, IntoBulk, TryCollectionStrategy};
 
-pub(crate) const trait Collection<T> = ~const IntoBulk<Item = T, IntoBulk: ~const Bulk<Item = T>>
+pub(crate) const trait Collection<T, L: Length<Elem = ()> + ?Sized> = ~const IntoBulk<Item = T, IntoBulk: ~const Bulk<Item = T>>
     + ~const AsBulk
     + ~const AsSlice<Elem = T>
     + ~const AsRef<[T]>
@@ -23,40 +23,46 @@ pub(crate) const trait Collection<T> = ~const IntoBulk<Item = T, IntoBulk: ~cons
     + ~const IndexMut<RangeFull, Output = <[T] as Index<RangeFull>>::Output>;
 
 #[rustc_on_unimplemented(
-    message = "an array cannot be collected from dynamically sized bulk `{Self}`",
+    message = "an array cannot be collected from dynamically sized bulk of length `{Self}`",
     label = "an array cannot be collected from bulk"
 )]
-pub const trait Nearest: CollectionAdapter<Elem = ()>
+pub const trait Nearest: Length<Elem = ()>
 {
     #[allow(private_bounds)]
-    type Nearest<B>: ~const Collection<B::Item> + ~const FromBulk<Self::NearestStrategy<B>>
+    type Nearest<B>: ~const Collection<B::Item, Self> + ~const FromBulk<Self::NearestStrategy<B>>
     where
         B: ~const Bulk<MinLength: Length<Intersect<B::MaxLength> = Self>, Item: ~const Destruct>;
     #[allow(private_bounds)]
-    type TryNearest<B>: ~const Collection<<B::Item as Try>::Output> + ~const FromBulk<Self::TryNearestStrategy<B>>
+    type TryNearest<B>: ~const Collection<<B::Item as Try>::Output, Self> + ~const FromBulk<Self::TryNearestStrategy<B>>
     where
         B: ~const Bulk<MinLength: Length<Intersect<B::MaxLength> = Self>, Item: ~const Try<Output: ~const Destruct>>;
 
     #[allow(private_bounds)]
-    type NearestStrategy<B>: ~const CollectionStrategy<B::MinLength, B::MaxLength, Self::Nearest<B>> + CollectionAdapter<Elem = B::Item>
+    type NearestStrategy<B>: ~const CollectionStrategy<B::MinLength, B::MaxLength, Self::Nearest<B>> + CollectionAdapter<Elem = B::Item> + ?Sized
     where
         B: ~const Bulk<MinLength: Length<Intersect<B::MaxLength> = Self>, Item: ~const Destruct>;
     #[allow(private_bounds)]
-    type TryNearestStrategy<B>: ~const TryCollectionStrategy<B::MinLength, B::MaxLength, Self::TryNearest<B>> + CollectionAdapter<Elem = <B::Item as Try>::Output>
+    type TryNearestStrategy<B>: ~const TryCollectionStrategy<B::MinLength, B::MaxLength, Self::TryNearest<B>> + CollectionAdapter<Elem = <B::Item as Try>::Output> + ?Sized
     where
         B: ~const Bulk<MinLength: Length<Intersect<B::MaxLength> = Self>, Item: ~const Try<Output: ~const Destruct>>;
 }
 
 #[cfg(feature = "alloc")]
-impl<I> Nearest for I
-where
-    I: Bulk
+impl Nearest for [()]
 {
-    type Adapter<T> = [T];
-    default type Nearest = alloc::vec::Vec<I::Item>;
-    default type TryNearest = alloc::vec::Vec<<I::Item as Try>::Output>
+    type Nearest<B> = alloc::vec::Vec<B::Item>
     where
-        Self::Item: Try;
+        B: Bulk<MinLength: Length<Intersect<B::MaxLength> = Self>>;
+    type TryNearest<B> = alloc::vec::Vec<<B::Item as Try>::Output>
+    where
+        B: Bulk<MinLength: Length<Intersect<B::MaxLength> = Self>, Item: Try>;
+
+    type NearestStrategy<B> = [B::Item]
+    where
+        B: Bulk<MinLength: Length<Intersect<B::MaxLength> = Self>>;
+    type TryNearestStrategy<B> = [<B::Item as Try>::Output]
+    where
+        B: Bulk<MinLength: Length<Intersect<B::MaxLength> = Self>, Item: Try>;
 }
 const impl<const N: usize> Nearest for [(); N]
 {
@@ -74,3 +80,5 @@ const impl<const N: usize> Nearest for [(); N]
     where
         B: ~const Bulk<MinLength: Length<Intersect<B::MaxLength> = Self>, Item: ~const Try<Output: ~const Destruct>>;
 }
+
+pub trait CollectNearest = Bulk<MinLength: Length<Intersect<<Self as Bulk>::MaxLength>: Nearest>>;

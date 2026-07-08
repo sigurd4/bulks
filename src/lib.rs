@@ -13,6 +13,7 @@
 #![feature(iter_map_windows)]
 #![feature(tuple_trait)]
 #![feature(try_trait_v2)]
+#![feature(const_iter)]
 #![feature(ptr_metadata)]
 #![feature(const_trait_impl)]
 #![feature(const_cmp)]
@@ -363,7 +364,9 @@ moddef::moddef!(
     pub mod {
         range
     },
-    mod util
+    mod {
+        util
+    }
 );
 
 #[cfg(false)]
@@ -424,9 +427,9 @@ mod tests
 
         let b = a.bulk().copied().map(f).enumerate().inspect(|(i, x)| assert_eq!(i, x));
 
-        fn nearest<T>(bulk: T) -> <T as CollectNearest>::Nearest
+        fn nearest<T>(bulk: T) -> <BulkLength<T> as Nearest>::Nearest<T>
         where
-            T: Bulk
+            T: Bulk + CollectNearest
         {
             bulk.collect_nearest()
         }
