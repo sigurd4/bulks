@@ -70,7 +70,6 @@ where
     T: ~const Bulk<Item: ~const Destruct>,
     N: Length<Elem = ()> + ?Sized
 {
-    type Length = length::Min<T::Length, N>;
     type MinLength = length::Min<T::MinLength, N>;
     type MaxLength = length::Min<T::MaxLength, N>;
 

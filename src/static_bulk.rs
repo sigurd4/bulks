@@ -13,8 +13,7 @@ use crate::{Bulk, IntoBulk};
     label = "the bulk `{Self}` is not statically sized",
 )]
 pub unsafe trait StaticBulk: Bulk<
-    MinLength = Self::Array<()>,
-    MaxLength = Self::Array<()>
+    MinLength: Length<Intersect<<Self as Bulk>::MaxLength> = Self::Array<()>>
 > + Sized
 {
     type Array<U>: const Array<Elem = U> + Length<Elem = U> + const IntoBulk<Item = U>;
@@ -22,9 +21,8 @@ pub unsafe trait StaticBulk: Bulk<
 unsafe impl<T, const N: usize> StaticBulk for T
 where
     T: Bulk<
-    MinLength = [(); N],
-    MaxLength = [(); N]
-> + Sized
+        MinLength: Length<Intersect<<Self as Bulk>::MaxLength> = [(); N]>
+    > + Sized
 {
     type Array<U> = [U; N];
 }

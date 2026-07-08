@@ -45,7 +45,6 @@ impl<T> IntoIterator for Once<T>
 }
 const impl<T> Bulk for Once<T>
 {
-    type Length = [(); 1];
     type MinLength = [(); 1];
     type MaxLength = [(); 1];
 

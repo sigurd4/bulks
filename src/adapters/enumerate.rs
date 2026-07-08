@@ -57,7 +57,6 @@ where
     I: ~const Bulk<Item = T>,
     T: ~const Destruct
 {
-    type Length = I::Length;
     type MinLength = I::MinLength;
     type MaxLength = I::MaxLength;
     

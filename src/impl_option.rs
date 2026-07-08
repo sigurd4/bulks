@@ -57,7 +57,6 @@ macro_rules! impl_option {
         }
         const impl<$($a,)? $t> Bulk for option::$bulk<$($a,)? $t>
         {
-            type Length = [()];
             type MinLength = [(); 0];
             type MaxLength = [(); 1];
 

@@ -125,7 +125,6 @@ where
     A: ~const Clone + ~const Destruct,
     N: Length<Elem = ()> + ?Sized
 {
-    type Length = N;
     type MinLength = N;
     type MaxLength = N;
 
@@ -237,7 +236,7 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = crate::repeat_n(1, [(); _])
+        let a = crate::repeat_n(1, [(); 4])
             .collect::<[_; _], _>();
         assert_eq!(a, [1, 1, 1, 1])
     }

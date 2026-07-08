@@ -93,7 +93,6 @@ where
     S: Length<Elem = ()> + ?Sized,
     E: Length<Elem = ()> + ?Sized
 {
-    type Length = length::SaturatingSub<E, S>;
     type MinLength = length::SaturatingSub<E, S>;
     type MaxLength = length::SaturatingSub<E, S>;
     

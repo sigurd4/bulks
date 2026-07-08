@@ -101,7 +101,6 @@ where
     G: ~const FnMut() -> A + ~const Destruct,
     N: Length<Elem = ()> + ?Sized
 {
-    type Length = N;
     type MinLength = N;
     type MaxLength = N;
 
@@ -198,7 +197,7 @@ mod test
     fn it_works()
     {
         let mut i = 0;
-        let a = crate::repeat_n_with(|| {i += 1; i}, [(); _])
+        let a = crate::repeat_n_with(|| {i += 1; i}, [(); 4])
             .collect_array();
         assert_eq!(a, [1, 2, 3, 4])
     }

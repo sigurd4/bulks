@@ -74,7 +74,6 @@ where
     N: Length<Elem = ()> + ?Sized,
     F: ~const FnMut() -> T::Item + ~const Destruct
 {
-    type Length = N;
     type MinLength = N;
     type MaxLength = N;
 

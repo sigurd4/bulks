@@ -85,7 +85,7 @@ where
         Self: Sized,
         I: ~const Bulk<Item: ~const Destruct>,
         C: ~const FromBulk<A>,
-        A: CollectionAdapter<Elem = [I::Item; N]> + for<'a> ~const CollectionStrategy<ArrayChunksWithRemainder::<'a, I, N, false>, C> + ?Sized,
+        A: CollectionAdapter<Elem = [I::Item; N]> + for<'a> ~const CollectionStrategy<<ArrayChunksWithRemainder::<'a, I, N, false> as Bulk>::MinLength, <ArrayChunksWithRemainder::<'a, I, N, false> as Bulk>::MaxLength, C> + ?Sized,
         util::ArrayBuffer<I::Item, N, false>: ~const IntoBulk
     {
         let mut remainder = ArrayBuffer::new();
@@ -135,7 +135,7 @@ where
         Self: Sized,
         I: ~const Bulk<Item: ~const Destruct> + ~const DoubleEndedBulk,
         C: ~const FromBulk<A>,
-        A: CollectionAdapter<Elem = [I::Item; N]> + for<'a> ~const CollectionStrategy<ArrayChunksWithRemainder::<'a, Rev<I>, N, true>, C> + ?Sized,
+        A: CollectionAdapter<Elem = [I::Item; N]> + for<'a> ~const CollectionStrategy<<ArrayChunksWithRemainder::<'a, Rev<I>, N, true> as Bulk>::MinLength, <ArrayChunksWithRemainder::<'a, Rev<I>, N, true> as Bulk>::MaxLength, C> + ?Sized,
         util::ArrayBuffer<I::Item, N, true>: ~const IntoBulk
     {
         let mut remainder = ArrayBuffer::new();
@@ -165,7 +165,6 @@ const impl<I, const N: usize> Bulk for ArrayChunks<I, N>
 where
     I: ~const Bulk<Item: ~const Destruct>,
 {
-    type Length = length::Div<I::Length, [(); N]>;
     type MinLength = length::Div<I::MinLength, [(); N]>;
     type MaxLength = length::Div<I::MaxLength, [(); N]>;
 

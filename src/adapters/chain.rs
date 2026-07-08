@@ -2,7 +2,7 @@ use core::marker::Destruct;
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
+use crate::{Bulk, BulkLength, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
 
 
 /// A bulk that links two bulks together, in a chain.
@@ -96,7 +96,6 @@ where
     A: ~const Bulk<Item = T> + ~const Destruct,
     B: ~const Bulk<Item = T> + ~const Destruct
 {
-    type Length = length::Add<A::Length, B::Length>;
     type MinLength = length::Add<A::MinLength, B::MinLength>;
     type MaxLength = length::Add<A::MaxLength, B::MaxLength>;
 
@@ -179,8 +178,9 @@ where
 }
 const impl<A, B, T, D, L, R> SplitBulk<L> for Chain<A, B>
 where
-    A: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk, Length: Length<Value = D>> + ~const Bulk + ~const Destruct,
+    A: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk> + ~const Bulk + ~const Destruct,
     B: ~const SplitBulk<R, Item = T, Left: ~const Bulk, Right: ~const Bulk> + ~const Destruct,
+    BulkLength<A>: Length<Value = D>,
     L: LengthValue<SaturatingSub<D> = R>,
     R: LengthValue,
     D: LengthValue

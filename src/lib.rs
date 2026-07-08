@@ -451,7 +451,7 @@ mod tests
         fn maybe<B>(bulk: B)
         where
             B: IntoBulk<Item = i32>,
-            Option<i32>: CollectionStrategy<B::IntoBulk, Option<i32>>
+            Option<i32>: CollectionStrategy<<B::IntoBulk as Bulk>::MinLength, <B::IntoBulk as Bulk>::MaxLength, Option<i32>>
         {
             let (Some(_) | None): Option<i32> = bulk.into_bulk().collect();
         }

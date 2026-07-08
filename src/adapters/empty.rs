@@ -79,7 +79,6 @@ const impl<T, P> Bulk for Empty<T, P>
 where
     T: Borrow<P>
 {
-    type Length = [(); 0];
     type MinLength = [(); 0];
     type MaxLength = [(); 0];
 
@@ -169,13 +168,13 @@ where
     }
 }
 
-pub const trait EmptyBulk: ~const DoubleEndedBulk + StaticBulk<Length = [(); 0]>
+pub const trait EmptyBulk: ~const DoubleEndedBulk + StaticBulk<Array<()> = [(); 0]>
 {
 
 }
 const impl<T> EmptyBulk for T
 where
-    T: ~const DoubleEndedBulk + StaticBulk<Length = [(); 0]>
+    T: ~const DoubleEndedBulk + StaticBulk<Array<()> = [(); 0]>
 {
 
 }

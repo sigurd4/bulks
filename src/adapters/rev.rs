@@ -1,8 +1,8 @@
-use core::{marker::Destruct, ptr::Pointee};
+use core::marker::Destruct;
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, SplitBulk};
+use crate::{Bulk, BulkLength, DoubleEndedBulk, SplitBulk};
 
 
 /// A double-ended bulk with the direction inverted.
@@ -77,7 +77,6 @@ const impl<I> Bulk for Rev<I>
 where
     I: ~const Bulk + ~const DoubleEndedBulk
 {
-    type Length = I::Length;
     type MinLength = I::MinLength;
     type MaxLength = I::MaxLength;
     
@@ -135,7 +134,8 @@ where
 }
 const impl<I, N, L, R> SplitBulk<L> for Rev<I>
 where
-    I: ~const SplitBulk<R, Left: ~const Bulk + DoubleEndedBulk, Right: ~const Bulk + DoubleEndedBulk> + ~const Bulk<Length: Length<Value = N> + Pointee<Metadata = N::Metadata>> + ~const DoubleEndedBulk,
+    I: ~const SplitBulk<R, Left: ~const Bulk + DoubleEndedBulk, Right: ~const Bulk + DoubleEndedBulk> + ~const Bulk + ~const DoubleEndedBulk,
+    BulkLength<I>: Length<Value = N, Metadata = N::Metadata>,
     N: LengthValue<SaturatingSub<L> = R>,
     L: LengthValue,
     R: LengthValue

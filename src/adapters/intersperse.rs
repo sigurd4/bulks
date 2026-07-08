@@ -55,7 +55,6 @@ where
     I: ~const Bulk<Item = T>,
     T: ~const Clone + ~const Destruct
 {
-    type Length = length::Interspersed<I::Length>;
     type MinLength = length::Interspersed<I::MinLength>;
     type MaxLength = length::Interspersed<I::MaxLength>;
 

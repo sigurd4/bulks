@@ -1,8 +1,12 @@
 use core::{borrow::BorrowMut, cmp::Ordering, fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, FromResidual, Mul, Residual, Try}};
 
-use array_trait::length::{self, Length, LengthValue, Value};
+use array_trait::{length::{self, Length, LengthValue, Value}};
 
-use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, Resize, ResizeWith, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionAdapter, Zip, util};
+#[cfg(not(feature = "alloc"))]
+use crate::Nearest;
+use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, Resize, ResizeWith, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionStrategy, Zip, util};
+
+pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
 
@@ -27,7 +31,6 @@ use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, C
 #[must_use = "bulks are lazy and do nothing unless consumed"]
 pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 {
-    type Length: Length<Elem = ()> + ?Sized = <Self as private::BulkBase>::Length;
     type MinLength: Length<Elem = ()> + ?Sized = [(); 0];
     type MaxLength: Length<Elem = ()> + ?Sized = [()];
 
@@ -55,7 +58,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     #[track_caller]
     fn len(&self) -> usize;
 
-    fn length(&self) -> Value<Self::Length>
+    fn length(&self) -> Value<BulkLength<Self>>
     {
         let len = self.len();
         let length = length::value::or_len(len);
@@ -2073,7 +2076,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     where
         Self: Sized,
         C: ~const FromBulk<A>,
-        A: CollectionAdapter<Elem = Self::Item> + ~const CollectionStrategy<Self, C> + ?Sized
+        A: CollectionAdapter<Elem = Self::Item> + ~const CollectionStrategy<Self::MinLength, Self::MaxLength, C> + ?Sized
     {
         FromBulk::from_bulk(self)
     }
@@ -2162,10 +2165,34 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     where
         Self: Sized,
         C: ~const FromBulk<A>,
-        A: CollectionAdapter<Elem = <Self::Item as Try>::Output> + ~const TryCollectionAdapter<Self, C> + ?Sized,
-        Self::Item: ~const Try<Residual: ~const Residual<C, TryType: ~const Try>> + ~const Destruct
+        A: CollectionAdapter<Elem = <Self::Item as Try>::Output> + ~const TryCollectionStrategy<Self::MinLength, Self::MaxLength, C> + ?Sized,
+        Self::Item: ~const Try<Residual: ~const Residual<()> + ~const Residual<C, TryType: ~const Try> + ~const Destruct> + ~const Destruct
     {
-        FromBulk::try_from_bulk(self)
+        FromBulk::<A>::try_from_bulk(self)
+    }
+
+    fn collect_nearest(self) -> <BulkLength<Self> as Nearest>::Nearest<Self>
+    where
+        Self: Sized,
+        BulkLength<Self>: ~const Nearest,
+        Self::Item: ~const Destruct
+    {
+        self.collect::<
+            <BulkLength<Self> as Nearest>::Nearest<Self>,
+            <BulkLength<Self> as Nearest>::NearestStrategy<Self>
+        >()
+    }
+
+    fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<<BulkLength<Self> as Nearest>::TryNearest<Self>>>::TryType
+    where
+        Self: Sized,
+        BulkLength<Self>: ~const Nearest,
+        Self::Item: ~const Try<Output: ~const Destruct, Residual: ~const Residual<<BulkLength<Self> as Nearest>::TryNearest<Self>> + ~const Residual<()> + ~const Destruct> + ~const Destruct
+    {
+        self.try_collect::<
+            <BulkLength<Self> as Nearest>::TryNearest<Self>,
+            <BulkLength<Self> as Nearest>::TryNearestStrategy<Self>
+        >()
     }
 
     /// Transforms a statically sized bulk into an array.
@@ -2552,7 +2579,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     #[track_caller]
     fn rsplit_at<L>(self, n: L) -> (Self::Left, Self::Right)
     where
-        Self: ~const SplitBulk<length::value::SaturatingSub<<<Self as Bulk>::Length as Length>::Value, L>> + Sized,
+        Self: ~const SplitBulk<length::value::SaturatingSub<<BulkLength<Self> as Length>::Value, L>> + Sized,
         L: LengthValue
     {
         let l = self.length();
@@ -2759,29 +2786,5 @@ mod test
 
         println!("mean = {mean}");
         println!("variance = {variance}");
-    }
-}
-
-mod private
-{
-    use array_trait::length::Length;
-
-    use crate::{Bulk, StaticBulk};
-
-    pub const trait BulkBase: IntoIterator
-    {
-        type Length: Length<Elem = ()> + ?Sized;
-    }
-    impl<T> BulkBase for T
-    where
-        T: Bulk + ?Sized
-    {
-        default type Length = [()];
-    }
-    impl<T> BulkBase for T
-    where
-        T: StaticBulk
-    {
-        type Length = <Self as StaticBulk>::Array<()>;
     }
 }
