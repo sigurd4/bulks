@@ -151,7 +151,7 @@ impl<T, const N: usize, const REV: bool> Extend<T> for ArrayBuffer<T, N, REV>
     }
 }
 
-impl<T, const N: usize, const REV: bool> IntoIterator for ArrayBuffer<T, N, REV>
+const impl<T, const N: usize, const REV: bool> IntoIterator for ArrayBuffer<T, N, REV>
 {
     type Item = T;
     type IntoIter = core::array::IntoIter<T, N>;

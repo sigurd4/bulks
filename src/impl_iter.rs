@@ -26,9 +26,9 @@ where
     }
 }
 
-impl<T, A, I> IntoIterator for iter::Bulk<T>
+const impl<T, A, I> IntoIterator for iter::Bulk<T>
 where
-    T: IntoIterator<Item = A, IntoIter = I>,
+    T: ~const IntoIterator<Item = A, IntoIter = I>,
     I: ExactSizeIterator<Item = A>
 {
     type IntoIter = I;

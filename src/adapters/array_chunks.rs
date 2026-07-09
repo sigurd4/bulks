@@ -148,9 +148,9 @@ where
     }
 }
 
-impl<I, const N: usize> IntoIterator for ArrayChunks<I, N>
+const impl<I, const N: usize> IntoIterator for ArrayChunks<I, N>
 where
-    I: Bulk
+    I: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>
 {
     type Item = [I::Item; N];
     type IntoIter = core::iter::ArrayChunks<I::IntoIter, N>;

@@ -133,10 +133,10 @@ mod private
     }
 }
 
-impl<Lhs, Rhs, F, O> IntoIterator for Merge<Lhs, Rhs, F>
+const impl<Lhs, Rhs, F, O> IntoIterator for Merge<Lhs, Rhs, F>
 where
-    Lhs: Bulk<Item: Into<O>>,
-    Rhs: Bulk<Item: Into<O>>,
+    Lhs: Bulk<Item: Into<O>> + ~const IntoIterator,
+    Rhs: Bulk<Item: Into<O>> + ~const IntoIterator,
     F: FnMut(Lhs::Item, Rhs::Item) -> O
 {
     type Item = O;

@@ -39,9 +39,9 @@ where
     }
 }
 
-impl<I, T> IntoIterator for Enumerate<I>
+const impl<I, T> IntoIterator for Enumerate<I>
 where
-    I: Bulk<Item = T>
+    I: Bulk<Item = T> + ~const IntoIterator<IntoIter: ~const Iterator>
 {
     type IntoIter = core::iter::Enumerate<I::IntoIter>;
     type Item = (usize, T);

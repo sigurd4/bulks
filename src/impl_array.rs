@@ -64,9 +64,11 @@ macro_rules! impl_bulk {
                 array
             }
         }
-        impl<$($a,)? $t, const $n: usize> IntoIterator for array::$bulk<$($a,)? $t, $n>
+        const impl<$($a,)? $t, const $n: usize> IntoIterator for array::$bulk<$($a,)? $t, $n>
+        where
+            $array: ~const IntoIterator
         {
-            type Item = $item;
+            type Item = <$array as IntoIterator>::Item;
             type IntoIter = <$array as IntoIterator>::IntoIter;
 
             #[inline]

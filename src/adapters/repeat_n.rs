@@ -106,7 +106,7 @@ where
     }
 }
 
-impl<A, N> IntoIterator for RepeatN<A, N>
+/*const*/ impl<A, N> IntoIterator for RepeatN<A, N>
 where
     A: Clone,
     N: Length<Elem = ()> + ?Sized

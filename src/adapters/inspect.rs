@@ -46,9 +46,9 @@ where
     }
 }
 
-impl<I, F> IntoIterator for Inspect<I, F>
+const impl<I, F> IntoIterator for Inspect<I, F>
 where
-    I: Bulk,
+    I: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>,
     F: FnMut(&I::Item)
 {
     type Item = I::Item;

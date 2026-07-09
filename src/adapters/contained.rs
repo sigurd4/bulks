@@ -7,7 +7,6 @@ use array_trait::length::LengthValue;
 pub(crate) use private::IntoContained as IntoContained;
 #[allow(unused)]
 pub(crate) use private::IntoContainedIter as IntoContainedIter;
-pub(crate) use private::ContainedIntoIter as ContainedIntoIter;
 
 pub struct Contained<I>
 where
@@ -311,40 +310,6 @@ mod private
         unsafe fn into_contained(self) -> Self::IntoContained
         {
             self
-        }
-    }
-
-    /// # Safety
-    /// 
-    /// Assumes that the possibly infinite iterator is contained by another exact length iterator.
-    /// 
-    /// This is ok to use with adapters such as zip and take.
-    pub unsafe trait ContainedIntoIter: IntoIterator<IntoIter: ExactSizeIterator>
-    {
-        type ContainedIntoIter: Iterator<Item = Self::Item>;
-
-        unsafe fn contained_into_iter(self) -> Self::ContainedIntoIter;
-    }
-    unsafe impl<T> ContainedIntoIter for T
-    where
-        T: IntoIterator<IntoIter: ExactSizeIterator>
-    {
-        default type ContainedIntoIter = T::IntoIter;
-
-        default unsafe fn contained_into_iter(self) -> Self::ContainedIntoIter
-        {
-            self.into_iter().same().ok().unwrap()
-        }
-    }
-    unsafe impl<I> ContainedIntoIter for Contained<I>
-    where
-        I: Iterator
-    {
-        type ContainedIntoIter = I;
-
-        unsafe fn contained_into_iter(self) -> Self::ContainedIntoIter
-        {
-            self.iter
         }
     }
 

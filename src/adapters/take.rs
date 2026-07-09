@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::{ControlFlow, Try}, ptr::Pointee};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
 
 /// Creates a bulk that only delivers the first `n` iterations of `iterable`.
 pub const fn take<I, L>(iterable: I, n: L) -> Take<
@@ -43,26 +43,19 @@ where
         Self { bulk, n: length::value::into_metadata(n) }
     }
 }
-impl<T, N> IntoIterator for Take<T, N>
+const impl<T, N> IntoIterator for Take<T, N>
 where
-    T: Bulk,
+    T: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>,
     N: Length<Elem = ()> + ?Sized
 {
     type Item = T::Item;
-    type IntoIter = <<core::iter::Take<
-        <T::IntoIter as ContainedIntoIter>::ContainedIntoIter
-    > as IntoContained>::IntoContained as IntoIterator>::IntoIter;
+    type IntoIter = core::iter::Take<T::IntoIter>;
 
     fn into_iter(self) -> Self::IntoIter
     {
         let Self { bulk, n } = self;
-        unsafe {
-            bulk.into_iter()
-                .contained_into_iter()
-                .take(length::len_metadata::<N>(n))
-                .into_contained()
-                .into_iter()
-        }
+        bulk.into_iter()
+            .take(length::len_metadata::<N>(n))
     }
 }
 const impl<T, N> Bulk for Take<T, N>

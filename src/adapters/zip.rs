@@ -2,7 +2,7 @@ use core::fmt;
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, ContainedIntoIter, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, IntoContainedBy, SplitBulk};
 
 /// Converts the arguments to bulks and zips them.
 ///
@@ -102,29 +102,19 @@ where
     }
 }
 
-impl<A, B> IntoIterator for Zip<A, B>
+/*const*/ impl<A, B> IntoIterator for Zip<A, B>
 where
     A: Bulk,
     B: Bulk
 {
     type Item = (A::Item, B::Item);
-    type IntoIter = <<core::iter::Zip<
-        <A::IntoIter as ContainedIntoIter>::ContainedIntoIter,
-        <B::IntoIter as ContainedIntoIter>::ContainedIntoIter
-    > as IntoContained>::IntoContained as IntoIterator>::IntoIter;
+    type IntoIter = core::iter::Zip<A::IntoIter, B::IntoIter>;
 
     fn into_iter(self) -> Self::IntoIter
     {
         let Self { a, b } = self;
-        unsafe {
-            core::iter::zip(
-                a.into_iter()
-                    .contained_into_iter(),
-                b.into_iter()
-                    .contained_into_iter()
-            ).into_contained()
-            .into_iter()
-        }
+        a.into_iter()
+            .zip(b)
     }
 }
 impl<A, B> Bulk for Zip<A, B>
@@ -178,7 +168,6 @@ impl<A, B> DoubleEndedBulk for Zip<A, B>
 where
     A: DoubleEndedBulk,
     B: DoubleEndedBulk,
-    Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<F>(self, f: F)
     where

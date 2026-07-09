@@ -33,7 +33,7 @@ pub const fn once<T>(value: T) -> Once<T>
 #[derive(Clone, Debug)]
 pub struct Once<T>(T);
 
-impl<T> IntoIterator for Once<T>
+/*const*/ impl<T> IntoIterator for Once<T>
 {
     type Item = T;
     type IntoIter = core::iter::Once<T>;

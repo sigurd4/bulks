@@ -32,12 +32,13 @@ where
     }
 }
 
-impl<I, G, T> IntoIterator for IntersperseWith<I, G>
+const impl<I, G, T> IntoIterator for IntersperseWith<I, G>
 where
-    I: Bulk<Item = T>,
-    G: FnMut() -> T
+    I: Bulk<Item = T> + ~const IntoIterator<IntoIter: ~const Iterator>,
+    G: FnMut() -> T,
+    core::iter::IntersperseWith<I::IntoIter, G>: ~const IntoContained<IntoContained: ~const IntoIterator>
 {
-    type Item = I::Item;
+    type Item = <<core::iter::IntersperseWith<I::IntoIter, G> as IntoContained>::IntoContained as IntoIterator>::Item;
     type IntoIter = <<core::iter::IntersperseWith<I::IntoIter, G> as IntoContained>::IntoContained as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter

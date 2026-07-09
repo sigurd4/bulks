@@ -72,12 +72,13 @@ where
     Chain::new(a.into_bulk(), b.into_bulk())
 }
 
-impl<A, B, T> IntoIterator for Chain<A, B>
+const impl<A, B, T> IntoIterator for Chain<A, B>
 where
-    A: Bulk<Item = T>,
-    B: Bulk<Item = T>
+    A: Bulk<Item = T> + ~const IntoIterator<IntoIter: ~const Iterator>,
+    B: Bulk<Item = T> + ~const IntoIterator<IntoIter: ~const Iterator>,
+    core::iter::Chain<A::IntoIter, B::IntoIter>: ~const IntoContained<IntoIter: ~const Iterator, IntoContained: ~const IntoIterator>
 {
-    type Item = T;
+    type Item = <<core::iter::Chain<A::IntoIter, B::IntoIter> as IntoContained>::IntoContained as IntoIterator>::Item;
     type IntoIter = <<core::iter::Chain<A::IntoIter, B::IntoIter> as IntoContained>::IntoContained as IntoIterator>::IntoIter;
     
     fn into_iter(self) -> Self::IntoIter

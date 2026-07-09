@@ -32,7 +32,7 @@ where
     }
 }
 
-impl<T, N> IntoIterator for StepBy<T, N>
+/*const*/ impl<T, N> IntoIterator for StepBy<T, N>
 where
     T: Bulk,
     N: Length<Elem = ()> + ?Sized

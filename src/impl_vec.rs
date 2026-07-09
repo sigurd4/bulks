@@ -19,12 +19,13 @@ pub mod vec
     }
 }
 
-impl<T, A> IntoIterator for vec::IntoBulk<T, A>
+const impl<T, A> IntoIterator for vec::IntoBulk<T, A>
 where
-    A: Allocator
+    A: Allocator,
+    Vec<T, A>: ~const IntoIterator
 {
-    type Item = T;
-    type IntoIter = alloc::vec::IntoIter<T, A>;
+    type Item = <Vec<T, A> as IntoIterator>::Item;
+    type IntoIter = <Vec<T, A> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter
     {

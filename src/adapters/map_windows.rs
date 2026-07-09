@@ -43,9 +43,9 @@ where
     }
 }
 
-impl<I: Bulk, F, U, const N: usize> IntoIterator for MapWindows<I, F, N>
+const impl<I: Bulk, F, U, const N: usize> IntoIterator for MapWindows<I, F, N>
 where
-    I: Bulk,
+    I: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>,
     F: FnMut(&[I::Item; N]) -> U
 {
     type Item = U;

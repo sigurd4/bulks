@@ -74,7 +74,7 @@ where
     }
 }
 
-impl<S, E> IntoIterator for RangeInclusive<S, E>
+const impl<S, E> IntoIterator for RangeInclusive<S, E>
 where
     S: Length<Elem = ()> + ?Sized,
     E: Length<Elem = ()> + ?Sized

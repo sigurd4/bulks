@@ -1,4 +1,4 @@
-use core::{borrow::Borrow, fmt, marker::{Destruct, PhantomData}};
+use core::{fmt, marker::{Destruct, PhantomData}};
 
 use array_trait::length::LengthValue;
 
@@ -30,13 +30,9 @@ pub const fn empty<T>() -> Empty<T>
 ///
 /// This `struct` is created by the [`empty()`] function. See its documentation for more.
 #[must_use = "bulks are lazy and do nothing unless consumed"]
-pub struct Empty<T, P = T>(PhantomData<(T, P)>)
-where
-    T: Borrow<P>;
+pub struct Empty<T>(PhantomData<T>);
 
-const impl<T, P> Clone for Empty<T, P>
-where
-    T: Borrow<P>
+const impl<T> Clone for Empty<T>
 {
     fn clone(&self) -> Self
     {
@@ -44,9 +40,7 @@ where
     }
 }
 
-impl<T, P> fmt::Debug for Empty<T, P>
-where
-    T: Borrow<P>
+impl<T> fmt::Debug for Empty<T>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
     {
@@ -54,9 +48,7 @@ where
     }
 }
 
-impl<T, P> IntoIterator for Empty<T, P>
-where
-    T: Borrow<P>
+const impl<T> IntoIterator for Empty<T>
 {
     type Item = T;
     type IntoIter = core::iter::Empty<T>;
@@ -75,9 +67,7 @@ const impl<T> IntoBulk for core::iter::Empty<T>
         empty()
     }
 }
-const impl<T, P> Bulk for Empty<T, P>
-where
-    T: Borrow<P>
+const impl<T> Bulk for Empty<T>
 {
     type MinLength = [(); 0];
     type MaxLength = [(); 0];
@@ -131,9 +121,7 @@ where
         R::from_output(())
     }
 }
-const impl<T, P> DoubleEndedBulk for Empty<T, P>
-where
-    T: Borrow<P>
+const impl<T> DoubleEndedBulk for Empty<T>
 {
     fn rev_for_each<F>(self, f: F)
     where
@@ -152,10 +140,9 @@ where
         R::from_output(())
     }
 }
-const impl<T, P, L> SplitBulk<L> for Empty<T, P>
+const impl<T, L> SplitBulk<L> for Empty<T>
 where
-    L: LengthValue,
-    T: Borrow<P>
+    L: LengthValue
 {
     type Left = Self;
     type Right = Self;

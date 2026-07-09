@@ -44,11 +44,12 @@ macro_rules! impl_bulk {
             $nth:block
         }
     ) => {
-        impl<$a, $t> IntoIterator for slice::$bulk<$a, $t>
+        const impl<$a, $t> IntoIterator for slice::$bulk<$a, $t>
         where
-            $t: $a
+            $t: $a,
+            $slice: ~const IntoIterator
         {
-            type Item = $item;
+            type Item = <$slice as IntoIterator>::Item;
             type IntoIter = <$slice as IntoIterator>::IntoIter;
 
             fn into_iter(self) -> Self::IntoIter

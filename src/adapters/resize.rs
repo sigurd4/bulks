@@ -43,7 +43,7 @@ where
         Self { bulk, n: length::value::into_metadata(n), element }
     }
 }
-impl<T, N> IntoIterator for Resize<T, N>
+/*const*/ impl<T, N> IntoIterator for Resize<T, N>
 where
     T: Bulk<Item: Copy>,
     N: Length<Elem = ()> + ?Sized

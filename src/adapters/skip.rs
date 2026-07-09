@@ -29,9 +29,9 @@ where
         Self { bulk, n: length::value::into_metadata(n) }
     }
 }
-impl<T, N> IntoIterator for Skip<T, N>
+const impl<T, N> IntoIterator for Skip<T, N>
 where
-    T: Bulk,
+    T: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>,
     N: Length<Elem = ()> + ?Sized
 {
     type Item = T::Item;

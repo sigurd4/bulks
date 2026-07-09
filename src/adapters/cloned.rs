@@ -42,10 +42,10 @@ where
     }
 }
 
-impl<'a, I, T> IntoIterator for Cloned<I>
+const impl<'a, I, T> IntoIterator for Cloned<I>
 where
-    I: Bulk<Item = &'a T>,
-    T: Clone + 'a
+    I: Bulk<Item = &'a T> + ~const IntoIterator<IntoIter: ~const Iterator>,
+    T: ~const Clone + 'a
 {
     type IntoIter = core::iter::Cloned<I::IntoIter>;
     type Item = T;

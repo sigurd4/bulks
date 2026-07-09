@@ -42,9 +42,9 @@ where
     }
 }
 
-impl<'a, I, T> IntoIterator for Copied<I>
+const impl<'a, I, T> IntoIterator for Copied<I>
 where
-    I: Bulk<Item = &'a T>,
+    I: Bulk<Item = &'a T> + ~const IntoIterator<IntoIter: ~const Iterator>,
     T: Copy + 'a
 {
     type IntoIter = core::iter::Copied<I::IntoIter>;

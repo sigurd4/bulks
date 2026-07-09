@@ -35,11 +35,12 @@ where
     }
 }
 
-impl<I> IntoIterator for Flatten<I>
+const impl<I> IntoIterator for Flatten<I>
 where
-    I: Bulk<Item: IntoBulk<IntoBulk: StaticBulk>>
+    I: Bulk<Item: IntoBulk<IntoBulk: StaticBulk>> + ~const IntoIterator<IntoIter: ~const Iterator>,
+    core::iter::Flatten<I::IntoIter>: ~const IntoContained<IntoContained: ~const IntoIterator>
 {
-    type Item = <I::Item as IntoIterator>::Item;
+    type Item = <<core::iter::Flatten<I::IntoIter> as IntoContained>::IntoContained as IntoIterator>::Item;
     type IntoIter = <<core::iter::Flatten<I::IntoIter> as IntoContained>::IntoContained as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter

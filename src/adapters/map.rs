@@ -94,9 +94,9 @@ where
     }
 }
 
-impl<I, F> IntoIterator for Map<I, F>
+const impl<I, F> IntoIterator for Map<I, F>
 where
-    I: Bulk,
+    I: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>,
     F: FnMut<(I::Item,)>
 {
     type Item = F::Output;

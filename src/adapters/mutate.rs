@@ -46,9 +46,9 @@ where
     }
 }
 
-impl<I, F> IntoIterator for Mutate<I, F>
+const impl<I, F> IntoIterator for Mutate<I, F>
 where
-    I: Bulk,
+    I: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>,
     F: FnMut(&mut I::Item)
 {
     type Item = I::Item;

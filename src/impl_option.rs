@@ -34,10 +34,12 @@ macro_rules! impl_option {
             $first:block
         }
     ) => {
-        impl<$($a,)? $t> IntoIterator for option::$bulk<$($a,)? $t>
+        const impl<$($a,)? $t> IntoIterator for option::$bulk<$($a,)? $t>
+        where
+            $option: ~const IntoIterator
         {
+            type Item = <$option as IntoIterator>::Item;
             type IntoIter = <$option as IntoIterator>::IntoIter;
-            type Item = $item;
 
             fn into_iter(self) -> Self::IntoIter
             {

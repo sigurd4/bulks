@@ -47,7 +47,7 @@ where
         Self { bulk, n: length::value::into_metadata(n), padder }
     }
 }
-impl<T, F, N> IntoIterator for ResizeWith<T, F, N>
+/*const*/ impl<T, F, N> IntoIterator for ResizeWith<T, F, N>
 where
     T: Bulk,
     N: Length<Elem = ()> + ?Sized,

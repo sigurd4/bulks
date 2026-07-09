@@ -82,7 +82,7 @@ where
     }
 }
 
-impl<A, G, N> IntoIterator for RepeatNWith<G, N>
+/*const*/ impl<A, G, N> IntoIterator for RepeatNWith<G, N>
 where
     G: FnMut() -> A,
     N: Length<Elem = ()> + ?Sized

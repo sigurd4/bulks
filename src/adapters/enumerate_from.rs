@@ -33,9 +33,9 @@ where
     }
 }
 
-impl<I, T, U> IntoIterator for EnumerateFrom<I, U>
+const impl<I, T, U> IntoIterator for EnumerateFrom<I, U>
 where
-    I: Bulk<Item = T>,
+    I: Bulk<Item = T> + ~const IntoIterator<IntoIter: ~const Iterator>,
     U: Step + Copy
 {
     type IntoIter = core::iter::Map<I::IntoIter, Stepper<U>>;

@@ -61,9 +61,9 @@ where
     }
 }
 
-impl<I> IntoIterator for Rev<I>
+const impl<I> IntoIterator for Rev<I>
 where
-    I: DoubleEndedBulk
+    I: DoubleEndedBulk + ~const IntoIterator<IntoIter: ~const Iterator>
 {
     type IntoIter = core::iter::Rev<I::IntoIter>;
     type Item = I::Item;

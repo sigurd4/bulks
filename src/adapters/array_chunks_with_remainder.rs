@@ -153,9 +153,9 @@ where
     }
 }
 
-impl<'a, I, const N: usize, const REV: bool> IntoIterator for ArrayChunksWithRemainder<'a, I, N, REV>
+const impl<'a, I, const N: usize, const REV: bool> IntoIterator for ArrayChunksWithRemainder<'a, I, N, REV>
 where
-    I: Bulk
+    I: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>
 {
     type Item = <ArrayChunks<I, N> as IntoIterator>::Item;
     type IntoIter = iter::ArrayChunksWithRemainder<'a, <I as IntoIterator>::IntoIter, N, REV>;
@@ -218,7 +218,7 @@ mod iter
     where
         I: Iterator
     {
-        pub(super) fn new(iter: core::iter::ArrayChunks<I, N>, remainder: &'a mut ArrayBuffer<I::Item, N, REV>) -> Self
+        pub(super) const fn new(iter: core::iter::ArrayChunks<I, N>, remainder: &'a mut ArrayBuffer<I::Item, N, REV>) -> Self
         {
             Self {
                 iter: Some(iter),
@@ -227,15 +227,16 @@ mod iter
         }
     }
     
-    impl<'a, I, const N: usize, const REV: bool> Iterator for ArrayChunksWithRemainder<'a, I, N, REV>
+    const impl<'a, I, const N: usize, const REV: bool> Iterator for ArrayChunksWithRemainder<'a, I, N, REV>
     where
-        I: Iterator
+        I: Iterator,
+        core::iter::ArrayChunks<I, N>: ~const Iterator<Item = [I::Item; N]>
     {
         type Item = [I::Item; N];
 
         fn next(&mut self) -> Option<Self::Item>
         {
-            self.iter.as_mut().and_then(|iter| iter.next())
+            self.iter.as_mut().and_then(Iterator::next)
         }
     }
 

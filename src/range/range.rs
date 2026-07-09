@@ -75,7 +75,7 @@ impl IntoBulk for core::ops::Range<usize>
         crate::range(start, end)
     }
 }
-impl<S, E> IntoIterator for Range<S, E>
+const impl<S, E> IntoIterator for Range<S, E>
 where
     S: Length<Elem = ()> + ?Sized,
     E: Length<Elem = ()> + ?Sized

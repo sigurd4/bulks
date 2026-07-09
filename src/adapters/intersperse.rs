@@ -31,12 +31,13 @@ where
     }
 }
 
-impl<I, T> IntoIterator for Intersperse<I>
+const impl<I, T> IntoIterator for Intersperse<I>
 where
-    I: Bulk<Item = T>,
-    T: Clone
+    I: Bulk<Item = T> + ~const IntoIterator<IntoIter: ~const Iterator>,
+    T: Clone,
+    core::iter::Intersperse<I::IntoIter>: ~const IntoContained<IntoContained: ~const IntoIterator>
 {
-    type Item = I::Item;
+    type Item = <<core::iter::Intersperse<I::IntoIter> as IntoContained>::IntoContained as IntoIterator>::Item;
     type IntoIter = <<core::iter::Intersperse<I::IntoIter> as IntoContained>::IntoContained as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter

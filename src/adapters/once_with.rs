@@ -50,7 +50,7 @@ where
     }
 }
 
-impl<F, A> IntoIterator for OnceWith<F>
+/*const*/ impl<F, A> IntoIterator for OnceWith<F>
 where
     F: FnOnce() -> A
 {
