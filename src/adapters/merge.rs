@@ -68,11 +68,11 @@ mod private
         pub f: F
     }
 
-    impl<Rhs, Lhs, F, O> Iterator for IntoIter<Lhs, Rhs, F, O>
+    const impl<Rhs, Lhs, F, O> Iterator for IntoIter<Lhs, Rhs, F, O>
     where
-        Lhs: Iterator<Item: Into<O>>,
-        Rhs: Iterator<Item: Into<O>>,
-        F: FnMut(Lhs::Item, Rhs::Item) -> O
+        Lhs: ~const Iterator<Item: ~const Into<O>>,
+        Rhs: ~const Iterator<Item: ~const Into<O>>,
+        F: ~const FnMut(Lhs::Item, Rhs::Item) -> O
     {
         type Item = O;
         
@@ -88,11 +88,11 @@ mod private
             let (rhs_min, rhs_max) = rhs.size_hint();
             (
                 lhs_min.max(rhs_min),
-                merge_once(&mut |lhs_max: usize, rhs_max: usize| lhs_max.max(rhs_max), lhs_max, rhs_max)
+                merge_once(&mut usize::max, lhs_max, rhs_max)
             )
         }
     }
-    impl<Rhs, Lhs, F, O> ExactSizeIterator for IntoIter<Lhs, Rhs, F, O>
+    /*const*/ impl<Rhs, Lhs, F, O> ExactSizeIterator for IntoIter<Lhs, Rhs, F, O>
     where
         Lhs: ExactSizeIterator<Item: Into<O>>,
         Rhs: ExactSizeIterator<Item: Into<O>>,
@@ -109,7 +109,7 @@ mod private
             lhs.len().max(rhs.len())
         }
     }
-    impl<Rhs, Lhs, F, O> DoubleEndedIterator for IntoIter<Lhs, Rhs, F, O>
+    /*const*/ impl<Rhs, Lhs, F, O> DoubleEndedIterator for IntoIter<Lhs, Rhs, F, O>
     where
         Lhs: DoubleEndedIterator<Item: Into<O>> + ExactSizeIterator,
         Rhs: DoubleEndedIterator<Item: Into<O>> + ExactSizeIterator,

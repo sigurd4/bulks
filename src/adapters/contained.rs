@@ -15,9 +15,9 @@ where
     iter: I
 }
 
-impl<I> Iterator for Contained<I>
+const impl<I> Iterator for Contained<I>
 where
-    I: Iterator
+    I: ~const Iterator
 {
     type Item = I::Item;
 
@@ -39,9 +39,9 @@ where
         Bulk::is_empty(self)
     }
 }
-impl<I> DoubleEndedIterator for Contained<I>
+const impl<I> DoubleEndedIterator for Contained<I>
 where
-    I: DoubleEndedIterator
+    I: ~const DoubleEndedIterator
 {
     fn next_back(&mut self) -> Option<Self::Item>
     {
