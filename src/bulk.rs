@@ -1346,6 +1346,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// `intersperse` can be very useful to join a bulk's items using a common element:
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     ///
     /// let words = ["Hello", "World", "!"];
@@ -1395,6 +1396,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// [`intersperse_with`](Bulk::intersperse_with) can be used in situations where the separator needs
     /// to be computed:
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     ///
     /// let src = ["Hello", "to", "all", "people", "!!"].bulk().copied();
@@ -1600,6 +1602,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Basic usage:
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
     /// let a = [1, 2, 3];
@@ -1655,6 +1658,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
     /// 
     /// let words = [b"alpha", b"beta ", b"gamma"];

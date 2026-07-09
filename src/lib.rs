@@ -372,7 +372,7 @@ moddef::moddef!(
 #[cfg(false)]
 pub mod asm
 {
-    use crate::{Bulk, IntoBulk};
+    use crate::{AsBulk, Bulk, IntoBulk};
 
     #[unsafe(no_mangle)]
     pub fn asm_bulk(a: [u8; 4]) -> [u8; 4]
@@ -381,13 +381,11 @@ pub mod asm
     }
 
     #[unsafe(no_mangle)]
-    pub fn asm_swap(a: [u8; 4]) -> [u8; 4]
+    pub fn asm_swap(mut a: [u8; 4]) -> [u8; 4]
     {
-        let mut bulk = a.into_bulk();
-
-        bulk.swap_inplace(0, 1);
-
-        bulk.collect()
+        a.bulk_mut().swap::<u8>(0, 1);
+        
+        a
     }
 
     #[unsafe(no_mangle)]
