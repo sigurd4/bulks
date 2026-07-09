@@ -117,7 +117,7 @@ where
             .zip(b)
     }
 }
-impl<A, B> Bulk for Zip<A, B>
+/*const*/ impl<A, B> Bulk for Zip<A, B>
 where
     A: Bulk,
     B: Bulk
@@ -164,7 +164,7 @@ where
         self.into_iter().try_for_each(f)
     }
 }
-impl<A, B> DoubleEndedBulk for Zip<A, B>
+/*const*/ impl<A, B> DoubleEndedBulk for Zip<A, B>
 where
     A: DoubleEndedBulk,
     B: DoubleEndedBulk,

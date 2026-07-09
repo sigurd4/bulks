@@ -193,8 +193,7 @@ where
 const impl<T, N> DoubleEndedBulk for Take<T, N>
 where
     T: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk,
-    N: Length<Elem = ()> + ?Sized,
-    Self::IntoIter: DoubleEndedIterator
+    N: Length<Elem = ()> + ?Sized
 {
     fn rev_for_each<F>(self, f: F)
     where
