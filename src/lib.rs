@@ -384,7 +384,7 @@ pub mod asm
     pub fn asm_swap(mut a: [u8; 4]) -> [u8; 4]
     {
         a.bulk_mut().swap::<u8>(0, 1);
-        
+
         a
     }
 
