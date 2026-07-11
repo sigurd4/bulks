@@ -425,7 +425,7 @@ mod tests
 
         let b = a.bulk().copied().map(f).enumerate().inspect(|(i, x)| assert_eq!(i, x));
 
-        fn nearest<T>(bulk: T) -> <BulkLength<T> as Nearest>::Nearest<T>
+        fn nearest<T>(bulk: T) -> <BulkLength<T> as Nearest>::NearestFrom<T>
         where
             T: Bulk + CollectNearest
         {

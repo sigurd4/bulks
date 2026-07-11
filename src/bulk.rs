@@ -2173,27 +2173,27 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         FromBulk::<A>::try_from_bulk(self)
     }
 
-    fn collect_nearest(self) -> <BulkLength<Self> as Nearest>::Nearest<Self>
+    fn collect_nearest(self) -> <BulkLength<Self> as Nearest>::NearestFrom<Self>
     where
         Self: Sized,
         BulkLength<Self>: ~const Nearest,
         Self::Item: ~const Destruct
     {
         self.collect::<
-            <BulkLength<Self> as Nearest>::Nearest<Self>,
-            <BulkLength<Self> as Nearest>::NearestStrategy<Self>
+            <BulkLength<Self> as Nearest>::NearestFrom<Self>,
+            <BulkLength<Self> as Nearest>::NearestStrategyFrom<Self>
         >()
     }
 
-    fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<<BulkLength<Self> as Nearest>::TryNearest<Self>>>::TryType
+    fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<<BulkLength<Self> as Nearest>::TryNearestFrom<Self>>>::TryType
     where
         Self: Sized,
         BulkLength<Self>: ~const Nearest,
-        Self::Item: ~const Try<Output: ~const Destruct, Residual: ~const Residual<<BulkLength<Self> as Nearest>::TryNearest<Self>> + ~const Residual<()> + ~const Destruct> + ~const Destruct
+        Self::Item: ~const Try<Output: ~const Destruct, Residual: ~const Residual<<BulkLength<Self> as Nearest>::TryNearestFrom<Self>> + ~const Residual<()> + ~const Destruct> + ~const Destruct
     {
         self.try_collect::<
-            <BulkLength<Self> as Nearest>::TryNearest<Self>,
-            <BulkLength<Self> as Nearest>::TryNearestStrategy<Self>
+            <BulkLength<Self> as Nearest>::TryNearestFrom<Self>,
+            <BulkLength<Self> as Nearest>::TryNearestStrategyFrom<Self>
         >()
     }
 
