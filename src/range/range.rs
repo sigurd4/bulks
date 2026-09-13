@@ -65,6 +65,7 @@ where
     }
 }
 
+/*
 impl IntoBulk for core::ops::Range<usize>
 {
     type IntoBulk = Range<[()]>;
@@ -75,6 +76,7 @@ impl IntoBulk for core::ops::Range<usize>
         crate::range(start, end)
     }
 }
+*/
 const impl<S, E> IntoIterator for Range<S, E>
 where
     S: Length<Elem = ()> + ?Sized,
@@ -231,3 +233,4 @@ mod test
             assert_eq!(i + 1, a)
         }
     }
+}
