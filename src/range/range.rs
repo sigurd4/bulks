@@ -231,4 +231,3 @@ mod test
             assert_eq!(i + 1, a)
         }
     }
-}
