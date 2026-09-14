@@ -1,8 +1,20 @@
-use core::{borrow::BorrowMut, cmp::Ordering, fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, FromResidual, Mul, Residual, Try}};
+use core::{
+    borrow::BorrowMut,
+    cmp::Ordering,
+    error::Error,
+    fmt::Display,
+    iter::Step,
+    marker::Destruct,
+    ops::{Add, ControlFlow, FromResidual, Mul, Residual, Try}
+};
 
-use array_trait::{length::{self, Length, LengthValue, Value}};
+use array_trait::length::{self, Length, LengthValue, Value};
 
-use crate::{ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, Nearest, Resize, ResizeWith, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionStrategy, Zip, util};
+use crate::{
+    ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect,
+    Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, Nearest, Resize, ResizeWith, Rev, Skip, SplitBulk,
+    StaticBulk, StepBy, Take, TryCollectionStrategy, Zip, util
+};
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
 
@@ -14,20 +26,14 @@ pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bul
 /// generally, please see the [crate-level documentation](crate). In particular, you
 /// may want to know how to [implement `Bulk`][crate#implementing-bulk].
 #[rustc_on_unimplemented(
-    on(
-        Self = "core::ops::range::RangeTo<Idx>",
-        note = "you might have meant to use a bounded `Range`"
-    ),
-    on(
-        Self = "core::ops::range::RangeToInclusive<Idx>",
-        note = "you might have meant to use a bounded `RangeInclusive`"
-    ),
+    on(Self = "core::ops::range::RangeTo<Idx>", note = "you might have meant to use a bounded `Range`"),
+    on(Self = "core::ops::range::RangeToInclusive<Idx>", note = "you might have meant to use a bounded `RangeInclusive`"),
     label = "`{Self}` is not a bulk",
     message = "`{Self}` is not a bulk"
 )]
 #[doc(notable_trait)]
 #[must_use = "bulks are lazy and do nothing unless consumed"]
-pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
+pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
 {
     type MinLength: Length<Elem = ()> + ?Sized = [(); 0];
     type MaxLength: Length<Elem = ()> + ?Sized = [()];
@@ -36,7 +42,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// This function has the same safety guarantees as the
     /// [`Iterator::size_hint`] function.
-    /// 
+    ///
     /// Similar to [`ExactSizeIterator::len`].
     ///
     /// # Examples
@@ -45,12 +51,12 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// // a finite range knows exactly how many times it will iterate
     /// let mut range = (0..5).into_bulk();
     ///
     /// let len = range.len();
-    /// 
+    ///
     /// assert_eq!(len, 5);
     /// ```
     #[track_caller]
@@ -68,7 +74,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// This method has a default implementation using
     /// [`Bulk::len()`], so you don't need to implement it yourself.
-    /// 
+    ///
     /// Similar to [`ExactSizeIterator::is_empty`].
     ///
     /// # Examples
@@ -89,24 +95,24 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     }
 
     /// Returns the first value, and discards the rest of the bulk.
-    /// 
+    ///
     /// Returns [`None`] if the bulk is empty.
     ///
     /// # Examples
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// let bulk = a.bulk();
-    /// 
+    ///
     /// let a1 = bulk.first();
     /// assert_eq!(a1, Some(&1));
     /// ```
     fn first(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         const fn break_on_first<T>(x: T) -> ControlFlow<T>
@@ -122,29 +128,29 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     }
 
     /// Returns the last value, and discards the rest of the bulk.
-    /// 
+    ///
     /// Returns [`None`] if the bulk is empty.
     ///
     /// # Examples
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// let bulk = a.bulk();
-    /// 
+    ///
     /// let a1 = bulk.last();
     /// assert_eq!(a1, Some(&3));
     /// ```
     fn last(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         const fn store<T>(_: T, x: T) -> T
         where
-            T: ~const Destruct
+            T: [const] Destruct
         {
             x
         }
@@ -153,24 +159,24 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     }
 
     /// Returns the `n`-th value, and discards the rest of the bulk.
-    /// 
+    ///
     /// Returns [`None`] if index `n` is out of bounds.
     ///
     /// # Examples
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// let bulk = a.bulk();
-    /// 
+    ///
     /// // The bulk is consumed, so it must be cloned each time. Don't actually do this.
     /// let a1 = bulk.clone().first();
     /// let a2 = bulk.clone().nth(1);
     /// let a3 = bulk.clone().nth(2);
     /// let a4 = bulk.clone().nth(3);
-    /// 
+    ///
     /// assert_eq!(a1, Some(&1));
     /// assert_eq!(a2, Some(&2));
     /// assert_eq!(a3, Some(&3));
@@ -179,7 +185,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn nth<L>(self, n: L) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         L: LengthValue
     {
         self.skip(n).first()
@@ -188,8 +194,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn many<NN, const N: usize>(self, n: NN) -> [Option<Self::Item>; N]
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        NN: ~const IntoBulk<Item = usize, IntoBulk: ~const Bulk + StaticBulk<Array<()> = [(); N]>>
+        Self::Item: [const] Destruct,
+        NN: [const] IntoBulk<Item = usize, IntoBulk: [const] Bulk + StaticBulk<Array<()> = [(); N]>>
     {
         // TODO: can be optimized by sorting first and storing permutations, then unsorting after.
 
@@ -202,7 +208,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         {
             const fn update(&mut self, i: usize, x: T)
             where
-                T: ~const Destruct
+                T: [const] Destruct
             {
                 const trait ManySpec: Sized
                 {
@@ -210,7 +216,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                 }
                 const impl<T> ManySpec for T
                 where
-                    T: ~const Destruct
+                    T: [const] Destruct
                 {
                     default fn update<const N: usize>(refs: &mut [Result<Self, usize>; N], k: &mut usize, i: usize, x: Self)
                     {
@@ -221,11 +227,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                                 if *j == i
                                 {
                                     refs[*k] = Ok(x);
-                                    return
+                                    return;
                                 }
                                 else
                                 {
-                                    break
+                                    break;
                                 }
                             }
                             *k += 1
@@ -233,10 +239,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                         let mut n = *k;
                         while n < N
                         {
-                            if let Err(j) = &refs[n] && *j == i
+                            if let Err(j) = &refs[n]
+                                && *j == i
                             {
                                 refs[n] = Ok(x);
-                                return
+                                return;
                             }
                             n += 1
                         }
@@ -244,7 +251,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                 }
                 const impl<T> ManySpec for T
                 where
-                    T: Copy + ~const Destruct
+                    T: Copy + [const] Destruct
                 {
                     fn update<const N: usize>(refs: &mut [Result<Self, usize>; N], k: &mut usize, i: usize, x: Self)
                     {
@@ -252,21 +259,15 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
                         {
                             if let Err(j) = &refs[*k]
                             {
-                                if *j == i
-                                {
-                                    refs[*k] = Ok(x)
-                                }
-                                else
-                                {
-                                    break
-                                }
+                                if *j == i { refs[*k] = Ok(x) } else { break }
                             }
                             *k += 1
                         }
                         let mut n = *k;
                         while n < N
                         {
-                            if let Err(j) = &refs[n] && *j == i
+                            if let Err(j) = &refs[n]
+                                && *j == i
                             {
                                 refs[n] = Ok(x)
                             }
@@ -281,7 +282,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
         const impl<'a, T, const N: usize> FnOnce<((usize, T),)> for Functor<'a, T, N>
         where
-            T: ~const Destruct
+            T: [const] Destruct
         {
             type Output = ();
 
@@ -292,7 +293,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<'a, T, const N: usize> FnMut<((usize, T),)> for Functor<'a, T, N>
         where
-            T: ~const Destruct
+            T: [const] Destruct
         {
             extern "rust-call" fn call_mut(&mut self, ((i, x),): ((usize, T),)) -> Self::Output
             {
@@ -300,15 +301,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             }
         }
 
-        let mut refs = n.into_bulk()
-            .map(Err)
-            .collect_array();
+        let mut refs = n.into_bulk().map(Err).collect_array();
 
-        self.enumerate()
-            .for_each(Functor {
-                done: 0,
-                refs: &mut refs
-            });
+        self.enumerate().for_each(Functor { done: 0, refs: &mut refs });
 
         refs.map(Result::ok)
     }
@@ -342,7 +337,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct;
+        F: [const] FnMut(Self::Item) + [const] Destruct;
 
     /// A bulk method that applies a fallible function to each item in the
     /// bulk, stopping at the first error and returning that error.
@@ -369,9 +364,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>;
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = (), Residual: [const] Destruct>;
 
     /// Folds every element into an accumulator by applying an operation,
     /// returning the final result.
@@ -414,7 +409,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// // the sum of all of the elements of the array
@@ -440,7 +435,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let numbers = [1, 2, 3, 4, 5];
     ///
     /// let zero = "0".to_string();
@@ -459,7 +454,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let numbers = [1, 2, 3, 4, 5];
     ///
     /// let mut result = 0;
@@ -480,8 +475,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn fold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
-        B: ~const Destruct,
-        F: ~const FnMut(B, Self::Item) -> B + ~const Destruct
+        B: [const] Destruct,
+        F: [const] FnMut(B, Self::Item) -> B + [const] Destruct
     {
         struct Closure<'a, B, F>
         {
@@ -490,49 +485,44 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<'a, B, F, T> FnOnce<(T,)> for Closure<'a, B, F>
         where
-            B: ~const Destruct,
-            F: ~const FnOnce(B, T) -> B,
+            B: [const] Destruct,
+            F: [const] FnOnce(B, T) -> B
         {
             type Output = ();
 
             extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
             {
                 let Self { z, f } = self;
-                let zz = unsafe {z.take().unwrap_unchecked()};
+                let zz = unsafe { z.take().unwrap_unchecked() };
                 let _ = z.insert((f)(zz, x));
             }
         }
         const impl<'a, B, F, T> FnMut<(T,)> for Closure<'a, B, F>
         where
-            B: ~const Destruct,
-            F: ~const FnMut(B, T) -> B,
+            B: [const] Destruct,
+            F: [const] FnMut(B, T) -> B
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
                 let Self { z, f } = self;
-                let zz = unsafe {z.take().unwrap_unchecked()};
+                let zz = unsafe { z.take().unwrap_unchecked() };
                 let _ = z.insert((f)(zz, x));
             }
         }
 
         let mut z = Some(init);
-        self.for_each(Closure {
-            z: &mut z,
-            f
-        });
+        self.for_each(Closure { z: &mut z, f });
 
-        unsafe {
-            z.unwrap_unchecked()
-        }
+        unsafe { z.unwrap_unchecked() }
     }
 
     fn try_fold<B, F, R>(self, init: B, f: F) -> R
     where
-        B: ~const Destruct,
+        B: [const] Destruct,
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(B, Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = B, Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(B, Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = B, Residual: [const] Destruct>
     {
         struct Closure<'a, B, F>
         {
@@ -541,53 +531,48 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<'a, B, F, T, R> FnOnce<(T,)> for Closure<'a, B, F>
         where
-            B: ~const Destruct,
-            F: ~const FnOnce(B, T) -> R,
-            R: ~const Try<Output = B, Residual: ~const Destruct>
+            B: [const] Destruct,
+            F: [const] FnOnce(B, T) -> R,
+            R: [const] Try<Output = B, Residual: [const] Destruct>
         {
             type Output = ControlFlow<R::Residual, ()>;
 
             extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
             {
                 let Self { z, f } = self;
-                let zz = unsafe {z.take().unwrap_unchecked()};
+                let zz = unsafe { z.take().unwrap_unchecked() };
                 let _ = z.insert(f(zz, x).branch()?);
                 ControlFlow::Continue(())
             }
         }
         const impl<'a, B, F, T, R> FnMut<(T,)> for Closure<'a, B, F>
         where
-            B: ~const Destruct,
-            F: ~const FnMut(B, T) -> R,
-            R: ~const Try<Output = B, Residual: ~const Destruct>
+            B: [const] Destruct,
+            F: [const] FnMut(B, T) -> R,
+            R: [const] Try<Output = B, Residual: [const] Destruct>
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
                 let Self { z, f } = self;
-                let zz = unsafe {z.take().unwrap_unchecked()};
+                let zz = unsafe { z.take().unwrap_unchecked() };
                 let _ = z.insert(f(zz, x).branch()?);
                 ControlFlow::Continue(())
             }
         }
 
         let mut z = Some(init);
-        match self.try_for_each(Closure {
-            z: &mut z,
-            f
-        })
+        match self.try_for_each(Closure { z: &mut z, f })
         {
             ControlFlow::Break(residual) => R::from_residual(residual),
-            ControlFlow::Continue(()) => R::from_output(unsafe {
-                z.unwrap_unchecked()
-            })
+            ControlFlow::Continue(()) => R::from_output(unsafe { z.unwrap_unchecked() })
         }
     }
 
     fn reduce<F>(self, f: F) -> Option<Self::Item>
-    where 
+    where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item, Self::Item) -> Self::Item + ~const Destruct
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item, Self::Item) -> Self::Item + [const] Destruct
     {
         struct Closure<F>
         {
@@ -595,7 +580,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<F, T> FnOnce<(Option<T>, T)> for Closure<F>
         where
-            F: ~const FnOnce(T, T) -> T + ~const Destruct
+            F: [const] FnOnce(T, T) -> T + [const] Destruct
         {
             type Output = Option<T>;
 
@@ -612,7 +597,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<F, T> FnMut<(Option<T>, T)> for Closure<F>
         where
-            F: ~const FnMut(T, T) -> T
+            F: [const] FnMut(T, T) -> T
         {
             extern "rust-call" fn call_mut(&mut self, (z, x): (Option<T>, T)) -> Self::Output
             {
@@ -626,17 +611,15 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             }
         }
 
-        self.fold(None, Closure {
-            f
-        })
+        self.fold(None, Closure { f })
     }
 
     fn try_reduce<F, R>(self, f: F) -> <R::Residual as Residual<Option<R::Output>>>::TryType
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item, Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = Self::Item, Residual: Residual<Option<Self::Item>, TryType: ~const Try> + ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item, Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = Self::Item, Residual: Residual<Option<Self::Item>, TryType: [const] Try> + [const] Destruct>
     {
         struct Closure<F>
         {
@@ -644,8 +627,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<F, T, R> FnOnce<(Option<T>, T)> for Closure<F>
         where
-            F: ~const FnOnce(T, T) -> R + ~const Destruct,
-            R: ~const Try<Output = T, Residual: ~const Destruct>
+            F: [const] FnOnce(T, T) -> R + [const] Destruct,
+            R: [const] Try<Output = T, Residual: [const] Destruct>
         {
             type Output = ControlFlow<R::Residual, Option<T>>;
 
@@ -653,37 +636,31 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
             {
                 let Self { f } = self;
 
-                ControlFlow::Continue(Some(
-                    match z
-                    {
-                        Some(z) => f(z, x).branch()?,
-                        None => x
-                    }
-                ))
+                ControlFlow::Continue(Some(match z
+                {
+                    Some(z) => f(z, x).branch()?,
+                    None => x
+                }))
             }
         }
         const impl<F, T, R> FnMut<(Option<T>, T)> for Closure<F>
         where
-            F: ~const FnMut(T, T) -> R,
-            R: ~const Try<Output = T, Residual: ~const Destruct>
+            F: [const] FnMut(T, T) -> R,
+            R: [const] Try<Output = T, Residual: [const] Destruct>
         {
             extern "rust-call" fn call_mut(&mut self, (z, x): (Option<T>, T)) -> Self::Output
             {
                 let Self { f } = self;
 
-                ControlFlow::Continue(Some(
-                    match z
-                    {
-                        Some(z) => f(z, x).branch()?,
-                        None => x
-                    }
-                ))
+                ControlFlow::Continue(Some(match z
+                {
+                    Some(z) => f(z, x).branch()?,
+                    None => x
+                }))
             }
         }
 
-        match self.try_fold(None, Closure {
-            f
-        })
+        match self.try_fold(None, Closure { f })
         {
             ControlFlow::Break(residual) => FromResidual::from_residual(residual),
             ControlFlow::Continue(output) => Try::from_output(output)
@@ -709,7 +686,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// assert!(a.into_bulk().all(|x| x > 0));
@@ -719,35 +696,28 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn all<F>(self, f: F) -> bool
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> bool + ~const Destruct,
-        Self::Item: ~const Destruct
+        F: [const] FnMut(Self::Item) -> bool + [const] Destruct,
+        Self::Item: [const] Destruct
     {
         struct Functor<F>(F);
-        const impl<F, T> FnOnce<((), T,)> for Functor<F>
+        const impl<F, T> FnOnce<((), T)> for Functor<F>
         where
-            F: ~const FnMut(T) -> bool + ~const Destruct
+            F: [const] FnMut(T) -> bool + [const] Destruct
         {
             type Output = ControlFlow<()>;
 
-            extern "rust-call" fn call_once(mut self, args: ((), T,)) -> Self::Output
+            extern "rust-call" fn call_once(mut self, args: ((), T)) -> Self::Output
             {
                 self.call_mut(args)
             }
         }
-        const impl<F, T> FnMut<((), T,)> for Functor<F>
+        const impl<F, T> FnMut<((), T)> for Functor<F>
         where
-            F: ~const FnMut(T) -> bool
+            F: [const] FnMut(T) -> bool
         {
-            extern "rust-call" fn call_mut(&mut self, ((), x,): ((), T,)) -> Self::Output
+            extern "rust-call" fn call_mut(&mut self, ((), x): ((), T)) -> Self::Output
             {
-                if self.0(x)
-                {
-                    ControlFlow::Continue(())
-                }
-                else
-                {
-                    ControlFlow::Break(())
-                }
+                if self.0(x) { ControlFlow::Continue(()) } else { ControlFlow::Break(()) }
             }
         }
 
@@ -773,7 +743,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// assert!(a.into_bulk().any(|x| x > 0));
@@ -783,35 +753,28 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn any<F>(self, f: F) -> bool
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> bool + ~const Destruct,
-        Self::Item: ~const Destruct
+        F: [const] FnMut(Self::Item) -> bool + [const] Destruct,
+        Self::Item: [const] Destruct
     {
         struct Functor<F>(F);
-        const impl<F, T> FnOnce<((), T,)> for Functor<F>
+        const impl<F, T> FnOnce<((), T)> for Functor<F>
         where
-            F: ~const FnMut(T) -> bool + ~const Destruct
+            F: [const] FnMut(T) -> bool + [const] Destruct
         {
             type Output = ControlFlow<()>;
 
-            extern "rust-call" fn call_once(mut self, args: ((), T,)) -> Self::Output
+            extern "rust-call" fn call_once(mut self, args: ((), T)) -> Self::Output
             {
                 self.call_mut(args)
             }
         }
-        const impl<F, T> FnMut<((), T,)> for Functor<F>
+        const impl<F, T> FnMut<((), T)> for Functor<F>
         where
-            F: ~const FnMut(T) -> bool
+            F: [const] FnMut(T) -> bool
         {
-            extern "rust-call" fn call_mut(&mut self, ((), x,): ((), T,)) -> Self::Output
+            extern "rust-call" fn call_mut(&mut self, ((), x): ((), T)) -> Self::Output
             {
-                if self.0(x)
-                {
-                    ControlFlow::Break(())
-                }
-                else
-                {
-                    ControlFlow::Continue(())
-                }
+                if self.0(x) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
             }
         }
 
@@ -827,7 +790,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     /// let b: [u32; 0] = [];
     ///
@@ -838,7 +801,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn max(self) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: ~const Ord + ~const Destruct,
+        Self::Item: [const] Ord + [const] Destruct
     {
         self.max_by(Ord::cmp)
     }
@@ -852,7 +815,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     /// let b: [u32; 0] = [];
     ///
@@ -863,7 +826,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn min(self) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: ~const Ord + ~const Destruct,
+        Self::Item: [const] Ord + [const] Destruct
     {
         self.min_by(Ord::cmp)
     }
@@ -878,16 +841,16 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(a.into_iter().max_by_key(|x| x.abs()).unwrap(), -10);
     /// ```
     fn max_by_key<B, F>(self, keygen: F) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(&Self::Item) -> B + ~const Destruct,
-        B: ~const Ord + ~const Destruct
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(&Self::Item) -> B + [const] Destruct,
+        B: [const] Ord + [const] Destruct
     {
         struct Keygen<F>
         {
@@ -895,7 +858,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<T, F, K> FnOnce<(T,)> for Keygen<F>
         where
-            F: ~const FnMut(&T) -> K + ~const Destruct
+            F: [const] FnMut(&T) -> K + [const] Destruct
         {
             type Output = (K, T);
 
@@ -906,7 +869,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<T, F, K> FnMut<(T,)> for Keygen<F>
         where
-            F: ~const FnMut(&T) -> K
+            F: [const] FnMut(&T) -> K
         {
             extern "rust-call" fn call_mut(&mut self, (value,): (T,)) -> Self::Output
             {
@@ -917,7 +880,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
         const fn compare_keys<T, K>((lhs_key, _): &(K, T), (rhs_key, _): &(K, T)) -> Ordering
         where
-            K: ~const Ord
+            K: [const] Ord
         {
             lhs_key.cmp(rhs_key)
         }
@@ -936,15 +899,15 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(a.into_bulk().max_by(|x, y| x.cmp(y)).unwrap(), 5);
     /// ```
     fn max_by<F>(self, compare: F) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(&Self::Item, &Self::Item) -> Ordering + ~const Destruct
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(&Self::Item, &Self::Item) -> Ordering + [const] Destruct
     {
         struct Functor<F>
         {
@@ -952,8 +915,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<F, T> FnOnce<(T, T)> for Functor<F>
         where
-            F: ~const FnMut(&T, &T) -> Ordering + ~const Destruct,
-            T: ~const Destruct
+            F: [const] FnMut(&T, &T) -> Ordering + [const] Destruct,
+            T: [const] Destruct
         {
             type Output = T;
 
@@ -964,8 +927,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<F, T> FnMut<(T, T)> for Functor<F>
         where
-            F: ~const FnMut(&T, &T) -> Ordering,
-            T: ~const Destruct
+            F: [const] FnMut(&T, &T) -> Ordering,
+            T: [const] Destruct
         {
             extern "rust-call" fn call_mut(&mut self, (v1, v2): (T, T)) -> Self::Output
             {
@@ -986,16 +949,16 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(a.into_bulk().min_by_key(|x| x.abs()).unwrap(), 0);
     /// ```
     fn min_by_key<B, F>(self, keygen: F) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(&Self::Item) -> B + ~const Destruct,
-        B: ~const Ord + ~const Destruct
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(&Self::Item) -> B + [const] Destruct,
+        B: [const] Ord + [const] Destruct
     {
         struct Keygen<F>
         {
@@ -1003,7 +966,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<T, F, K> FnOnce<(T,)> for Keygen<F>
         where
-            F: ~const FnMut(&T) -> K + ~const Destruct
+            F: [const] FnMut(&T) -> K + [const] Destruct
         {
             type Output = (K, T);
 
@@ -1014,7 +977,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<T, F, K> FnMut<(T,)> for Keygen<F>
         where
-            F: ~const FnMut(&T) -> K
+            F: [const] FnMut(&T) -> K
         {
             extern "rust-call" fn call_mut(&mut self, (value,): (T,)) -> Self::Output
             {
@@ -1025,7 +988,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
         const fn compare_keys<T, K>((lhs_key, _): &(K, T), (rhs_key, _): &(K, T)) -> Ordering
         where
-            K: ~const Ord
+            K: [const] Ord
         {
             lhs_key.cmp(rhs_key)
         }
@@ -1044,15 +1007,15 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(a.into_bulk().min_by(|x, y| x.cmp(y)).unwrap(), -10);
     /// ```
     fn min_by<F>(self, compare: F) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(&Self::Item, &Self::Item) -> Ordering + ~const Destruct
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(&Self::Item, &Self::Item) -> Ordering + [const] Destruct
     {
         struct Functor<F>
         {
@@ -1060,8 +1023,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<F, T> FnOnce<(T, T)> for Functor<F>
         where
-            F: ~const FnMut(&T, &T) -> Ordering + ~const Destruct,
-            T: ~const Destruct
+            F: [const] FnMut(&T, &T) -> Ordering + [const] Destruct,
+            T: [const] Destruct
         {
             type Output = T;
 
@@ -1072,8 +1035,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<F, T> FnMut<(T, T)> for Functor<F>
         where
-            F: ~const FnMut(&T, &T) -> Ordering,
-            T: ~const Destruct
+            F: [const] FnMut(&T, &T) -> Ordering,
+            T: [const] Destruct
         {
             extern "rust-call" fn call_mut(&mut self, (v1, v2): (T, T)) -> Self::Output
             {
@@ -1083,10 +1046,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
         self.reduce(Functor { compare })
     }
-    
+
     /// Creates a bulk starting at the same point, but stepping by
     /// the given amount at each iteration.
-    /// 
+    ///
     /// Similar to [`Iterator::step_by`].
     ///
     /// # Panics
@@ -1098,17 +1061,17 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [0, 1, 2, 3, 4, 5];
-    /// 
+    ///
     /// let mut bulk = a.into_bulk().step_by([(); 2]);
     /// let a_even: [_; _] = bulk.collect();
     ///
     /// assert_eq!(a_even, [0, 2, 4]);
-    /// 
+    ///
     /// let mut bulk = a.into_bulk().skip([(); 1]).step_by([(); 2]);
     /// let a_odd: [_; _] = bulk.collect();
-    /// 
+    ///
     /// assert_eq!(a_odd, [1, 3, 5]);
     /// ```
     #[inline]
@@ -1124,7 +1087,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Takes two bulks and creates a new bulk over both in sequence.
     ///
     /// In other words, it links two bulks together, in a chain. 🔗
-    /// 
+    ///
     /// Similar to [`Iterator::chain`].
     ///
     /// # Examples
@@ -1134,16 +1097,16 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let s1 = b"abc";
     /// let s2 = b"def";
     ///
     /// let mut bulk = s1.into_bulk()
     ///     .chain(s2)
     ///     .copied();
-    /// 
+    ///
     /// let s: [_; _] = bulk.collect();
-    /// 
+    ///
     /// assert_eq!(s, *b"abcdef");
     /// ```
     ///
@@ -1155,15 +1118,15 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let a1 = [1, 2, 3];
     /// let a2 = [4, 5, 6];
     ///
     /// let mut bulk = a1.into_bulk()
     ///     .chain(a2);
-    /// 
+    ///
     /// let a: [_; _] = bulk.collect();
-    /// 
+    ///
     /// assert_eq!(a, [1, 2, 3, 4, 5, 6]);
     /// ```
     #[inline]
@@ -1171,13 +1134,13 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn chain<U>(self, other: U) -> Chain<Self, U::IntoBulk>
     where
         Self: Sized,
-        U: ~const IntoBulk<Item = Self::Item>,
+        U: [const] IntoBulk<Item = Self::Item>
     {
         Chain::new(self, other.into_bulk())
     }
 
     /// 'Zips up' two bulks or iterators into a single bulk of pairs. One of them must be a bulk.
-    /// 
+    ///
     /// Similar to [`Iterator::zip`].
     ///
     /// # Examples
@@ -1187,14 +1150,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let s1 = b"abc".into_bulk().copied();
     /// let s2 = b"def".into_bulk().copied();
     ///
     /// let mut bulk = s1.zip(s2);
-    /// 
+    ///
     /// let s: [_; _] = bulk.collect();
-    /// 
+    ///
     /// assert_eq!(s, [(b'a', b'd'), (b'b', b'e'), (b'c', b'f')]);
     /// ```
     ///
@@ -1206,14 +1169,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let a1 = [1, 2, 3];
     /// let a2 = [4, 5, 6];
     ///
     /// let mut bulk = a1.into_bulk().zip(a2);
     ///
     /// let a: [_; _] = bulk.collect();
-    /// 
+    ///
     /// assert_eq!(a, [(1, 4), (2, 5), (3, 6)]);
     /// ```
     ///
@@ -1223,17 +1186,17 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let enumerate: [_; _] = (*b"foo").into_bulk().enumerate().collect();
     ///
     /// let zipper: Vec<_> = bulks::rzip(0.., *b"foo").collect();
-    /// 
+    ///
     /// assert_eq!((0, b'f'), enumerate[0]);
     /// assert_eq!((0, b'f'), zipper[0]);
-    /// 
+    ///
     /// assert_eq!((1, b'o'), enumerate[1]);
     /// assert_eq!((1, b'o'), zipper[1]);
-    /// 
+    ///
     /// assert_eq!((2, b'o'), enumerate[2]);
     /// assert_eq!((2, b'o'), zipper[2]);
     /// ```
@@ -1251,9 +1214,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///     a.into_bulk().map(|x| x * 2).skip([(); 1]),
     ///     b.into_bulk().map(|x| x * 2).skip([(); 1]),
     /// );
-    /// 
+    ///
     /// let c: [_; _] = zipped.collect();
-    /// 
+    ///
     /// assert_eq!(c, [(4, 6), (6, 8)]);
     /// ```
     ///
@@ -1282,13 +1245,13 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn zip<U>(self, other: U) -> Zip<Self, <<U as IntoContained>::IntoContained as IntoBulk>::IntoBulk>
     where
         Self: Sized,
-        U: ~const IntoContainedBy<Self>
+        U: [const] IntoContainedBy<Self>
     {
         crate::zip(self, other)
     }
 
     /// Merges two bulks or iterators into a single bulk using a merging function.
-    /// 
+    ///
     /// Similar to [`Bulk::zip`], followed by [`Bulk::map`], but keeps the tail if the length of the two bulks differ.
     ///
     /// # Examples
@@ -1298,16 +1261,16 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// use core::ops::Add;
-    /// 
+    ///
     /// let s1 = b"abc".into_bulk().copied();
     /// let s2 = b"defg".into_bulk().copied();
     ///
     /// let mut bulk = s1.merge(s2, Add::add);
-    /// 
+    ///
     /// let s: [_; _] = bulk.collect_array();
-    /// 
+    ///
     /// assert_eq!(s, [b'a' + b'd', b'b' + b'e', b'c' + b'f', b'g']);
     /// ```
     #[inline]
@@ -1315,7 +1278,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn merge<U, F, O>(self, other: U, merger: F) -> Merge<Self, U::IntoBulk, F>
     where
         Self: Sized,
-        U: ~const IntoBulk,
+        U: [const] IntoBulk,
         Self::Item: Into<O>,
         U::Item: Into<O>,
         F: FnMut(Self::Item, U::Item) -> O
@@ -1325,7 +1288,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
     /// Creates a new bulk which places a copy of `separator` between adjacent
     /// items of the original bulk.
-    /// 
+    ///
     /// Similar to [`Iterator::intersperse`].
     ///
     /// In case `separator` does not implement [`Clone`](core::clone::Clone) or needs to be
@@ -1338,9 +1301,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let mut a: [_; _] = [0, 1, 2].into_bulk().intersperse(100).collect();
-    /// 
+    ///
     /// assert_eq!(a, [0, 100, 1, 100, 2]);
     /// ```
     ///
@@ -1358,7 +1321,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn intersperse(self, separator: Self::Item) -> Intersperse<Self>
     where
         Self: Sized,
-        Self::Item: Clone,
+        Self::Item: Clone
     {
         Intersperse::new(self, separator)
     }
@@ -1370,7 +1333,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// between two adjacent items from the underlying bulk; specifically,
     /// the closure is not called if the underlying bulk has less than
     /// two items.
-    /// 
+    ///
     /// Similar to [`Iterator::intersperse_with`].
     ///
     /// If the bulk's item implements [`Clone`](core::clone::Clone), it may be easier to use
@@ -1406,7 +1369,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let separator = || happy_emojis.next().unwrap_or(" 🦀 ");
     ///
     /// let result: String = src.intersperse_with(separator).collect();
-    /// 
+    ///
     /// assert_eq!(result, "Hello ❤️ to 😀 all 🦀 people 🦀 !!");
     /// ```
     #[inline]
@@ -1414,7 +1377,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn intersperse_with<G>(self, separator: G) -> IntersperseWith<Self, G>
     where
         Self: Sized,
-        G: FnMut() -> Self::Item,
+        G: FnMut() -> Self::Item
     {
         IntersperseWith::new(self, separator)
     }
@@ -1425,7 +1388,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// [`map()`](Bulk::map) transforms one bulk into another, by means of its argument:
     /// something that implements [`FnMut`]. It produces a new bulk which
     /// calls this closure on each element of the original bulk.
-    /// 
+    ///
     /// Similar to [`Iterator::map`].
     ///
     /// # Examples
@@ -1434,7 +1397,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// let mut b: [_; _] = a.bulk().map(|x| 2 * x).collect();
@@ -1447,7 +1410,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![allow(unused_must_use)]
     /// use bulks::*;
-    /// 
+    ///
     /// // don't do this:
     /// (0..5).into_bulk().map(|x| println!("{x}"));
     ///
@@ -1459,14 +1422,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///     println!("{x}");
     /// }
     /// ```
-    /// 
+    ///
     /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
     #[inline]
     #[track_caller]
     fn map<B, F>(self, f: F) -> Map<Self, F>
     where
         Self: Sized,
-        F: FnMut(Self::Item) -> B,
+        F: FnMut(Self::Item) -> B
     {
         Map::new(self, f)
     }
@@ -1475,7 +1438,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// The bulk returned yields pairs `(i, val)`, where `i` is the
     /// current index of iteration and `val` is its corresponding value.
-    /// 
+    ///
     /// Similar to [`Iterator::enumerate`].
     ///
     /// [`enumerate()`](Bulk::enumerate) keeps its count as a [`usize`]. If you want to count by a
@@ -1496,7 +1459,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = ['a', 'b', 'c'];
     ///
     /// let b = a.into_bulk()
@@ -1518,7 +1481,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// The bulk returned yields pairs `(i, val)`, where `i` is the
     /// current index of iteration and `val` is its corresponding value.
-    /// 
+    ///
     /// This is similar to [`Bulk::enumerate`], except here a different type and initial value for counting can be used.
     /// For counting an [`usize`] from 0 and up, [`Bulk::enumerate`] is a better alternative.
     ///
@@ -1537,7 +1500,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = ['a', 'b', 'c'];
     ///
     /// let b = a.into_bulk()
@@ -1557,7 +1520,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     }
 
     /// Creates a bulk that skips the first `n` elements.
-    /// 
+    ///
     /// Similar to [`Iterator::skip`].
     ///
     /// [`skip(n)`](Bulk::skip) skips elements until `n` elements are skipped or the end of the
@@ -1569,7 +1532,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// let b: [_; _] = a.into_bulk().skip([(); 2]).collect();
@@ -1604,7 +1567,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// let b: Vec<_> = a.into_bulk().take([(); 2]).collect();
@@ -1626,10 +1589,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let v = [1, 2];
     /// let b: [_; _] = v.into_bulk().take([(); 5]).collect();
-    /// 
+    ///
     /// assert_eq!(b, [1, 2])
     /// ```
     #[doc(alias = "limit")]
@@ -1649,7 +1612,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// argument produces values. If it produces something iterable instead, there's
     /// an extra layer of indirection. [`flat_map()`](Bulk::flat_map) will remove this extra layer
     /// on its own.
-    /// 
+    ///
     /// Similar to [`Iterator::flat_map`].
     ///
     /// You can think of `flat_map(f)` as the semantic equivalent
@@ -1660,7 +1623,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let words = [b"alpha", b"beta ", b"gamma"];
     ///
     /// let merged: String = words.into_bulk()
@@ -1674,7 +1637,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     where
         Self: Sized,
         U: IntoBulk<IntoBulk: StaticBulk>,
-        F: FnMut(Self::Item) -> U,
+        F: FnMut(Self::Item) -> U
     {
         FlatMap::new(self, f)
     }
@@ -1684,7 +1647,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// This is useful when you have a bulk of bulk or a bulk of
     /// things that can be turned into bulks and you want to remove one
     /// level of indirection.
-    /// 
+    ///
     /// Similar to [`Iterator::flatten`].
     ///
     /// # Examples
@@ -1694,7 +1657,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let data = [[1, 2, 3], [4, 5, 6]];
     /// let flattened: [_; _] = data.into_bulk().flatten().collect();
     /// assert_eq!(flattened, [1, 2, 3, 4, 5, 6]);
@@ -1705,7 +1668,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let words = [b"alpha", b"beta ", b"gamma"];
     ///
     /// let merged: String = words.into_bulk()
@@ -1721,7 +1684,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let words = [b"alpha", b"beta ", b"gamma"];
     ///
     /// let merged: String = words.into_bulk()
@@ -1735,7 +1698,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let d3 = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
     ///
     /// let d2: [_; _] = d3.into_bulk().flatten().collect();
@@ -1755,14 +1718,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn flatten(self) -> Flatten<Self>
     where
         Self: Sized,
-        Self::Item: IntoBulk<IntoBulk: StaticBulk>,
+        Self::Item: IntoBulk<IntoBulk: StaticBulk>
     {
         Flatten::new(self)
     }
 
     /// Calls the given function `f` for each contiguous window of size `N` over
     /// `self` and returns a bulk of the outputs of `f`. The windows during mapping will overlap.
-    /// 
+    ///
     /// Similar to [`Iterator::map_windows`].
     ///
     /// In the following example, the closure is called three times with the
@@ -1808,7 +1771,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let w: [_; _] = [1, 3, 8, 1].bulk()
     ///     .map_windows(|&[a, b]| a + b)
     ///     .collect();
-    /// 
+    ///
     /// assert_eq!(w, [1 + 3, 3 + 8, 8 + 1]);
     /// ```
     ///
@@ -1825,7 +1788,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///         .copied()
     ///         .collect())
     ///     .collect();
-    /// 
+    ///
     /// assert_eq!(w, [[b'f', b'e', b'r'], [b'e', b'r', b'r'], [b'r', b'r', b'i'], [b'r', b'i', b's']]);
     /// ```
     ///
@@ -1839,7 +1802,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let w: [_; _] = [0.5, 1.0, 3.5, 3.0, 8.5, 8.5, f32::NAN].bulk()
     ///     .map_windows(|[a, b]| a <= b)
     ///     .collect();
-    /// 
+    ///
     /// assert_eq!(w, [true, true, false, true, true, false]);
     /// ```
     #[inline]
@@ -1847,7 +1810,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn map_windows<F, R, const N: usize>(self, f: F) -> MapWindows<Self, F, N>
     where
         Self: Sized,
-        F: FnMut(&[Self::Item; N]) -> R,
+        F: FnMut(&[Self::Item; N]) -> R
     {
         MapWindows::new(self, f)
     }
@@ -1858,7 +1821,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// While working on such code, you might want to check out what's
     /// happening at various parts in the pipeline. To do that, insert
     /// a call to [`inspect()`](Bulk::inspect).
-    /// 
+    ///
     /// Similar to [`Iterator::inspect`].
     ///
     /// # Examples
@@ -1867,7 +1830,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 4, 2, 3];
     ///
     /// // this iterator sequence is complex.
@@ -1932,7 +1895,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn inspect<F>(self, f: F) -> Inspect<Self, F>
     where
         Self: Sized,
-        F: FnMut(&Self::Item),
+        F: FnMut(&Self::Item)
     {
         Inspect::new(self, f)
     }
@@ -1945,7 +1908,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 4, 2, 3];
     ///
     /// // this iterator sequence is complex.
@@ -1960,7 +1923,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn mutate<F>(self, f: F) -> Mutate<Self, F>
     where
         Self: Sized,
-        F: FnMut(&mut Self::Item),
+        F: FnMut(&mut Self::Item)
     {
         Mutate::new(self, f)
     }
@@ -1969,7 +1932,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// [`collect()`](Bulk::collect) can take anything bulkable, and turn it into a relevant
     /// collection.
-    /// 
+    ///
     /// Similar to [`Iterator::collect`].
     ///
     /// # Examples
@@ -1978,7 +1941,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// let doubled: [i32; 3] = a.bulk()
@@ -1993,7 +1956,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use std::collections::VecDeque;
-    /// 
+    ///
     /// use bulks::*;
     ///
     /// let a = [1, 2, 3];
@@ -2011,7 +1974,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// let doubled = a.bulk()
@@ -2026,7 +1989,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// let doubled: [_; _] = a.bulk()
@@ -2040,7 +2003,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let chars = ['g', 'd', 'k', 'k', 'n'];
     ///
     /// let hello: String = chars.bulk()
@@ -2057,7 +2020,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let results = [Ok(1), Err("nope"), Ok(3), Err("bad")];
     ///
     /// let result: Result<[_; _], &str> = results.into_bulk().collect();
@@ -2077,8 +2040,8 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn collect<C, A>(self) -> C
     where
         Self: Sized,
-        C: ~const FromBulk<A>,
-        A: CollectionAdapter<Elem = Self::Item> + ~const CollectionStrategy<Self::MinLength, Self::MaxLength, C> + ?Sized
+        C: [const] FromBulk<A>,
+        A: CollectionAdapter<Elem = Self::Item> + [const] CollectionStrategy<Self::MinLength, Self::MaxLength, C> + ?Sized
     {
         FromBulk::from_bulk(self)
     }
@@ -2095,48 +2058,48 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// only the inner type produced on `Try::Output` must implement it. Concretely,
     /// this means that collecting into `ControlFlow<_, Vec<i32>>` is valid because `Vec<i32>` implements
     /// [`FromBulk`], even though [`ControlFlow`] doesn't.
-    /// 
+    ///
     /// Unlike with [`Iterator::try_collect`], the bulk is fully consumed even if it short-circuits.
     /// A short-circuit will cause the rest of the elements of the bulk to be dropped.
     ///
     /// # Examples
-    /// 
+    ///
     /// Successfully collecting a bulk of `Option<i32>` into `Option<[i32; _]>`:
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let u = [Some(1), Some(2), Some(3)];
-    /// 
+    ///
     /// let v = u.into_bulk().try_collect::<[i32; _], _>();
-    /// 
+    ///
     /// assert_eq!(v, Some([1, 2, 3]));
     /// ```
     ///
     /// Failing to collect in the same way:
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let u = [Some(1), Some(2), None, Some(3)];
-    /// 
+    ///
     /// let v = u.into_bulk().try_collect::<[i32; _], _>();
-    /// 
+    ///
     /// assert_eq!(v, None);
     /// ```
     ///
     /// A similar example, but with `Result`:
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let u: [Result<i32, ()>; _] = [Ok(1), Ok(2), Ok(3)];
-    /// 
+    ///
     /// let v = u.into_bulk().try_collect::<[i32; _], _>();
-    /// 
+    ///
     /// assert_eq!(v, Ok([1, 2, 3]));
     ///
     /// let u = [Ok(1), Ok(2), Err(()), Ok(3)];
-    /// 
+    ///
     /// let v = u.into_bulk().try_collect::<[i32; _], _>();
-    /// 
+    ///
     /// assert_eq!(v, Err(()));
     /// ```
     ///
@@ -2146,19 +2109,19 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// use core::ops::ControlFlow::{Break, Continue};
     ///
     /// let u = [Continue(1), Continue(2), Break(3), Continue(4), Continue(5)];
-    /// 
+    ///
     /// let v = u.into_bulk().try_collect::<[_; _], _>();
-    /// 
+    ///
     /// assert_eq!(v, Break(3));
     ///
     /// let v = u.into_bulk().take([(); 2])
     ///     .chain(u.into_bulk().skip([(); 3]))
     ///     .try_collect::<[_; _], _>();
-    /// 
+    ///
     /// assert_eq!(v, Continue([1, 2, 4, 5]));
     /// ```
     #[inline]
@@ -2166,9 +2129,9 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn try_collect<C, A>(self) -> <<Self::Item as Try>::Residual as Residual<C>>::TryType
     where
         Self: Sized,
-        C: ~const FromBulk<A>,
-        A: CollectionAdapter<Elem = <Self::Item as Try>::Output> + ~const TryCollectionStrategy<Self::MinLength, Self::MaxLength, C> + ?Sized,
-        Self::Item: ~const Try<Residual: ~const Residual<()> + ~const Residual<C, TryType: ~const Try> + ~const Destruct> + ~const Destruct
+        C: [const] FromBulk<A>,
+        A: CollectionAdapter<Elem = <Self::Item as Try>::Output> + [const] TryCollectionStrategy<Self::MinLength, Self::MaxLength, C> + ?Sized,
+        Self::Item: [const] Try<Residual: [const] Residual<()> + [const] Residual<C, TryType: [const] Try> + [const] Destruct> + [const] Destruct
     {
         FromBulk::<A>::try_from_bulk(self)
     }
@@ -2176,30 +2139,27 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn collect_nearest(self) -> <BulkLength<Self> as Nearest>::NearestFrom<Self>
     where
         Self: Sized,
-        BulkLength<Self>: ~const Nearest,
-        Self::Item: ~const Destruct
+        BulkLength<Self>: [const] Nearest,
+        Self::Item: [const] Destruct
     {
-        self.collect::<
-            <BulkLength<Self> as Nearest>::NearestFrom<Self>,
-            <BulkLength<Self> as Nearest>::NearestStrategyFrom<Self>
-        >()
+        self.collect::<<BulkLength<Self> as Nearest>::NearestFrom<Self>, <BulkLength<Self> as Nearest>::NearestStrategyFrom<Self>>()
     }
 
     fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<<BulkLength<Self> as Nearest>::TryNearestFrom<Self>>>::TryType
     where
         Self: Sized,
-        BulkLength<Self>: ~const Nearest,
-        Self::Item: ~const Try<Output: ~const Destruct, Residual: ~const Residual<<BulkLength<Self> as Nearest>::TryNearestFrom<Self>> + ~const Residual<()> + ~const Destruct> + ~const Destruct
+        BulkLength<Self>: [const] Nearest,
+        Self::Item: [const] Try<
+                Output: [const] Destruct,
+                Residual: [const] Residual<<BulkLength<Self> as Nearest>::TryNearestFrom<Self>> + [const] Residual<()> + [const] Destruct
+            > + [const] Destruct
     {
-        self.try_collect::<
-            <BulkLength<Self> as Nearest>::TryNearestFrom<Self>,
-            <BulkLength<Self> as Nearest>::TryNearestStrategyFrom<Self>
-        >()
+        self.try_collect::<<BulkLength<Self> as Nearest>::TryNearestFrom<Self>, <BulkLength<Self> as Nearest>::TryNearestStrategyFrom<Self>>()
     }
 
     /// Transforms a statically sized bulk into an array.
     /// The bulk must implement [`StaticBulk`].
-    /// 
+    ///
     /// This is equivalent to [`collect()`](Bulk::collect), but the type does not need to be inferred.
     /// For types other than arrays, use [`collect()`](Bulk::collect).
     ///
@@ -2209,7 +2169,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// let doubled = a.bulk()
@@ -2218,12 +2178,12 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// assert_eq!(doubled, [2, 4, 6]);
     /// ```
-    /// 
+    ///
     /// Alternatively, [`collect()`](Bulk::collect) can be used, but this requires us to specify the return type.
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let a = [1, 2, 3];
     ///
     /// let doubled: [i32; 3] = a.bulk()
@@ -2253,19 +2213,19 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// only the inner type produced on `Try::Output` must implement it. Concretely,
     /// this means that collecting into `ControlFlow<_, Vec<i32>>` is valid because `Vec<i32>` implements
     /// [`FromBulk`], even though [`ControlFlow`] doesn't.
-    /// 
+    ///
     /// This is equivalent to [`try_collect()`](Bulk::try_collect), but the type does not need to be inferred.
     /// For types other than arrays, use [`try_collect()`](Bulk::try_collect).
-    /// 
+    ///
     /// Unlike with [`Iterator::try_collect`], the bulk is fully consumed even if it short-circuits.
     /// A short-circuit will cause the rest of the elements of the bulk to be dropped.
     ///
     /// # Examples
-    /// 
+    ///
     /// Successfully collecting a bulk of `Option<i32>` into `Option<[i32; _]>`:
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let u = [Some(1), Some(2), Some(3)];
     /// let v = u.into_bulk().try_collect_array();
     /// assert_eq!(v, Some([1, 2, 3]));
@@ -2274,16 +2234,16 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// Failing to collect in the same way:
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let u = [Some(1), Some(2), None, Some(3)];
     /// let v = u.into_bulk().try_collect_array();
     /// assert_eq!(v, None);
     /// ```
-    /// 
+    ///
     /// Alternatively, [`try_collect()`](Bulk::try_collect) can be used, but this requires us to specify the return type.
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let u = [Some(1), Some(2), Some(3)];
     /// let v: Option<[i32; 3]> = u.into_bulk().try_collect();
     /// assert_eq!(v, Some([1, 2, 3]));
@@ -2292,7 +2252,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// A similar example, but with `Result`:
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let u: [Result<i32, ()>; _] = [Ok(1), Ok(2), Ok(3)];
     /// let v = u.into_bulk().try_collect_array();
     /// assert_eq!(v, Ok([1, 2, 3]));
@@ -2308,11 +2268,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use core::ops::ControlFlow::{Break, Continue};
-    /// 
+    ///
     /// use bulks::*;
     ///
     /// let u = [Continue(1), Continue(2), Break(3), Continue(4), Continue(5)];
-    /// 
+    ///
     /// let v = u.into_bulk().try_collect_array();
     /// assert_eq!(v, Break(3));
     ///
@@ -2325,7 +2285,13 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     #[must_use = "if you really need to exhaust the bulk, consider `.for_each(drop)` instead"]
     fn try_collect_array(self) -> <<Self::Item as Try>::Residual as Residual<Self::Array<<Self::Item as Try>::Output>>>::TryType
     where
-        Self: StaticBulk<Item: ~const Destruct + ~const Try<Residual: Residual<(), TryType: ~const Try> + Residual<Self::Array<<Self::Item as Try>::Output>, TryType: ~const Try> + ~const Destruct, Output: ~const Destruct>> + ~const Bulk
+        Self: StaticBulk<
+                Item: [const] Destruct
+                          + [const] Try<
+                    Residual: Residual<(), TryType: [const] Try> + Residual<Self::Array<<Self::Item as Try>::Output>, TryType: [const] Try> + [const] Destruct,
+                    Output: [const] Destruct
+                >
+            > + [const] Bulk
     {
         Try::from_output(util::try_collect_array_with!(|pusher| self.try_for_each(pusher)?; for Self))
     }
@@ -2335,11 +2301,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// # #![feature(generic_const_exprs)]
-    /// 
+    ///
     /// use bulks::*;
     ///
     /// let u = [1, 3, 3, 7];
-    /// 
+    ///
     /// let v = u.into_bulk()
     ///     .resize([(); 6], 9)
     ///     .collect_array();
@@ -2359,11 +2325,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// # #![feature(generic_const_exprs)]
-    /// 
+    ///
     /// use bulks::*;
     ///
     /// let u = [1, 3, 3, 7];
-    /// 
+    ///
     /// let v = u.into_bulk()
     ///     .resize_with([(); 6], || 9)
     ///     .collect_array();
@@ -2382,7 +2348,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// Usually, bulks span from left to right. After using `rev()`,
     /// a bulk will instead span from right to left.
-    /// 
+    ///
     /// Similar to [`Iterator::rev`].
     ///
     /// # Examples
@@ -2411,7 +2377,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///
     /// This is useful when you have a bulk of `&T`, but you need a
     /// bulk of `T`.
-    /// 
+    ///
     /// Similar to [`Iterator::copied`].
     ///
     /// # Examples
@@ -2434,7 +2400,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn copied<'a, T>(self) -> Copied<Self>
     where
         T: Copy + 'a,
-        Self: Sized + ~const Bulk<Item = &'a T>,
+        Self: Sized + [const] Bulk<Item = &'a T>
     {
         Copied::new(self)
     }
@@ -2447,7 +2413,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// There is no guarantee whatsoever about the `clone` method actually
     /// being called *or* optimized away. So code should not depend on
     /// either.
-    /// 
+    ///
     /// Similar to [`Iterator::cloned`].
     ///
     /// # Examples
@@ -2472,7 +2438,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     fn cloned<'a, T>(self) -> Cloned<Self>
     where
         T: Clone + 'a,
-        Self: Sized + ~const Bulk<Item = &'a T>,
+        Self: Sized + [const] Bulk<Item = &'a T>
     {
         Cloned::new(self)
     }
@@ -2483,7 +2449,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// bulk, then the last up to `N-1` elements will be omitted or the remainder
     /// can then be retrieved from [`.into_remainder()`][crate::ArrayChunks::into_remainder]
     /// or [`.collect_with_remainder()`][crate::ArrayChunks::collect_with_remainder]
-    /// 
+    ///
     /// Similar to [`Iterator::array_chunks`].
     ///
     /// # Panics
@@ -2501,11 +2467,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     /// let bulk = b"lorem".bulk()
     ///     .copied()
     ///     .array_chunks();
-    /// 
+    ///
     /// let (c, r) = bulk.collect_with_remainder::<[_; _], _>();
-    /// 
+    ///
     /// let r: Vec<_> = r.collect();
-    /// 
+    ///
     /// assert_eq!(c, [[b'l', b'o'], [b'r', b'e']]);
     /// assert_eq!(r, [b'm']);
     /// ```
@@ -2524,90 +2490,90 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     #[track_caller]
     fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
     where
-        Self: Sized,
+        Self: Sized
     {
         ArrayChunks::new(self)
     }
 
     /// Splits a bulk in two at a specified index.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let a = b"leftright";
-    /// 
+    ///
     /// let (a1, a2) = a.bulk()
     ///     .copied()
     ///     .split_at([(); 4]);
-    /// 
+    ///
     /// let left: [_; _] = a1.collect();
     /// let right: [_; _] = a2.collect();
-    /// 
+    ///
     /// assert_eq!(&left, b"left");
     /// assert_eq!(&right, b"right");
     /// ```
     #[track_caller]
     fn split_at<L>(self, n: L) -> (Self::Left, Self::Right)
     where
-        Self: ~const SplitBulk<L> + Sized,
+        Self: [const] SplitBulk<L> + Sized,
         L: LengthValue
     {
         SplitBulk::split_at(self, n)
     }
 
     /// Splits a bulk in two at a specified reversed index.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// # #![feature(generic_const_exprs)]
     /// use bulks::*;
-    /// 
+    ///
     /// let a = b"leftright";
-    /// 
+    ///
     /// let (a1, a2) = a.bulk()
     ///     .copied()
     ///     .rsplit_at([(); 5]);
-    /// 
+    ///
     /// let left: [_; _] = a1.collect();
     /// let right: [_; _] = a2.collect();
-    /// 
+    ///
     /// assert_eq!(&left, b"left");
     /// assert_eq!(&right, b"right");
     /// ```
     #[track_caller]
     fn rsplit_at<L>(self, n: L) -> (Self::Left, Self::Right)
     where
-        Self: ~const SplitBulk<length::value::SaturatingSub<<BulkLength<Self> as Length>::Value, L>> + Sized,
+        Self: [const] SplitBulk<length::value::SaturatingSub<<BulkLength<Self> as Length>::Value, L>> + Sized,
         L: LengthValue
     {
         let l = self.length();
         SplitBulk::split_at(self, length::value::saturating_sub(l, n))
     }
-    
+
     /// Consumes the bulk, and swaps two elements of it. Items must be mutably dereferenceable.
-    /// 
+    ///
     /// Panics if either index is out of bounds.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let mut a = *b"Com Truise";
-    /// 
+    ///
     /// a.bulk_mut()
     ///     .swap::<u8>(0, 4);
-    /// 
+    ///
     /// assert_eq!(&a, b"Tom Cruise");
     /// ```
     fn swap<S>(self, lhs: impl LengthValue, rhs: impl LengthValue)
     where
         Self: Sized,
-        Self::Item: ~const BorrowMut<S> + ~const Destruct
+        Self::Item: [const] BorrowMut<S> + [const] Destruct
     {
         match self.try_swap(lhs, rhs)
         {
@@ -2617,16 +2583,16 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     }
 
     /// Consumes the bulk, and swaps two elements of it. Items must be mutably dereferenceable.
-    /// 
+    ///
     /// Returns an error if either index is out of bounds.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let mut a = *b"Com Truise";
-    /// 
+    ///
     /// std::assert_matches!(
     ///     a.bulk_mut()
     ///         .try_swap::<u8>(0, 4),
@@ -2637,13 +2603,13 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
     ///         .try_swap::<u8>(4, 10),
     ///     Err(OutOfRange { i: 10, len: 10 })
     /// );
-    /// 
+    ///
     /// assert_eq!(&a, b"Tom Cruise");
     /// ```
     fn try_swap<S>(self, lhs: impl LengthValue, rhs: impl LengthValue) -> Result<(), OutOfRange>
     where
         Self: Sized,
-        Self::Item: ~const BorrowMut<S> + ~const Destruct
+        Self::Item: [const] BorrowMut<S> + [const] Destruct
     {
         let n = self.length();
 
@@ -2657,10 +2623,10 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<T> FnOnce<(T,)> for Closure<T>
         where
-            T: ~const Destruct
+            T: [const] Destruct
         {
             type Output = ();
-            
+
             extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
             {
                 self.call_mut(args)
@@ -2668,25 +2634,15 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         }
         const impl<T> FnMut<(T,)> for Closure<T>
         where
-            T: ~const Destruct
+            T: [const] Destruct
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
-                if self.first.is_none()
-                {
-                    self.first = Some(x)
-                }
-                else
-                {
-                    self.last = Some(x)
-                }
+                if self.first.is_none() { self.first = Some(x) } else { self.last = Some(x) }
             }
         }
 
-        let mut closure = Closure {
-            first: None,
-            last: None
-        };
+        let mut closure = Closure { first: None, last: None };
 
         self.take(length::value::add(i, [(); 1]))
             .skip(j)
@@ -2701,7 +2657,11 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
         {
             match (closure.first, closure.last)
             {
-                (Some(mut first), Some(mut last)) => { core::mem::swap(first.borrow_mut(), last.borrow_mut()); Ok(()) },
+                (Some(mut first), Some(mut last)) =>
+                {
+                    core::mem::swap(first.borrow_mut(), last.borrow_mut());
+                    Ok(())
+                }
                 (Some(_), None) if length::value::eq(i, j) => Ok(()),
                 (Some(_), None) => Err(length::value::len(j)),
                 (None, None) | (None, Some(_)) => Err(length::value::len(i))
@@ -2715,7 +2675,7 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
     fn sum_from<T>(self, from: T) -> T
     where
-        T: ~const Add<Self::Item, Output = T> + ~const Destruct,
+        T: [const] Add<Self::Item, Output = T> + [const] Destruct,
         Self: Sized
     {
         self.fold(from, Add::add)
@@ -2723,14 +2683,14 @@ pub const trait Bulk: ~const IntoBulk<IntoBulk = Self>
 
     fn product_from<T>(self, from: T) -> T
     where
-        T: ~const Mul<Self::Item, Output = T> + ~const Destruct,
+        T: [const] Mul<Self::Item, Output = T> + [const] Destruct,
         Self: Sized
     {
         self.fold(from, Mul::mul)
     }
 }
 
-#[derive(Clone, Copy, Debug, thiserror::Error)]
+#[derive(Clone, Copy, Debug)]
 pub struct OutOfRange
 {
     pub i: usize,
@@ -2763,23 +2723,24 @@ impl Display for OutOfRange
         write!(f, "Index out of bounds. Index {i} can't be larger than {len}.")
     }
 }
+impl Error for OutOfRange {}
 
 #[cfg(test)]
 mod test
 {
     use crate::*;
-    
+
     #[test]
     fn test_reduce()
     {
         let a = [1, 5, -3, 7, 9, 3, -1, 3];
 
         let sum = a.into_bulk().reduce(|a, b| a + b).unwrap_or(0);
-        let product = a.into_bulk().reduce(|a, b| a*b).unwrap_or(1);
+        let product = a.into_bulk().reduce(|a, b| a * b).unwrap_or(1);
         let min = a.into_bulk().reduce(|a, b| a.min(b)).unwrap();
         let max = a.into_bulk().reduce(|a, b| a.max(b)).unwrap();
-        let mean = sum as f32/a.len() as f32;
-        let variance = a.into_bulk().map(|a| a as f32 - mean).map(|a| a*a).reduce(|a, b| a + b).unwrap_or(0.0).sqrt();
+        let mean = sum as f32 / a.len() as f32;
+        let variance = a.into_bulk().map(|a| a as f32 - mean).map(|a| a * a).reduce(|a, b| a + b).unwrap_or(0.0).sqrt();
 
         println!("sum = {sum}");
         println!("product = {product}");
