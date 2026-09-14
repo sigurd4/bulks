@@ -2,9 +2,10 @@ use core::ptr::Thin;
 
 use crate::Bulk;
 
-pub const trait AsBulk<'a>
+pub const trait AsBulk<'a>: 'a
 {
-    type AsBulk: Bulk + 'a;
+    type Elem: 'a;
+    type AsBulk: Bulk<Item = &'a Self::Elem> + 'a;
 
     /// Creates a bulk from a reference.
     ///
@@ -14,7 +15,7 @@ pub const trait AsBulk<'a>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let v = [1, 2, 3];
     /// let bulk = v.bulk();
     /// let u: [_; _] = bulk.collect();
@@ -23,9 +24,9 @@ pub const trait AsBulk<'a>
     /// ```
     fn bulk(&'a self) -> Self::AsBulk;
 }
-pub const trait AsBulkMut<'a>
+pub const trait AsBulkMut<'a>: AsBulk<'a>
 {
-    type AsBulkMut: Bulk + 'a;
+    type AsBulkMut: Bulk<Item = &'a mut Self::Elem> + 'a;
 
     /// Creates a bulk from a mutable reference.
     ///
@@ -35,7 +36,7 @@ pub const trait AsBulkMut<'a>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let mut v = [1, 2, 3];
     /// let bulk = v.bulk_mut();
     /// let u: [_; _] = bulk.map(|v| core::mem::replace(v, *v + 1))
@@ -47,25 +48,31 @@ pub const trait AsBulkMut<'a>
     fn bulk_mut(&'a mut self) -> Self::AsBulkMut;
 }
 
-const impl<'a, T> AsBulk<'a> for T
+const impl<'a, B, T> AsBulk<'a> for B
 where
-    T: ?Sized + 'a,
-    &'a T: ~const IntoBulk
+    B: ?Sized + 'a,
+    T: 'a,
+    &'a B: [const] IntoBulk<Item = &'a T>
 {
-    type AsBulk = <&'a T as IntoBulk>::IntoBulk;
+    type AsBulk = <&'a B as IntoBulk>::IntoBulk;
+    type Elem = T;
 
-    fn bulk(&'a self) -> Self::AsBulk {
+    fn bulk(&'a self) -> Self::AsBulk
+    {
         self.into_bulk()
     }
 }
-const impl<'a, T> AsBulkMut<'a> for T
+const impl<'a, B, T> AsBulkMut<'a> for B
 where
-    T: ?Sized + 'a,
-    &'a mut T: ~const IntoBulk
+    B: ?Sized + 'a,
+    T: 'a,
+    &'a B: [const] IntoBulk<Item = &'a T>,
+    &'a mut B: [const] IntoBulk<Item = &'a mut T>
 {
-    type AsBulkMut = <&'a mut T as IntoBulk>::IntoBulk;
+    type AsBulkMut = <&'a mut B as IntoBulk>::IntoBulk;
 
-    fn bulk_mut(&'a mut self) -> Self::AsBulkMut {
+    fn bulk_mut(&'a mut self) -> Self::AsBulkMut
+    {
         self.into_bulk()
     }
 }
@@ -73,7 +80,7 @@ where
 pub const trait IntoBulk: IntoIterator<Item: Thin, IntoIter: ExactSizeIterator>
 {
     /// Which kind of bulk are we turning this into?
-    type IntoBulk: ~const Bulk<Item = Self::Item, IntoIter = Self::IntoIter>;
+    type IntoBulk: [const] Bulk<Item = Self::Item, IntoIter = Self::IntoIter>;
 
     /// Creates a bulk from a value.
     ///
@@ -83,7 +90,7 @@ pub const trait IntoBulk: IntoIterator<Item: Thin, IntoIter: ExactSizeIterator>
     ///
     /// ```
     /// use bulks::*;
-    /// 
+    ///
     /// let v = [1, 2, 3];
     /// let mut bulk = v.into_bulk();
     /// let u: [_; _] = bulk.collect();
@@ -94,8 +101,8 @@ pub const trait IntoBulk: IntoIterator<Item: Thin, IntoIter: ExactSizeIterator>
 }
 
 const impl<T> IntoBulk for T
-where 
-    Self: ~const Bulk
+where
+    Self: [const] Bulk
 {
     type IntoBulk = Self;
 
