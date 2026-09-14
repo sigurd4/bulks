@@ -3,7 +3,7 @@ use core::{alloc::Allocator, ops::Try};
 use alloc::vec::Vec;
 use array_trait::length::{self, LengthValue};
 
-use crate::{AsBulk, Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, slice};
+use crate::{AsBulk, AsBulkMut, Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, slice};
 
 pub mod vec
 {

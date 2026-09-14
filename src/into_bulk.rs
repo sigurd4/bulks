@@ -2,8 +2,10 @@ use core::ptr::Thin;
 
 use crate::Bulk;
 
-pub const trait AsBulk
+pub const trait AsBulk<'a>
 {
+    type AsBulk: Bulk + 'a;
+
     /// Creates a bulk from a reference.
     ///
     /// See the [crate documentation](crate) for more.
@@ -19,12 +21,11 @@ pub const trait AsBulk
     ///
     /// assert_eq!(u, [&1, &2, &3]);
     /// ```
-    fn bulk<'a>(&'a self) -> <&'a Self as IntoBulk>::IntoBulk
-    where
-        &'a Self: ~const IntoBulk
-    {
-        self.into_bulk()
-    }
+    fn bulk(&'a self) -> Self::AsBulk;
+}
+pub const trait AsBulkMut<'a>
+{
+    type AsBulkMut: Bulk + 'a;
 
     /// Creates a bulk from a mutable reference.
     ///
@@ -43,19 +44,30 @@ pub const trait AsBulk
     /// assert_eq!(v, [2, 3, 4]);
     /// assert_eq!(u, [1, 2, 3]);
     /// ```
-    fn bulk_mut<'a>(&'a mut self) -> <&'a mut Self as IntoBulk>::IntoBulk
-    where
-        &'a mut Self: ~const IntoBulk
-    {
+    fn bulk_mut(&'a mut self) -> Self::AsBulkMut;
+}
+
+const impl<'a, T> AsBulk<'a> for T
+where
+    T: ?Sized + 'a,
+    &'a T: ~const IntoBulk
+{
+    type AsBulk = <&'a T as IntoBulk>::IntoBulk;
+
+    fn bulk(&'a self) -> Self::AsBulk {
         self.into_bulk()
     }
 }
-
-const impl<T> AsBulk for T
+const impl<'a, T> AsBulkMut<'a> for T
 where
-    T: ?Sized
+    T: ?Sized + 'a,
+    &'a mut T: ~const IntoBulk
 {
-    
+    type AsBulkMut = <&'a mut T as IntoBulk>::IntoBulk;
+
+    fn bulk_mut(&'a mut self) -> Self::AsBulkMut {
+        self.into_bulk()
+    }
 }
 
 pub const trait IntoBulk: IntoIterator<Item: Thin, IntoIter: ExactSizeIterator>

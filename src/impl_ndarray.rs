@@ -280,7 +280,7 @@ where
 #[cfg(test)]
 mod test
 {
-    use crate::{AsBulk, Bulk};
+    use crate::{AsBulkMut, Bulk};
 
     #[test]
     fn it_works()
