@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, Length, LengthValue};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 
 #[derive(Debug)]
 #[must_use = "bulks are lazy and do nothing unless consumed"]
