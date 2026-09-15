@@ -1,19 +1,11 @@
 use core::{
-    borrow::BorrowMut,
-    cmp::Ordering,
-    error::Error,
-    fmt::Display,
-    iter::Step,
-    marker::Destruct,
-    ops::{Add, ControlFlow, FromResidual, Mul, Residual, Try}
+    borrow::BorrowMut, cmp::Ordering, error::Error, fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, Deref, FromResidual, Mul, Residual, Try}, pin::Pin
 };
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
 use crate::{
-    ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect,
-    Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, Nearest, Resize, ResizeWith, Rev, Skip, SplitBulk,
-    StaticBulk, StepBy, Take, TryCollectionStrategy, Zip, util
+    ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, Nearest, Pinned, Resize, ResizeWith, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionStrategy, Unpinned, Zip, util
 };
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
@@ -70,7 +62,7 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         length
     }
 
-    /// Returns `true` if the iterator is empty.
+    /// Returns `true` if the bulk is empty.
     ///
     /// This method has a default implementation using
     /// [`Bulk::len()`], so you don't need to implement it yourself.
@@ -2441,6 +2433,26 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Self: Sized + [const] Bulk<Item = &'a T>
     {
         Cloned::new(self)
+    }
+
+    #[inline]
+    #[track_caller]
+    fn pinned(self) -> Pinned<Self>
+    where
+        Self: Sized,
+        Self::Item: Deref<Target: Unpin>
+    {
+        Pinned::new(self)
+    }
+
+    #[inline]
+    #[track_caller]
+    fn unpinned<T>(self) -> Unpinned<Self, T>
+    where
+        Self: Sized + [const] Bulk<Item = Pin<T>>,
+        T: Deref<Target: Unpin>
+    {
+        Unpinned::new(self)
     }
 
     /// Returns a bulk of `N` elements of the bulk at a time.

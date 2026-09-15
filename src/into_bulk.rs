@@ -1,6 +1,6 @@
-use core::ptr::Thin;
+use core::{pin::Pin, ptr::Thin};
 
-use crate::Bulk;
+use crate::{Bulk, Pinned};
 
 pub const trait AsBulk<'a>: 'a
 {
@@ -23,6 +23,16 @@ pub const trait AsBulk<'a>: 'a
     /// assert_eq!(u, [&1, &2, &3]);
     /// ```
     fn bulk(&'a self) -> Self::AsBulk;
+
+    fn bulk_pin(self: Pin<&'a Self>) -> Pinned<Self::AsBulk>
+    {
+        unsafe {
+            Pinned::new_unchecked(
+                Pin::into_inner_unchecked(self)
+                    .bulk()
+            )
+        }
+    }
 }
 pub const trait AsBulkMut<'a>: AsBulk<'a>
 {
@@ -46,6 +56,16 @@ pub const trait AsBulkMut<'a>: AsBulk<'a>
     /// assert_eq!(u, [1, 2, 3]);
     /// ```
     fn bulk_mut(&'a mut self) -> Self::AsBulkMut;
+
+    fn bulk_pin_mut(self: Pin<&'a mut Self>) -> Pinned<Self::AsBulkMut>
+    {
+        unsafe {
+            Pinned::new_unchecked(
+                Pin::into_inner_unchecked(self)
+                    .bulk_mut()
+            )
+        }
+    }
 }
 
 const impl<'a, B, T> AsBulk<'a> for B

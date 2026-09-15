@@ -25,6 +25,7 @@ moddef::moddef!(
         mutate,
         once_with,
         once,
+        pinned,
         merge,
         repeat_n_with,
         repeat_n,
@@ -34,6 +35,7 @@ moddef::moddef!(
         skip,
         step_by,
         take,
+        unpinned,
         zip
     }
 );
