@@ -2747,7 +2747,7 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Self: Sized,
         C: [const] FromBulk<A>,
         A: CollectionAdapter<Elem = <Self::Item as Try>::Output> + [const] TryCollectionStrategy<Self::MinLength, Self::MaxLength, C> + ?Sized,
-        Self::Item: [const] Try<Residual: [const] Residual<()> + [const] Residual<C, TryType: [const] Try> + [const] Destruct> + [const] Destruct
+        Self::Item: [const] Try<Residual: [const] Residual<C, TryType: [const] Try> + [const] Destruct> + [const] Destruct
     {
         FromBulk::<A>::try_from_bulk(self)
     }
@@ -2765,10 +2765,8 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
     where
         Self: Sized,
         BulkLength<Self>: [const] Nearest,
-        Self::Item: [const] Try<
-                Output: [const] Destruct,
-                Residual: [const] Residual<<BulkLength<Self> as Nearest>::TryNearestFrom<Self>> + [const] Residual<()> + [const] Destruct
-            > + [const] Destruct
+        Self::Item:
+            [const] Try<Output: [const] Destruct, Residual: [const] Residual<<BulkLength<Self> as Nearest>::TryNearestFrom<Self>> + [const] Destruct> + [const] Destruct
     {
         self.try_collect::<<BulkLength<Self> as Nearest>::TryNearestFrom<Self>, <BulkLength<Self> as Nearest>::TryNearestStrategyFrom<Self>>()
     }
@@ -2903,13 +2901,10 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
     where
         Self: StaticBulk<
                 Item: [const] Destruct
-                          + [const] Try<
-                    Residual: Residual<(), TryType: [const] Try> + Residual<Self::Array<<Self::Item as Try>::Output>, TryType: [const] Try> + [const] Destruct,
-                    Output: [const] Destruct
-                >
+                          + [const] Try<Residual: Residual<Self::Array<<Self::Item as Try>::Output>, TryType: [const] Try> + [const] Destruct, Output: [const] Destruct>
             > + [const] Bulk
     {
-        Try::from_output(util::try_collect_array_with!(|pusher| self.try_for_each(pusher)?; for Self))
+        Try::from_output(util::try_collect_array_with!(|pusher| self.try_for_each(pusher); for Self))
     }
 
     /// Resizes a bulk, padding it with copies of a given value of `element` if too short, or truncating it if too long.

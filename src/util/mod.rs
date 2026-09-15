@@ -1,4 +1,7 @@
-use core::{mem::{ManuallyDrop, MaybeUninit}};
+use core::{
+    mem::{ManuallyDrop, MaybeUninit},
+    ops::ControlFlow
+};
 
 moddef::moddef!(
     flat(pub) mod {
@@ -15,16 +18,12 @@ moddef::moddef!(
 pub(crate) const fn split_array_ref<T, const N: usize, const M: usize>(array: &[T; N]) -> (&[T; N.min(M)], &[T; N.saturating_sub(M)])
 {
     let ptr = array.as_ptr();
-    unsafe {
-        (ptr.cast::<[_; _]>().as_ref_unchecked(), ptr.add(N.min(M)).cast::<[_; _]>().as_ref_unchecked())
-    }
+    unsafe { (ptr.cast::<[_; _]>().as_ref_unchecked(), ptr.add(N.min(M)).cast::<[_; _]>().as_ref_unchecked()) }
 }
 pub(crate) const fn split_array_mut<T, const N: usize, const M: usize>(array: &mut [T; N]) -> (&mut [T; N.min(M)], &mut [T; N.saturating_sub(M)])
 {
     let ptr = array.as_mut_ptr();
-    unsafe {
-        (ptr.cast::<[_; _]>().as_mut_unchecked(), ptr.add(N.min(M)).cast::<[_; _]>().as_mut_unchecked())
-    }
+    unsafe { (ptr.cast::<[_; _]>().as_mut_unchecked(), ptr.add(N.min(M)).cast::<[_; _]>().as_mut_unchecked()) }
 }
 pub(crate) const fn split_array<T, const N: usize, const M: usize>(array: [T; N]) -> ([T; N.min(M)], [T; N.saturating_sub(M)])
 {
@@ -45,123 +44,120 @@ pub(crate) const fn split_array<T, const N: usize, const M: usize>(array: [T; N]
         ManuallyDrop::into_inner(
             Split {
                 concat: ManuallyDrop::new(array)
-            }.split
+            }
+            .split
         )
     };
 
     (left, right)
 }
 
-pub(crate) macro collect_array_with {
-    (|$pusher:ident| $for_each:expr; for $bulk:ty) => {
+pub(crate) macro collect_array_with(|$pusher:ident| $for_each:expr; for $bulk:ty) {{
+    use crate::StaticBulk;
+
+    let mut array = MaybeUninit::<<$bulk as StaticBulk>::Array<<$bulk as IntoIterator>::Item>>::uninit();
+    let array_mut = unsafe {
+        array_trait::AsSlice::as_mut_slice(
+            array
+                .as_mut_ptr()
+                .cast::<<$bulk as StaticBulk>::Array<MaybeUninit<<$bulk as IntoIterator>::Item>>>()
+                .as_mut()
+                .unwrap()
+        )
+    };
+    let mut guard = Guard { array_mut, initialized: 0..0 };
+
+    struct Closure<'a, 'b, T>
+    {
+        guard: &'a mut Guard<'b, T>
+    }
+
+    const impl<'a, 'b, T> FnOnce<(T,)> for Closure<'a, 'b, T>
+    {
+        type Output = ();
+
+        extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
         {
-            use crate::StaticBulk;
-
-            let mut array = MaybeUninit::<<$bulk as StaticBulk>::Array<<$bulk as IntoIterator>::Item>>::uninit();
-            let array_mut = unsafe {
-                array_trait::AsSlice::as_mut_slice(
-                    array.as_mut_ptr().cast::<<$bulk as StaticBulk>::Array<MaybeUninit<<$bulk as IntoIterator>::Item>>>().as_mut().unwrap()
-                )
-            };
-            let mut guard = Guard { array_mut, initialized: 0..0 };
-
-            struct Closure<'a, 'b, T>
-            {
-                guard: &'a mut Guard<'b, T>
-            }
-
-            const impl<'a, 'b, T> FnOnce<(T,)> for Closure<'a, 'b, T>
-            {
-                type Output = ();
-
-                extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
-                {
-                    self.call_mut(args)
-                }
-            }
-            const impl<'a, 'b, T> FnMut<(T,)> for Closure<'a, 'b, T>
-            {
-                extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
-                {
-                    unsafe {
-                        self.guard.push_back_unchecked(x);
-                    }
-                }
-            }
-
-            let $pusher = Closure {
-                guard: &mut guard
-            };
-
-            $for_each;
-            
-            core::mem::forget(guard);
+            self.call_mut(args)
+        }
+    }
+    const impl<'a, 'b, T> FnMut<(T,)> for Closure<'a, 'b, T>
+    {
+        extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+        {
             unsafe {
-                MaybeUninit::assume_init(array)
+                self.guard.push_back_unchecked(x);
             }
         }
     }
-}
 
+    let $pusher = Closure { guard: &mut guard };
 
-pub(crate) macro try_collect_array_with {
-    (|$pusher:ident| $try_for_each:expr; for $bulk:ty) => {
+    $for_each;
+
+    core::mem::forget(guard);
+    unsafe { MaybeUninit::assume_init(array) }
+}}
+
+pub(crate) macro try_collect_array_with(|$pusher:ident| $try_for_each:expr; for $bulk:ty) {{
+    use crate::StaticBulk;
+    use core::ops::Try;
+
+    let mut array = MaybeUninit::<<$bulk as StaticBulk>::Array<<<$bulk as IntoIterator>::Item as Try>::Output>>::uninit();
+    let array_mut = unsafe {
+        array_trait::AsSlice::as_mut_slice(
+            array
+                .as_mut_ptr()
+                .cast::<<$bulk as StaticBulk>::Array<MaybeUninit<<<$bulk as IntoIterator>::Item as Try>::Output>>>()
+                .as_mut()
+                .unwrap()
+        )
+    };
+    let mut guard = Guard { array_mut, initialized: 0..0 };
+
+    struct Closure<'a, 'b, T>
+    where
+        T: Try
+    {
+        guard: &'a mut Guard<'b, <T as Try>::Output>
+    }
+
+    const impl<'a, 'b, T> FnOnce<(T,)> for Closure<'a, 'b, T>
+    where
+        T: [const] Try
+    {
+        type Output = ControlFlow<<T as Try>::Residual>;
+
+        extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
         {
-            use core::ops::{Try, Residual};
-            use crate::StaticBulk;
-
-            let mut array = MaybeUninit::<<$bulk as StaticBulk>::Array<<<$bulk as IntoIterator>::Item as Try>::Output>>::uninit();
-            let array_mut = unsafe {
-                array_trait::AsSlice::as_mut_slice(
-                    array.as_mut_ptr().cast::<<$bulk as StaticBulk>::Array<MaybeUninit<<<$bulk as IntoIterator>::Item as Try>::Output>>>().as_mut().unwrap()
-                )
-            };
-            let mut guard = Guard { array_mut, initialized: 0..0 };
-
-            struct Closure<'a, 'b, T>
-            where
-                T: Try<Residual: Residual<()>>
-            {
-                guard: &'a mut Guard<'b, <T as Try>::Output>
-            }
-
-            const impl<'a, 'b, T> FnOnce<(T,)> for Closure<'a, 'b, T>
-            where
-                T: ~const Try<Residual: Residual<(), TryType: ~const Try>>
-            {
-                type Output = <<T as Try>::Residual as Residual<()>>::TryType;
-
-                extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
-                {
-                    unsafe {
-                        self.guard.push_back_unchecked(x?);
-                    }
-                    Try::from_output(())
-                }
-            }
-            const impl<'a, 'b, T> FnMut<(T,)> for Closure<'a, 'b, T>
-            where
-                T: ~const Try<Residual: Residual<(), TryType: ~const Try>>
-            {
-                extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
-                {
-                    unsafe {
-                        self.guard.push_back_unchecked(x?);
-                    }
-                    Try::from_output(())
-                }
-            }
-
-            let $pusher = Closure {
-                guard: &mut guard
-            };
-
-            $try_for_each;
-            
-            core::mem::forget(guard);
             unsafe {
-                MaybeUninit::assume_init(array)
+                self.guard.push_back_unchecked(x.branch()?);
             }
+            ControlFlow::Continue(())
         }
     }
-}
+    const impl<'a, 'b, T> FnMut<(T,)> for Closure<'a, 'b, T>
+    where
+        T: [const] Try
+    {
+        extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+        {
+            unsafe {
+                self.guard.push_back_unchecked(x.branch()?);
+            }
+            ControlFlow::Continue(())
+        }
+    }
+
+    let $pusher = Closure { guard: &mut guard };
+
+    match $try_for_each
+    {
+        ControlFlow::Continue(()) => (),
+        ControlFlow::Break(residual) => return core::ops::FromResidual::from_residual(residual)
+    }
+
+    core::mem::forget(guard);
+    unsafe { MaybeUninit::assume_init(array) }
+}}
+
