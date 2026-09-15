@@ -5,9 +5,9 @@ use core::ops::{Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, Ra
 use array_trait::AsSlice;
 use array_trait::length::Length;
 
-use crate::{Bulk,  CollectionAdapter, CollectionStrategy, FromBulk, IntoBulk, TryCollectionStrategy};
+use crate::{Bulk, CollectionAdapter, CollectionStrategy, DoubleEndedBulk, FromBulk, IntoBulk, TryCollectionStrategy};
 
-pub(crate) const trait Collection<T, L: Nearest + ?Sized> = ~const IntoBulk<Item = T, IntoBulk: ~const Bulk<Item = T, /*MinLength: Length<Intersect<L> = L>,*/ MaxLength = L>>
+pub(crate) const trait Collection<T, L: Nearest + ?Sized> = ~const IntoBulk<Item = T, IntoBulk: ~const DoubleEndedBulk<Item = T, /*MinLength: Length<Intersect<L> = L>,*/ MaxLength = L>>
     + ~const FromBulk<L::NearestStrategy<T>>
     //+ for<'a> ~const AsBulk<'a>
     //+ for<'a> ~const AsBulkMut<'a>
