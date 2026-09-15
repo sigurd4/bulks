@@ -1,8 +1,15 @@
-use core::{marker::Destruct, ops::{Residual, Try}};
+use core::{
+    marker::Destruct,
+    ops::{Residual, Try}
+};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, CollectionAdapter, CollectionStrategy, DoubleEndedBulk, FromBulk, IntoBulk, Rev, SplitBulk, adapters::array_chunks_with_remainder::ArrayChunksWithRemainder, util::{self, ArrayBuffer}};
+use crate::{
+    Bulk, CollectionAdapter, CollectionStrategy, DoubleEndedBulk, FromBulk, IntoBulk, Rev, SplitBulk,
+    adapters::array_chunks_with_remainder::ArrayChunksWithRemainder,
+    util::{self, ArrayBuffer}
+};
 
 /// A bulk over `N` elements of the bulk at a time.
 ///
@@ -28,9 +35,7 @@ where
     pub(crate) const fn new(bulk: I) -> Self
     {
         assert!(N != 0, "chunk size must be non-zero");
-        Self {
-            bulk
-        }
+        Self { bulk }
     }
 
     pub(crate) const fn into_inner(self) -> I
@@ -41,23 +46,16 @@ where
 
     pub(crate) const fn skip_len<const REV: bool>(&self) -> usize
     where
-        I: ~const Bulk
+        I: [const] Bulk
     {
-        if REV
-        {
-            self.bulk.len() % N
-        }
-        else
-        {
-            0
-        }
+        if REV { self.bulk.len() % N } else { 0 }
     }
 
     pub const fn for_each_with_remainder<F>(self, f: F) -> <ArrayBuffer<I::Item, N, false> as IntoBulk>::IntoBulk
     where
-        I: ~const Bulk<Item: ~const Destruct>,
-        F: ~const FnMut(<Self as IntoIterator>::Item) + ~const Destruct,
-        ArrayBuffer<I::Item, N, false>: ~const IntoBulk
+        I: [const] Bulk<Item: [const] Destruct>,
+        F: [const] FnMut(<Self as IntoIterator>::Item) + [const] Destruct,
+        ArrayBuffer<I::Item, N, false>: [const] IntoBulk
     {
         let mut remainder = ArrayBuffer::new();
         let bulk = ArrayChunksWithRemainder::new(self.into_inner(), &mut remainder);
@@ -67,11 +65,11 @@ where
 
     pub const fn try_for_each_with_remainder<F, R, RR>(self, f: F) -> RR
     where
-        I: ~const Bulk<Item: ~const Destruct>,
-        F: ~const FnMut(<Self as IntoIterator>::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct + Residual<<ArrayBuffer<I::Item, N, false> as IntoBulk>::IntoBulk, TryType = RR>>,
-        RR: ~const Try<Output = <ArrayBuffer<I::Item, N, false> as IntoBulk>::IntoBulk, Residual = R::Residual>,
-        ArrayBuffer<I::Item, N, false>: ~const IntoBulk
+        I: [const] Bulk<Item: [const] Destruct>,
+        F: [const] FnMut(<Self as IntoIterator>::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = (), Residual: [const] Destruct + Residual<<ArrayBuffer<I::Item, N, false> as IntoBulk>::IntoBulk, TryType = RR>>,
+        RR: [const] Try<Output = <ArrayBuffer<I::Item, N, false> as IntoBulk>::IntoBulk, Residual = R::Residual>,
+        ArrayBuffer<I::Item, N, false>: [const] IntoBulk
     {
         let mut remainder = ArrayBuffer::new();
         let bulk = ArrayChunksWithRemainder::new(self.into_inner(), &mut remainder);
@@ -83,18 +81,20 @@ where
     pub const fn collect_with_remainder<C, A>(self) -> (C, <util::ArrayBuffer<I::Item, N, false> as IntoBulk>::IntoBulk)
     where
         Self: Sized,
-        I: ~const Bulk<Item: ~const Destruct>,
-        C: ~const FromBulk<A>,
-        A: CollectionAdapter<Elem = [I::Item; N]> + for<'a> ~const CollectionStrategy<<ArrayChunksWithRemainder::<'a, I, N, false> as Bulk>::MinLength, <ArrayChunksWithRemainder::<'a, I, N, false> as Bulk>::MaxLength, C> + ?Sized,
-        util::ArrayBuffer<I::Item, N, false>: ~const IntoBulk
+        I: [const] Bulk<Item: [const] Destruct>,
+        C: [const] FromBulk<A>,
+        A: CollectionAdapter<Elem = [I::Item; N]>
+            + for<'a> [const] CollectionStrategy<
+                <ArrayChunksWithRemainder<'a, I, N, false> as Bulk>::MinLength,
+                <ArrayChunksWithRemainder<'a, I, N, false> as Bulk>::MaxLength,
+                C
+            > + ?Sized,
+        util::ArrayBuffer<I::Item, N, false>: [const] IntoBulk
     {
         let mut remainder = ArrayBuffer::new();
         let bulk = ArrayChunksWithRemainder::new(self.into_inner(), &mut remainder);
         let collection = bulk.collect();
-        (
-            collection,
-            remainder.into_bulk()
-        )
+        (collection, remainder.into_bulk())
     }
 }
 
@@ -105,9 +105,9 @@ where
     pub const fn for_each_with_remainder<F>(self, f: F) -> <ArrayBuffer<I::Item, N, true> as IntoBulk>::IntoBulk
     where
         ArrayChunks<I, N>: Sized,
-        I: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk,
-        F: ~const FnMut(<Self as IntoIterator>::Item) + ~const Destruct,
-        ArrayBuffer<I::Item, N, true>: ~const IntoBulk
+        I: [const] DoubleEndedBulk<Item: [const] Destruct> + [const] Bulk,
+        F: [const] FnMut(<Self as IntoIterator>::Item) + [const] Destruct,
+        ArrayBuffer<I::Item, N, true>: [const] IntoBulk
     {
         let mut remainder = ArrayBuffer::new();
         let bulk = ArrayChunksWithRemainder::new(self.into_inner().into_inner().rev(), &mut remainder);
@@ -118,10 +118,10 @@ where
     pub const fn try_for_each_with_remainder<F, R>(self, f: F) -> <<R as Try>::Residual as Residual<<ArrayBuffer<I::Item, N, true> as IntoBulk>::IntoBulk>>::TryType
     where
         ArrayChunks<I, N>: Sized,
-        I: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk,
-        F: ~const FnMut(<ArrayChunks<I, N> as IntoIterator>::Item) -> R + ~const Destruct,
-        ArrayBuffer<I::Item, N, true>: ~const IntoBulk,
-        R: ~const Try<Output = (), Residual: Residual<<ArrayBuffer<I::Item, N, true> as IntoBulk>::IntoBulk, TryType: ~const Try> + ~const Destruct>
+        I: [const] DoubleEndedBulk<Item: [const] Destruct> + [const] Bulk,
+        F: [const] FnMut(<ArrayChunks<I, N> as IntoIterator>::Item) -> R + [const] Destruct,
+        ArrayBuffer<I::Item, N, true>: [const] IntoBulk,
+        R: [const] Try<Output = (), Residual: Residual<<ArrayBuffer<I::Item, N, true> as IntoBulk>::IntoBulk, TryType: [const] Try> + [const] Destruct>
     {
         let mut remainder = ArrayBuffer::new();
         let bulk = ArrayChunksWithRemainder::new(self.into_inner().into_inner().rev(), &mut remainder);
@@ -133,64 +133,66 @@ where
     pub const fn collect_with_remainder<C, A>(self) -> (C, <util::ArrayBuffer<I::Item, N, true> as IntoBulk>::IntoBulk)
     where
         Self: Sized,
-        I: ~const Bulk<Item: ~const Destruct> + ~const DoubleEndedBulk,
-        C: ~const FromBulk<A>,
-        A: CollectionAdapter<Elem = [I::Item; N]> + for<'a> ~const CollectionStrategy<<ArrayChunksWithRemainder::<'a, Rev<I>, N, true> as Bulk>::MinLength, <ArrayChunksWithRemainder::<'a, Rev<I>, N, true> as Bulk>::MaxLength, C> + ?Sized,
-        util::ArrayBuffer<I::Item, N, true>: ~const IntoBulk
+        I: [const] Bulk<Item: [const] Destruct> + [const] DoubleEndedBulk,
+        C: [const] FromBulk<A>,
+        A: CollectionAdapter<Elem = [I::Item; N]>
+            + for<'a> [const] CollectionStrategy<
+                <ArrayChunksWithRemainder<'a, Rev<I>, N, true> as Bulk>::MinLength,
+                <ArrayChunksWithRemainder<'a, Rev<I>, N, true> as Bulk>::MaxLength,
+                C
+            > + ?Sized,
+        util::ArrayBuffer<I::Item, N, true>: [const] IntoBulk
     {
         let mut remainder = ArrayBuffer::new();
         let bulk = ArrayChunksWithRemainder::new(self.into_inner().into_inner().rev(), &mut remainder);
         let collection = bulk.collect();
-        (
-            collection,
-            remainder.into_bulk()
-        )
+        (collection, remainder.into_bulk())
     }
 }
 
 const impl<I, const N: usize> IntoIterator for ArrayChunks<I, N>
 where
-    I: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>
+    I: Bulk + [const] IntoIterator<IntoIter: [const] Iterator>
 {
-    type Item = [I::Item; N];
     type IntoIter = core::iter::ArrayChunks<I::IntoIter, N>;
+    type Item = [I::Item; N];
 
     fn into_iter(self) -> Self::IntoIter
     {
-        let Self {bulk} = self;
+        let Self { bulk } = self;
         bulk.into_iter().array_chunks()
     }
 }
 const impl<I, const N: usize> Bulk for ArrayChunks<I, N>
 where
-    I: ~const Bulk<Item: ~const Destruct>,
+    I: [const] Bulk<Item: [const] Destruct>
 {
-    type MinLength = length::Div<I::MinLength, [(); N]>;
     type MaxLength = length::Div<I::MaxLength, [(); N]>;
+    type MinLength = length::Div<I::MinLength, [(); N]>;
 
     #[inline]
     fn len(&self) -> usize
     {
-        let Self {bulk} = self;
-        bulk.len()/N
+        let Self { bulk } = self;
+        bulk.len() / N
     }
-    
+
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let mut remainder = ArrayBuffer::<_, _, false>::new();
         let bulk = ArrayChunksWithRemainder::new(self.into_inner(), &mut remainder);
         bulk.for_each(f);
     }
-    
+
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let mut remainder = ArrayBuffer::<_, _, false>::new();
         let bulk = ArrayChunksWithRemainder::new(self.into_inner(), &mut remainder);
@@ -200,24 +202,24 @@ where
 }
 const impl<I, const N: usize> DoubleEndedBulk for ArrayChunks<I, N>
 where
-    I: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk,
+    I: [const] DoubleEndedBulk<Item: [const] Destruct> + [const] Bulk
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let mut remainder = ArrayBuffer::<_, _, true>::new();
         let bulk = ArrayChunksWithRemainder::new(self.into_inner().rev(), &mut remainder);
         bulk.for_each(f);
     }
-    
+
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let mut remainder = ArrayBuffer::<_, _, true>::new();
         let bulk = ArrayChunksWithRemainder::new(self.into_inner().rev(), &mut remainder);
@@ -227,7 +229,7 @@ where
 }
 const impl<I, const N: usize, L> SplitBulk<L> for ArrayChunks<I, N>
 where
-    I: ~const SplitBulk<length::value::SaturatingMul<L, [(); N]>, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
+    I: [const] SplitBulk<length::value::SaturatingMul<L, [(); N]>, Item: [const] Destruct, Left: [const] Bulk, Right: [const] Bulk>,
     L: LengthValue
 {
     type Left = ArrayChunks<I::Left, N>;
@@ -238,10 +240,7 @@ where
         Self: Sized
     {
         let (left, right) = bulk.split_at(length::value::saturating_mul(n, [(); N]));
-        (
-            left.array_chunks(),
-            right.array_chunks()
-        )
+        (left.array_chunks(), right.array_chunks())
     }
 }
 /*impl<I, const N: usize> const RandomAccessBulk for ArrayChunks<I, N>
@@ -284,11 +283,10 @@ mod test
 
         println!("{b:?}");
 
-        let c = b.into_bulk()
-            .map(|(_, b)| b.into_bulk()
-                .map(|b: u32| b.checked_sub(3))
-                .collect::<Option<[_; _]>, [_; _]>()
-            ).collect::<[_; _], _>();
+        let c = b
+            .into_bulk()
+            .map(|(_, b)| b.into_bulk().map(|b: u32| b.checked_sub(3)).collect::<Option<[_; _]>, [_; _]>())
+            .collect::<[_; _], _>();
 
         println!("{c:?}");
 

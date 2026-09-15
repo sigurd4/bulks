@@ -25,40 +25,32 @@ where
 {
     pub(crate) const fn new(bulk: I, separator: G) -> Self
     {
-        Self {
-            bulk,
-            separator
-        }
+        Self { bulk, separator }
     }
 }
 
 const impl<I, G, T> IntoIterator for IntersperseWith<I, G>
 where
-    I: Bulk<Item = T> + ~const IntoIterator<IntoIter: ~const Iterator>,
+    I: Bulk<Item = T> + [const] IntoIterator<IntoIter: [const] Iterator>,
     G: FnMut() -> T,
-    core::iter::IntersperseWith<I::IntoIter, G>: ~const IntoContained<IntoContained: ~const IntoIterator>
+    core::iter::IntersperseWith<I::IntoIter, G>: [const] IntoContained<IntoContained: [const] IntoIterator>
 {
-    type Item = <<core::iter::IntersperseWith<I::IntoIter, G> as IntoContained>::IntoContained as IntoIterator>::Item;
     type IntoIter = <<core::iter::IntersperseWith<I::IntoIter, G> as IntoContained>::IntoContained as IntoIterator>::IntoIter;
+    type Item = <<core::iter::IntersperseWith<I::IntoIter, G> as IntoContained>::IntoContained as IntoIterator>::Item;
 
     fn into_iter(self) -> Self::IntoIter
     {
         let Self { bulk, separator } = self;
-        unsafe {
-            bulk.into_iter()
-                .intersperse_with(separator)
-                .into_contained()
-                .into_iter()
-        }
+        unsafe { bulk.into_iter().intersperse_with(separator).into_contained().into_iter() }
     }
 }
 const impl<I, G, T> Bulk for IntersperseWith<I, G>
 where
-    I: ~const Bulk<Item = T>,
-    G: ~const FnMut() -> T + ~const Destruct
+    I: [const] Bulk<Item = T>,
+    G: [const] FnMut() -> T + [const] Destruct
 {
-    type MinLength = length::Interspersed<I::MinLength>;
     type MaxLength = length::Interspersed<I::MaxLength>;
+    type MinLength = length::Interspersed<I::MinLength>;
 
     fn len(&self) -> usize
     {
@@ -66,6 +58,7 @@ where
         let l = bulk.len();
         l + l.saturating_sub(1)
     }
+
     fn is_empty(&self) -> bool
     {
         let Self { bulk, separator: _ } = self;
@@ -74,7 +67,7 @@ where
 
     fn first(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         let Self { bulk, separator } = self;
@@ -85,68 +78,54 @@ where
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk, separator } = self;
-        bulk.for_each(Closure {
-            f,
-            separator,
-            insert: false
-        })
+        bulk.for_each(Closure { f, separator, insert: false })
     }
+
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let Self { bulk, separator } = self;
-        bulk.try_for_each(TryClosure {
-            f,
-            separator,
-            insert: false
-        })
+        bulk.try_for_each(TryClosure { f, separator, insert: false })
     }
 }
 const impl<I, G, T> DoubleEndedBulk for IntersperseWith<I, G>
 where
-    I: ~const DoubleEndedBulk<Item = T>,
-    G: ~const FnMut() -> T + ~const Destruct,
+    I: [const] DoubleEndedBulk<Item = T>,
+    G: [const] FnMut() -> T + [const] Destruct,
     Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk, separator } = self;
-        bulk.rev_for_each(Closure {
-            f,
-            separator,
-            insert: false
-        })
+        bulk.rev_for_each(Closure { f, separator, insert: false })
     }
+
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let Self { bulk, separator } = self;
-        bulk.try_rev_for_each(TryClosure {
-            f,
-            separator,
-            insert: false
-        })
+        bulk.try_rev_for_each(TryClosure { f, separator, insert: false })
     }
 }
 const impl<I, G, T, L> SplitBulk<L> for IntersperseWith<I, G>
 where
-    I: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
-    G: ~const FnMut() -> T + ~const FnOnce() -> T + ~const Clone + ~const Destruct,
-    OnceWith<G>: ~const SplitBulk<usize, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
+    I: [const] SplitBulk<usize, Item = T, Left: [const] Bulk, Right: [const] Bulk>,
+    G: [const] FnMut() -> T + [const] FnOnce() -> T + [const] Clone + [const] Destruct,
+    OnceWith<G>: [const] SplitBulk<usize, Item = T, Left: [const] Bulk, Right: [const] Bulk>,
     L: LengthValue
 {
     type Left = Chain<IntersperseWith<I::Left, G>, <OnceWith<G> as SplitBulk<usize>>::Left>;
@@ -176,8 +155,8 @@ struct Closure<F, G>
 }
 const impl<F, G, T> FnOnce<(T,)> for Closure<F, G>
 where
-    F: ~const FnMut(T) + ~const FnOnce(T),
-    G: ~const FnOnce() -> T + ~const Destruct
+    F: [const] FnMut(T) + [const] FnOnce(T),
+    G: [const] FnOnce() -> T + [const] Destruct
 {
     type Output = ();
 
@@ -193,8 +172,8 @@ where
 }
 const impl<F, G, T> FnMut<(T,)> for Closure<F, G>
 where
-    F: ~const FnMut(T),
-    G: ~const FnMut() -> T
+    F: [const] FnMut(T),
+    G: [const] FnMut() -> T
 {
     extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
     {
@@ -215,10 +194,10 @@ struct TryClosure<F, G>
 }
 const impl<F, G, T, R> FnOnce<(T,)> for TryClosure<F, G>
 where
-    T: ~const Destruct,
-    F: ~const FnMut(T) -> R + ~const Destruct,
-    G: ~const FnOnce() -> T + ~const Destruct,
-    R: ~const Try<Output = (), Residual: ~const Destruct>
+    T: [const] Destruct,
+    F: [const] FnMut(T) -> R + [const] Destruct,
+    G: [const] FnOnce() -> T + [const] Destruct,
+    R: [const] Try<Output = ()>
 {
     type Output = R;
 
@@ -234,10 +213,10 @@ where
 }
 const impl<F, G, T, R> FnMut<(T,)> for TryClosure<F, G>
 where
-    T: ~const Destruct,
-    F: ~const FnMut(T) -> R,
-    G: ~const FnMut() -> T,
-    R: ~const Try<Output = (), Residual: ~const Destruct>
+    T: [const] Destruct,
+    F: [const] FnMut(T) -> R,
+    G: [const] FnMut() -> T,
+    R: [const] Try<Output = ()>
 {
     extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
     {

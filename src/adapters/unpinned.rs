@@ -75,7 +75,7 @@ where
     where
         Self: Sized,
         F: [const] FnMut(Self::Item) -> R + [const] core::marker::Destruct,
-        R: [const] core::ops::Try<Output = (), Residual: [const] core::marker::Destruct>
+        R: [const] core::ops::Try<Output = ()>
     {
         self.bulk.map(Functor).try_for_each(f)
     }
@@ -97,7 +97,7 @@ where
     where
         Self: Sized,
         F: [const] FnMut(Self::Item) -> R + [const] Destruct,
-        R: [const] core::ops::Try<Output = (), Residual: [const] Destruct>
+        R: [const] core::ops::Try<Output = ()>
     {
         self.bulk.map(Functor).try_rev_for_each(f)
     }

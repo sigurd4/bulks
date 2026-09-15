@@ -15,7 +15,7 @@ where
     I: Bulk,
     core::iter::Cloned<I::IntoIter>: Iterator<Item: Clone>
 {
-    bulk: I,
+    bulk: I
 }
 
 impl<'a, I, T> Cloned<I>
@@ -25,15 +25,13 @@ where
 {
     pub(crate) const fn new(bulk: I) -> Self
     {
-        Self {
-            bulk
-        }
+        Self { bulk }
     }
 }
 
 const impl<'a, I, T> Default for Cloned<I>
 where
-    I: ~const Bulk<Item = &'a T> + ~const Default,
+    I: [const] Bulk<Item = &'a T> + [const] Default,
     T: Clone + 'a
 {
     fn default() -> Self
@@ -44,8 +42,8 @@ where
 
 const impl<'a, I, T> IntoIterator for Cloned<I>
 where
-    I: Bulk<Item = &'a T> + ~const IntoIterator<IntoIter: ~const Iterator>,
-    T: ~const Clone + 'a
+    I: Bulk<Item = &'a T> + [const] IntoIterator<IntoIter: [const] Iterator>,
+    T: [const] Clone + 'a
 {
     type IntoIter = core::iter::Cloned<I::IntoIter>;
     type Item = T;
@@ -58,11 +56,11 @@ where
 }
 const impl<'a, I, T> Bulk for Cloned<I>
 where
-    I: ~const Bulk<Item = &'a T>,
-    T: ~const Clone + 'a
+    I: [const] Bulk<Item = &'a T>,
+    T: [const] Clone + 'a
 {
-    type MinLength = I::MinLength;
     type MaxLength = I::MaxLength;
+    type MinLength = I::MinLength;
 
     fn len(&self) -> usize
     {
@@ -78,85 +76,79 @@ where
 
     fn first(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         let Self { bulk } = self;
         bulk.first().map(Clone::clone)
     }
+
     fn last(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         let Self { bulk } = self;
         bulk.last().map(Clone::clone)
     }
+
     fn nth<L>(self, n: L) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         L: LengthValue
     {
         let Self { bulk } = self;
         bulk.nth(n).map(Clone::clone)
     }
-    
+
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk } = self;
-        bulk.for_each(Closure {
-            f
-        })
+        bulk.for_each(Closure { f })
     }
-    
+
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         let Self { bulk } = self;
-        bulk.try_for_each(Closure {
-            f
-        })
+        bulk.try_for_each(Closure { f })
     }
 }
 const impl<'a, I, T> DoubleEndedBulk for Cloned<I>
 where
-    I: ~const DoubleEndedBulk<Item = &'a T>,
-    T: ~const Clone + 'a
+    I: [const] DoubleEndedBulk<Item = &'a T>,
+    T: [const] Clone + 'a
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk } = self;
-        bulk.rev_for_each(Closure {
-            f
-        })
+        bulk.rev_for_each(Closure { f })
     }
-    
+
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         let Self { bulk } = self;
-        bulk.try_rev_for_each(Closure {
-            f
-        })
+        bulk.try_rev_for_each(Closure { f })
     }
 }
 const impl<'a, I, T, L> SplitBulk<L> for Cloned<I>
 where
-    I: ~const SplitBulk<L, Item = &'a T, Left: ~const Bulk, Right: ~const Bulk>,
-    T: ~const Clone + 'a,
+    I: [const] SplitBulk<L, Item = &'a T, Left: [const] Bulk, Right: [const] Bulk>,
+    T: [const] Clone + 'a,
     L: LengthValue
 {
     type Left = Cloned<I::Left>;
@@ -167,10 +159,7 @@ where
         Self: Sized
     {
         let (left, right) = bulk.split_at(n);
-        (
-            left.cloned(),
-            right.cloned()
-        )
+        (left.cloned(), right.cloned())
     }
 }
 
@@ -180,8 +169,8 @@ struct Closure<F>
 }
 const impl<F, T, R> FnOnce<(&T,)> for Closure<F>
 where
-    F: ~const FnOnce(T) -> R,
-    T: ~const Clone
+    F: [const] FnOnce(T) -> R,
+    T: [const] Clone
 {
     type Output = R;
 
@@ -192,8 +181,8 @@ where
 }
 const impl<F, T, R> FnMut<(&T,)> for Closure<F>
 where
-    F: ~const FnMut(T) -> R,
-    T: ~const Clone
+    F: [const] FnMut(T) -> R,
+    T: [const] Clone
 {
     extern "rust-call" fn call_mut(&mut self, (x,): (&T,)) -> Self::Output
     {

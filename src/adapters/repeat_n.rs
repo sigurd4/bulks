@@ -17,7 +17,7 @@ use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, util::YieldOnce};
 ///
 /// // four of the number four:
 /// let four_fours: [_; _] = bulks::repeat_n(4, [(); 4]).collect();
-/// 
+///
 /// assert_eq!(four_fours, [4, 4, 4, 4]);
 /// ```
 ///
@@ -29,7 +29,7 @@ use crate::{Bulk, DoubleEndedBulk, RepeatNWith, SplitBulk, util::YieldOnce};
 ///
 /// let v: Vec<i32> = Vec::with_capacity(123);
 /// let mut bulk = bulks::repeat_n(v, [(); 5]);
-/// 
+///
 /// let (first_four, last) = bulk.split_at([(); 4]);
 ///
 /// for cloned in first_four
@@ -74,10 +74,7 @@ where
     fn clone(&self) -> Self
     {
         let Self { element, n } = self;
-        Self {
-            element: element.clone(),
-            n: *n
-        }
+        Self { element: element.clone(), n: *n }
     }
 }
 
@@ -106,13 +103,14 @@ where
     }
 }
 
-/*const*/ impl<A, N> IntoIterator for RepeatN<A, N>
+/* const */
+impl<A, N> IntoIterator for RepeatN<A, N>
 where
     A: Clone,
     N: Length<Elem = ()> + ?Sized
 {
-    type Item = A;
     type IntoIter = core::iter::RepeatN<A>;
+    type Item = A;
 
     fn into_iter(self) -> Self::IntoIter
     {
@@ -122,21 +120,22 @@ where
 }
 const impl<A, N> Bulk for RepeatN<A, N>
 where
-    A: ~const Clone + ~const Destruct,
+    A: [const] Clone + [const] Destruct,
     N: Length<Elem = ()> + ?Sized
 {
-    type MinLength = N;
     type MaxLength = N;
+    type MinLength = N;
 
     fn len(&self) -> usize
     {
         let Self { element: _, n } = self;
         length::len_metadata::<N>(*n)
     }
+
     fn for_each<F>(self, mut f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { element, n } = self;
         let n = length::len_metadata::<N>(n);
@@ -151,11 +150,12 @@ where
             f(element)
         }
     }
+
     fn try_for_each<F, R>(self, mut f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         let Self { element, n } = self;
         let n = length::len_metadata::<N>(n);
@@ -174,21 +174,22 @@ where
 }
 const impl<A, N> DoubleEndedBulk for RepeatN<A, N>
 where
-    A: ~const Clone + ~const Destruct,
+    A: [const] Clone + [const] Destruct,
     N: Length<Elem = ()> + ?Sized
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         self.for_each(f);
     }
+
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         self.try_for_each(f)
     }
@@ -196,7 +197,7 @@ where
 const impl<A, N, M, L, R> SplitBulk<M> for RepeatN<A, N>
 where
     N: Length<Elem = (), Value: LengthValue<Min<M> = L, SaturatingSub<M> = R>>,
-    A: ~const Clone + ~const Destruct,
+    A: [const] Clone + [const] Destruct,
     M: LengthValue,
     L: LengthValue,
     R: LengthValue
@@ -236,8 +237,7 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = crate::repeat_n(1, [(); 4])
-            .collect::<[_; _], _>();
+        let a = crate::repeat_n(1, [(); 4]).collect::<[_; _], _>();
         assert_eq!(a, [1, 1, 1, 1])
     }
 

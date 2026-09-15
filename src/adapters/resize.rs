@@ -4,17 +4,12 @@ use array_trait::length::{self, Length, LengthValue};
 
 use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
 
-pub const fn resize<I, L>(iterable: I, n: L, element: I::Item) -> Resize<
-    <<I as IntoContained>::IntoContained as IntoBulk>::IntoBulk,
-    L::Length<()>
->
+pub const fn resize<I, L>(iterable: I, n: L, element: I::Item) -> Resize<<<I as IntoContained>::IntoContained as IntoBulk>::IntoBulk, L::Length<()>>
 where
-    I: ~const IntoContained<Item: Copy>,
+    I: [const] IntoContained<Item: Copy>,
     L: LengthValue
 {
-    unsafe {
-        Resize::new(iterable.into_contained().into_bulk(), n, element)
-    }
+    unsafe { Resize::new(iterable.into_contained().into_bulk(), n, element) }
 }
 
 /// A bulk that only delivers exactly `n` elements, taking the first at most `n` elements of `bulk`, then produces copies of `element`.
@@ -40,16 +35,21 @@ where
 {
     pub(crate) const fn new(bulk: T, n: N::Value, element: T::Item) -> Resize<T, N>
     {
-        Self { bulk, n: length::value::into_metadata(n), element }
+        Self {
+            bulk,
+            n: length::value::into_metadata(n),
+            element
+        }
     }
 }
-/*const*/ impl<T, N> IntoIterator for Resize<T, N>
+/* const */
+impl<T, N> IntoIterator for Resize<T, N>
 where
     T: Bulk<Item: Copy>,
     N: Length<Elem = ()> + ?Sized
 {
-    type Item = T::Item;
     type IntoIter = <<core::iter::Take<core::iter::Chain<T::IntoIter, core::iter::Repeat<T::Item>>> as IntoContained>::IntoContained as IntoIterator>::IntoIter;
+    type Item = T::Item;
 
     fn into_iter(self) -> Self::IntoIter
     {
@@ -65,42 +65,42 @@ where
 }
 const impl<T, N> Bulk for Resize<T, N>
 where
-    T: ~const Bulk<Item: Copy + ~const Destruct>,
+    T: [const] Bulk<Item: Copy + [const] Destruct>,
     N: Length<Elem = ()> + ?Sized
 {
-    type MinLength = N;
     type MaxLength = N;
+    type MinLength = N;
 
     fn len(&self) -> usize
     {
         let Self { bulk: _, n, element: _ } = self;
         length::len_metadata::<N>(*n)
     }
+
     fn for_each<F>(self, mut f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk, n, element } = self;
         let mut m = bulk.len();
-        bulk.take(length::value::from_metadata::<N::Value>(n))
-            .for_each(&mut f);
+        bulk.take(length::value::from_metadata::<N::Value>(n)).for_each(&mut f);
         while m < length::len_metadata::<N>(n)
         {
             f(element);
             m += 1
         }
     }
+
     fn try_for_each<F, R>(self, mut f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let Self { bulk, n, element } = self;
         let mut m = bulk.len();
-        bulk.take(length::value::from_metadata::<N::Value>(n))
-            .try_for_each(&mut f)?;
+        bulk.take(length::value::from_metadata::<N::Value>(n)).try_for_each(&mut f)?;
         while m < length::len_metadata::<N>(n)
         {
             f(element)?;
@@ -111,14 +111,14 @@ where
 }
 const impl<T, N> DoubleEndedBulk for Resize<T, N>
 where
-    T: ~const DoubleEndedBulk<Item: Copy + ~const Destruct> + ~const Bulk + ~const Destruct,
+    T: [const] DoubleEndedBulk<Item: Copy + [const] Destruct> + [const] Bulk + [const] Destruct,
     N: Length<Elem = ()> + ?Sized,
     Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<F>(self, mut f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk, n, element } = self;
         let mut m = bulk.len();
@@ -133,11 +133,12 @@ where
             .take(length::value::from_metadata::<N::Value>(n))
             .for_each(f);
     }
+
     fn try_rev_for_each<F, R>(self, mut f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let Self { bulk, n, element } = self;
         let mut m = bulk.len();
@@ -155,7 +156,7 @@ where
 }
 const impl<T, N, NN, M, R> SplitBulk<M> for Resize<T, N>
 where
-    T: ~const SplitBulk<M, Item: Copy + ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
+    T: [const] SplitBulk<M, Item: Copy + [const] Destruct, Left: [const] Bulk, Right: [const] Bulk>,
     N: Length<Elem = (), Value = NN> + ?Sized,
     NN: LengthValue<Metadata = N::Metadata, Length<()> = N, SaturatingSub<M> = R>,
     M: LengthValue,
@@ -170,10 +171,7 @@ where
     {
         let n = NN::from_metadata(n);
         let (left, right) = bulk.split_at(m);
-        (
-            left.resize(n, element),
-            right.resize(length::value::saturating_sub(n, m), element)
-        )
+        (left.resize(n, element), right.resize(length::value::saturating_sub(n, m), element))
     }
 }
 

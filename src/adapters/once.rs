@@ -2,10 +2,13 @@ use core::marker::Destruct;
 
 use array_trait::length::LengthValue;
 
-use crate::{Bulk, DoubleEndedBulk, OnceWith, RepeatN, RepeatNWith, SplitBulk, StaticBulk, util::{TakeOne, YieldOnce}};
+use crate::{
+    Bulk, DoubleEndedBulk, OnceWith, RepeatN, RepeatNWith, SplitBulk, StaticBulk,
+    util::{TakeOne, YieldOnce}
+};
 
 /// Creates a bulk that yields an element exactly once.
-/// 
+///
 /// Similar to [`core::iter::once`].
 ///
 /// # Examples
@@ -33,10 +36,11 @@ pub const fn once<T>(value: T) -> Once<T>
 #[derive(Clone, Debug)]
 pub struct Once<T>(T);
 
-/*const*/ impl<T> IntoIterator for Once<T>
+/* const */
+impl<T> IntoIterator for Once<T>
 {
-    type Item = T;
     type IntoIter = core::iter::Once<T>;
+    type Item = T;
 
     fn into_iter(self) -> Self::IntoIter
     {
@@ -45,13 +49,14 @@ pub struct Once<T>(T);
 }
 const impl<T> Bulk for Once<T>
 {
-    type MinLength = [(); 1];
     type MaxLength = [(); 1];
+    type MinLength = [(); 1];
 
     fn len(&self) -> usize
     {
         1
     }
+
     fn is_empty(&self) -> bool
     {
         false
@@ -59,14 +64,15 @@ const impl<T> Bulk for Once<T>
 
     fn first(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         Some(self.0)
     }
+
     fn last(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         Some(self.0)
@@ -75,16 +81,17 @@ const impl<T> Bulk for Once<T>
     fn for_each<FF>(self, mut f: FF)
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) + ~const Destruct
+        FF: [const] FnMut(Self::Item) + [const] Destruct
     {
         f(self.0)
     }
+
     fn try_for_each<FF, R>(self, mut f: FF) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        FF: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         f(self.0)
     }
@@ -94,16 +101,17 @@ const impl<T> DoubleEndedBulk for Once<T>
     fn rev_for_each<FF>(self, f: FF)
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) + ~const Destruct
+        FF: [const] FnMut(Self::Item) + [const] Destruct
     {
         self.for_each(f);
     }
+
     fn try_rev_for_each<FF, R>(self, f: FF) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        FF: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         self.try_for_each(f)
     }
@@ -111,7 +119,7 @@ const impl<T> DoubleEndedBulk for Once<T>
 const impl<T, L> SplitBulk<L> for Once<T>
 where
     L: LengthValue,
-    OnceWith<YieldOnce<T>>: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk>
+    OnceWith<YieldOnce<T>>: [const] SplitBulk<L, Item = T, Left: [const] Bulk, Right: [const] Bulk>
 {
     type Left = <OnceWith<YieldOnce<T>> as SplitBulk<L>>::Left;
     type Right = <OnceWith<YieldOnce<T>> as SplitBulk<L>>::Right;
@@ -124,16 +132,8 @@ where
     }
 }
 
-pub const trait OnceBulk: ~const DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 1]>
-{
-
-}
-const impl<T> OnceBulk for T
-where
-    T: ~const DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 1]>
-{
-
-}
+pub const trait OnceBulk: [const] DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 1]> {}
+const impl<T> OnceBulk for T where T: [const] DoubleEndedBulk + StaticBulk<Array<<Self as IntoIterator>::Item> = [<Self as IntoIterator>::Item; 1]> {}
 const impl<A> From<Once<A>> for OnceWith<YieldOnce<A>>
 {
     fn from(value: Once<A>) -> Self
@@ -166,9 +166,7 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = const {
-            crate::once(1).collect::<[_; _], _>()
-        };
+        let a = const { crate::once(1).collect::<[_; _], _>() };
         assert_eq!(a, [1])
     }
 }

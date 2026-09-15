@@ -14,7 +14,7 @@ pub struct Enumerate<I>
 where
     I: Bulk
 {
-    bulk: I,
+    bulk: I
 }
 
 impl<I, T> Enumerate<I>
@@ -23,15 +23,13 @@ where
 {
     pub(crate) const fn new(bulk: I) -> Self
     {
-        Self {
-            bulk
-        }
+        Self { bulk }
     }
 }
 
 const impl<I, T> Default for Enumerate<I>
 where
-    I: ~const Bulk<Item = T> + ~const Default
+    I: [const] Bulk<Item = T> + [const] Default
 {
     fn default() -> Self
     {
@@ -41,7 +39,7 @@ where
 
 const impl<I, T> IntoIterator for Enumerate<I>
 where
-    I: Bulk<Item = T> + ~const IntoIterator<IntoIter: ~const Iterator>
+    I: Bulk<Item = T> + [const] IntoIterator<IntoIter: [const] Iterator>
 {
     type IntoIter = core::iter::Enumerate<I::IntoIter>;
     type Item = (usize, T);
@@ -54,17 +52,18 @@ where
 }
 const impl<I, T> Bulk for Enumerate<I>
 where
-    I: ~const Bulk<Item = T>,
-    T: ~const Destruct
+    I: [const] Bulk<Item = T>,
+    T: [const] Destruct
 {
-    type MinLength = I::MinLength;
     type MaxLength = I::MaxLength;
-    
+    type MinLength = I::MinLength;
+
     fn len(&self) -> usize
     {
         let Self { bulk } = self;
         bulk.len()
     }
+
     fn is_empty(&self) -> bool
     {
         let Self { bulk } = self;
@@ -73,7 +72,7 @@ where
 
     fn first(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         const fn enumerate<T>(x: T) -> (usize, T)
@@ -84,9 +83,10 @@ where
         let Self { bulk } = self;
         bulk.first().map(enumerate)
     }
+
     fn last(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         let Self { bulk } = self;
@@ -97,10 +97,11 @@ where
             None => None
         }
     }
+
     fn nth<L>(self, n: L) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         L: LengthValue
     {
         let Self { bulk } = self;
@@ -114,65 +115,54 @@ where
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk } = self;
-        bulk.for_each(Closure::<_, false> {
-            i: 0,
-            f
-        })
+        bulk.for_each(Closure::<_, false> { i: 0, f })
     }
+
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         let Self { bulk } = self;
-        bulk.try_for_each(Closure::<_, false> {
-            i: 0,
-            f
-        })
+        bulk.try_for_each(Closure::<_, false> { i: 0, f })
     }
 }
 const impl<I, T> DoubleEndedBulk for Enumerate<I>
 where
-    I: ~const DoubleEndedBulk<Item = T> + ~const Bulk,
-    T: ~const Destruct
+    I: [const] DoubleEndedBulk<Item = T> + [const] Bulk,
+    T: [const] Destruct
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk } = self;
         let i = bulk.len();
-        bulk.rev_for_each(Closure::<_, true> {
-            i,
-            f
-        })
+        bulk.rev_for_each(Closure::<_, true> { i, f })
     }
 
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let Self { bulk } = self;
         let i = bulk.len();
-        bulk.try_rev_for_each(Closure::<_, true> {
-            i,
-            f
-        })
+        bulk.try_rev_for_each(Closure::<_, true> { i, f })
     }
 }
 const impl<I, T, L> SplitBulk<L> for Enumerate<I>
 where
-    I: ~const SplitBulk<L, Item = T, Left: ~const Bulk, Right: ~const Bulk>,
-    T: ~const Destruct,
+    I: [const] SplitBulk<L, Item = T, Left: [const] Bulk, Right: [const] Bulk>,
+    T: [const] Destruct,
     L: LengthValue
 {
     type Left = Enumerate<I::Left>;
@@ -184,10 +174,7 @@ where
     {
         let (left, right) = bulk.split_at(n);
         let following_count = left.len();
-        (
-            left.enumerate(),
-            right.enumerate_from(following_count)
-        )
+        (left.enumerate(), right.enumerate_from(following_count))
     }
 }
 
@@ -198,7 +185,7 @@ struct Closure<F, const REV: bool>
 }
 const impl<F, T, R, const REV: bool> FnOnce<(T,)> for Closure<F, REV>
 where
-    F: ~const FnOnce((usize, T)) -> R
+    F: [const] FnOnce((usize, T)) -> R
 {
     type Output = R;
 
@@ -209,7 +196,7 @@ where
 }
 const impl<F, T, R, const REV: bool> FnMut<(T,)> for Closure<F, REV>
 where
-    F: ~const FnMut((usize, T)) -> R
+    F: [const] FnMut((usize, T)) -> R
 {
     extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
     {
@@ -235,9 +222,8 @@ mod test
     fn it_works()
     {
         let a = ['0', '1', '2', '3', '4', '5', '6', '7'];
-        
-        for (i, a) in a.into_bulk()
-            .enumerate()
+
+        for (i, a) in a.into_bulk().enumerate()
         {
             assert_eq!(i, a.to_string().parse().unwrap())
         }
@@ -247,15 +233,15 @@ mod test
     fn zipped()
     {
         let enumerate: [_; _] = (*b"foo").into_bulk().enumerate().collect();
-        
+
         let zipper: Vec<_> = crate::rzip(0.., *b"foo").collect();
-        
+
         assert_eq!((0, b'f'), enumerate[0]);
         assert_eq!((0, b'f'), zipper[0]);
-        
+
         assert_eq!((1, b'o'), enumerate[1]);
         assert_eq!((1, b'o'), zipper[1]);
-        
+
         assert_eq!((2, b'o'), enumerate[2]);
         assert_eq!((2, b'o'), zipper[2]);
     }

@@ -26,37 +26,40 @@ where
 {
     pub(crate) const fn new(bulk: T, n: N::Value) -> Skip<T, N>
     {
-        Self { bulk, n: length::value::into_metadata(n) }
+        Self {
+            bulk,
+            n: length::value::into_metadata(n)
+        }
     }
 }
 const impl<T, N> IntoIterator for Skip<T, N>
 where
-    T: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>,
+    T: Bulk + [const] IntoIterator<IntoIter: [const] Iterator>,
     N: Length<Elem = ()> + ?Sized
 {
-    type Item = T::Item;
     type IntoIter = core::iter::Skip<T::IntoIter>;
+    type Item = T::Item;
 
     fn into_iter(self) -> Self::IntoIter
     {
         let Self { bulk, n } = self;
-        bulk.into_iter()
-            .skip(length::len_metadata::<N>(n))
+        bulk.into_iter().skip(length::len_metadata::<N>(n))
     }
 }
 const impl<T, N> Bulk for Skip<T, N>
 where
-    T: ~const Bulk<Item: ~const Destruct>,
+    T: [const] Bulk<Item: [const] Destruct>,
     N: Length<Elem = ()> + ?Sized
 {
-    type MinLength = length::SaturatingSub<T::MinLength, N>;
     type MaxLength = length::SaturatingSub<T::MaxLength, N>;
+    type MinLength = length::SaturatingSub<T::MinLength, N>;
 
     fn len(&self) -> usize
     {
         let Self { bulk, n } = self;
         bulk.len().saturating_sub(length::len_metadata::<N>(*n))
     }
+
     fn is_empty(&self) -> bool
     {
         let Self { bulk, n } = self;
@@ -66,7 +69,7 @@ where
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         struct Closure<F>
         {
@@ -75,8 +78,8 @@ where
         }
         const impl<F, T> FnOnce<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnOnce(T) + ~const Destruct
+            T: [const] Destruct,
+            F: [const] FnOnce(T) + [const] Destruct
         {
             type Output = ();
 
@@ -91,20 +94,13 @@ where
         }
         const impl<F, T> FnMut<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnMut(T)
+            T: [const] Destruct,
+            F: [const] FnMut(T)
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
                 let Self { f, n } = self;
-                if *n == 0
-                {
-                    f(x)
-                }
-                else
-                {
-                    *n -= 1
-                }
+                if *n == 0 { f(x) } else { *n -= 1 }
             }
         }
 
@@ -114,11 +110,12 @@ where
             n: length::len_metadata::<N>(n)
         })
     }
+
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         struct Closure<F>
         {
@@ -127,9 +124,9 @@ where
         }
         const impl<F, T, R> FnOnce<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnOnce(T) -> R + ~const Destruct,
-            R: ~const Try<Output = (), Residual: ~const Destruct>
+            T: [const] Destruct,
+            F: [const] FnOnce(T) -> R + [const] Destruct,
+            R: [const] Try<Output = ()>
         {
             type Output = R;
 
@@ -145,9 +142,9 @@ where
         }
         const impl<F, T, R> FnMut<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnMut(T) -> R,
-            R: ~const Try<Output = (), Residual: ~const Destruct>
+            T: [const] Destruct,
+            F: [const] FnMut(T) -> R,
+            R: [const] Try<Output = ()>
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
@@ -173,23 +170,24 @@ where
 }
 const impl<T, N> DoubleEndedBulk for Skip<T, N>
 where
-    T: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk,
+    T: [const] DoubleEndedBulk<Item: [const] Destruct> + [const] Bulk,
     N: Length<Elem = ()> + ?Sized
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk, n } = self;
         let m = bulk.len().saturating_sub(length::len_metadata::<N>(n));
         bulk.rev().skip(m).for_each(f)
     }
+
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let Self { bulk, n } = self;
         let m = bulk.len().saturating_sub(length::len_metadata::<N>(n));
@@ -198,7 +196,7 @@ where
 }
 const impl<T, N, NN, M, L, R> SplitBulk<M> for Skip<T, N>
 where
-    T: ~const SplitBulk<L, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
+    T: [const] SplitBulk<L, Item: [const] Destruct, Left: [const] Bulk, Right: [const] Bulk>,
     N: Length<Elem = (), Value = NN> + ?Sized,
     NN: LengthValue<Metadata = <N as Pointee>::Metadata, Length<()> = N, SaturatingAdd<M> = L, SaturatingSub<L> = R>,
     M: LengthValue,
@@ -215,10 +213,7 @@ where
         let n = NN::from_metadata(n);
         let l = length::value::saturating_add(n, m);
         let (left, right) = bulk.split_at(l);
-        (
-            left.skip(n),
-            right.skip(length::value::saturating_sub(n, l))
-        )
+        (left.skip(n), right.skip(length::value::saturating_sub(n, l)))
     }
 }
 
@@ -231,9 +226,7 @@ mod test
     fn it_works()
     {
         let a = [1, 2, 3, 4, 5, 6, 7];
-        let (a, b) = a.into_bulk()
-            .skip([(); 2])
-            .split_at([(); 2]);
+        let (a, b) = a.into_bulk().skip([(); 2]).split_at([(); 2]);
         let a = a.collect_array();
         let b = b.collect_array();
 

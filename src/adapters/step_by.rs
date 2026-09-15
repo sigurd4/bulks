@@ -32,28 +32,28 @@ where
     }
 }
 
-/*const*/ impl<T, N> IntoIterator for StepBy<T, N>
+/* const */
+impl<T, N> IntoIterator for StepBy<T, N>
 where
     T: Bulk,
     N: Length<Elem = ()> + ?Sized
 {
-    type Item = T::Item;
     type IntoIter = core::iter::StepBy<T::IntoIter>;
+    type Item = T::Item;
 
     fn into_iter(self) -> Self::IntoIter
     {
         let Self { bulk, step } = self;
-        bulk.into_iter()
-            .step_by(length::len_metadata::<N>(step))
+        bulk.into_iter().step_by(length::len_metadata::<N>(step))
     }
 }
 const impl<T, N> Bulk for StepBy<T, N>
 where
-    T: ~const Bulk<Item: ~const Destruct>,
+    T: [const] Bulk<Item: [const] Destruct>,
     N: Length<Elem = ()> + ?Sized
 {
-    type MinLength = length::DivCeil<T::MinLength, N>;
     type MaxLength = length::DivCeil<T::MaxLength, N>;
+    type MinLength = length::DivCeil<T::MinLength, N>;
 
     fn len(&self) -> usize
     {
@@ -61,16 +61,16 @@ where
         let len = bulk.len();
         if len <= 1
         {
-            return len
+            return len;
         }
         let step = length::len_metadata::<N>(*step);
-        len/step + (len % step != 0) as usize
+        len / step + (len % step != 0) as usize
     }
 
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         struct Closure<F>
         {
@@ -80,8 +80,8 @@ where
         }
         const impl<F, T> FnOnce<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnOnce(T) + ~const Destruct
+            T: [const] Destruct,
+            F: [const] FnOnce(T) + [const] Destruct
         {
             type Output = ();
 
@@ -96,8 +96,8 @@ where
         }
         const impl<F, T> FnMut<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnMut(T)
+            T: [const] Destruct,
+            F: [const] FnMut(T)
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
@@ -118,11 +118,12 @@ where
             step: length::len_metadata::<N>(step)
         })
     }
+
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         struct Closure<F>
         {
@@ -132,9 +133,9 @@ where
         }
         const impl<F, T, R> FnOnce<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnOnce(T) -> R + ~const Destruct,
-            R: ~const Try<Output = (), Residual: ~const Destruct>
+            T: [const] Destruct,
+            F: [const] FnOnce(T) -> R + [const] Destruct,
+            R: [const] Try<Output = ()>
         {
             type Output = R;
 
@@ -150,9 +151,9 @@ where
         }
         const impl<F, T, R> FnMut<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnMut(T) -> R,
-            R: ~const Try<Output = (), Residual: ~const Destruct>
+            T: [const] Destruct,
+            F: [const] FnMut(T) -> R,
+            R: [const] Try<Output = ()>
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
@@ -177,7 +178,7 @@ where
 }
 const impl<T, N, NN, M, L> SplitBulk<M> for StepBy<T, N>
 where
-    T: ~const SplitBulk<L, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
+    T: [const] SplitBulk<L, Item: [const] Destruct, Left: [const] Bulk, Right: [const] Bulk>,
     N: Length<Elem = (), Value = NN> + ?Sized,
     NN: LengthValue<Metadata = <N as Pointee>::Metadata, Length<()> = N, SaturatingMul<M> = L>,
     M: LengthValue,
@@ -192,22 +193,19 @@ where
     {
         let n = NN::from_metadata(step);
         let (left, right) = bulk.split_at(length::value::saturating_mul(n, m));
-        (
-            left.step_by(n),
-            right.step_by(n)
-        )
+        (left.step_by(n), right.step_by(n))
     }
 }
 
 const impl<T, N> DoubleEndedBulk for StepBy<T, N>
 where
-    T: ~const DoubleEndedBulk<Item: ~const Destruct>,
-    N: Length<Elem = (), Metadata: ~const Destruct> + ?Sized
+    T: [const] DoubleEndedBulk<Item: [const] Destruct>,
+    N: Length<Elem = (), Metadata: [const] Destruct> + ?Sized
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         struct Closure<F>
         {
@@ -217,8 +215,8 @@ where
         }
         const impl<F, T> FnOnce<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnOnce(T) + ~const Destruct
+            T: [const] Destruct,
+            F: [const] FnOnce(T) + [const] Destruct
         {
             type Output = ();
 
@@ -233,8 +231,8 @@ where
         }
         const impl<F, T> FnMut<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnMut(T)
+            T: [const] Destruct,
+            F: [const] FnMut(T)
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
@@ -259,8 +257,8 @@ where
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         struct Closure<F>
         {
@@ -270,9 +268,9 @@ where
         }
         const impl<F, T, R> FnOnce<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnOnce(T) -> R + ~const Destruct,
-            R: ~const Try<Output = (), Residual: ~const Destruct>
+            T: [const] Destruct,
+            F: [const] FnOnce(T) -> R + [const] Destruct,
+            R: [const] Try<Output = ()>
         {
             type Output = R;
 
@@ -288,9 +286,9 @@ where
         }
         const impl<F, T, R> FnMut<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnMut(T) -> R,
-            R: ~const Try<Output = (), Residual: ~const Destruct>
+            T: [const] Destruct,
+            F: [const] FnMut(T) -> R,
+            R: [const] Try<Output = ()>
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {

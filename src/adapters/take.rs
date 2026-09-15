@@ -1,21 +1,20 @@
-use core::{marker::Destruct, ops::{ControlFlow, Try}, ptr::Pointee};
+use core::{
+    marker::Destruct,
+    ops::{ControlFlow, Try},
+    ptr::Pointee
+};
 
 use array_trait::length::{self, Length, LengthValue};
 
 use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
 
 /// Creates a bulk that only delivers the first `n` iterations of `iterable`.
-pub const fn take<I, L>(iterable: I, n: L) -> Take<
-    <<I as IntoContained>::IntoContained as IntoBulk>::IntoBulk,
-    L::Length<()>
->
+pub const fn take<I, L>(iterable: I, n: L) -> Take<<<I as IntoContained>::IntoContained as IntoBulk>::IntoBulk, L::Length<()>>
 where
-    I: ~const IntoContained,
+    I: [const] IntoContained,
     L: LengthValue
 {
-    unsafe {
-        Take::new(iterable.into_contained().into_bulk(), n)
-    }
+    unsafe { Take::new(iterable.into_contained().into_bulk(), n) }
 }
 
 /// A bulk that only delivers the first `n` iterations of `bulk`.
@@ -40,31 +39,33 @@ where
 {
     pub(crate) const fn new(bulk: T, n: N::Value) -> Take<T, N>
     {
-        Self { bulk, n: length::value::into_metadata(n) }
+        Self {
+            bulk,
+            n: length::value::into_metadata(n)
+        }
     }
 }
 const impl<T, N> IntoIterator for Take<T, N>
 where
-    T: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>,
+    T: Bulk + [const] IntoIterator<IntoIter: [const] Iterator>,
     N: Length<Elem = ()> + ?Sized
 {
-    type Item = T::Item;
     type IntoIter = core::iter::Take<T::IntoIter>;
+    type Item = T::Item;
 
     fn into_iter(self) -> Self::IntoIter
     {
         let Self { bulk, n } = self;
-        bulk.into_iter()
-            .take(length::len_metadata::<N>(n))
+        bulk.into_iter().take(length::len_metadata::<N>(n))
     }
 }
 const impl<T, N> Bulk for Take<T, N>
 where
-    T: ~const Bulk<Item: ~const Destruct>,
+    T: [const] Bulk<Item: [const] Destruct>,
     N: Length<Elem = ()> + ?Sized
 {
-    type MinLength = length::Min<T::MinLength, N>;
     type MaxLength = length::Min<T::MaxLength, N>;
+    type MinLength = length::Min<T::MinLength, N>;
 
     fn len(&self) -> usize
     {
@@ -72,10 +73,11 @@ where
         let n = length::len_metadata::<N>(*n);
         Ord::min(bulk.len(), n)
     }
+
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         struct Closure<F>
         {
@@ -84,8 +86,8 @@ where
         }
         const impl<F, T> FnOnce<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnOnce(T) + ~const Destruct
+            T: [const] Destruct,
+            F: [const] FnOnce(T) + [const] Destruct
         {
             type Output = ControlFlow<()>;
 
@@ -94,7 +96,7 @@ where
                 let Self { f, n } = self;
                 if n == 0
                 {
-                    return ControlFlow::Break(())
+                    return ControlFlow::Break(());
                 }
                 f(x);
                 ControlFlow::Continue(())
@@ -102,15 +104,15 @@ where
         }
         const impl<F, T> FnMut<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnMut(T)
+            T: [const] Destruct,
+            F: [const] FnMut(T)
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
                 let Self { f, n } = self;
                 if *n == 0
                 {
-                    return ControlFlow::Break(())
+                    return ControlFlow::Break(());
                 }
                 *n -= 1;
                 f(x);
@@ -122,13 +124,15 @@ where
         bulk.try_for_each(Closure {
             f,
             n: length::len_metadata::<N>(n)
-        }).into_value()
+        })
+        .into_value()
     }
+
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         struct Closure<F>
         {
@@ -137,9 +141,9 @@ where
         }
         const impl<F, T, R> FnOnce<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnOnce(T) -> R + ~const Destruct,
-            R: ~const Try<Output = ()>
+            T: [const] Destruct,
+            F: [const] FnOnce(T) -> R + [const] Destruct,
+            R: [const] Try<Output = ()>
         {
             type Output = ControlFlow<Result<(), R::Residual>>;
 
@@ -148,7 +152,7 @@ where
                 let Self { f, n } = self;
                 if n == 0
                 {
-                    return ControlFlow::Break(Ok(()))
+                    return ControlFlow::Break(Ok(()));
                 }
                 match f(x).branch()
                 {
@@ -159,16 +163,16 @@ where
         }
         const impl<F, T, R> FnMut<(T,)> for Closure<F>
         where
-            T: ~const Destruct,
-            F: ~const FnMut(T) -> R,
-            R: ~const Try<Output = ()>
+            T: [const] Destruct,
+            F: [const] FnMut(T) -> R,
+            R: [const] Try<Output = ()>
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
                 let Self { f, n } = self;
                 if *n == 0
                 {
-                    return ControlFlow::Break(Ok(()))
+                    return ControlFlow::Break(Ok(()));
                 }
                 *n -= 1;
                 match f(x).branch()
@@ -192,23 +196,24 @@ where
 }
 const impl<T, N> DoubleEndedBulk for Take<T, N>
 where
-    T: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk,
+    T: [const] DoubleEndedBulk<Item: [const] Destruct> + [const] Bulk,
     N: Length<Elem = ()> + ?Sized
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk, n } = self;
         let m = bulk.len() - length::len_metadata::<N>(n);
         bulk.rev().skip(m).for_each(f)
     }
+
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let Self { bulk, n } = self;
         let m = bulk.len() - length::len_metadata::<N>(n);
@@ -217,7 +222,7 @@ where
 }
 const impl<T, N, NN, M, R> SplitBulk<M> for Take<T, N>
 where
-    T: ~const SplitBulk<M, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
+    T: [const] SplitBulk<M, Item: [const] Destruct, Left: [const] Bulk, Right: [const] Bulk>,
     N: Length<Elem = (), Value = NN> + ?Sized,
     NN: LengthValue<Metadata = N::Metadata, Length<()> = N, SaturatingSub<M> = R>,
     M: LengthValue,
@@ -232,10 +237,7 @@ where
     {
         let n = NN::from_metadata(n);
         let (left, right) = bulk.split_at(m);
-        (
-            left.take(n),
-            right.take(length::value::saturating_sub(n, m))
-        )
+        (left.take(n), right.take(length::value::saturating_sub(n, m)))
     }
 }
 

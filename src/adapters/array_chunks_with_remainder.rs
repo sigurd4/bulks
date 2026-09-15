@@ -26,17 +26,17 @@ where
 
     const fn skip_len(&self) -> usize
     where
-        I: ~const Bulk
+        I: [const] Bulk
     {
         let Self { bulk, remainder: _ } = self;
         bulk.skip_len::<REV>()
     }
 
-    const fn for_each_closure<F>(self, f: F) -> (I, impl ~const FnMut(I::Item) + ~const Destruct + 'a)
+    const fn for_each_closure<F>(self, f: F) -> (I, impl [const] FnMut(I::Item) + [const] Destruct + 'a)
     where
         Self: Sized,
-        I: ~const Bulk<Item: ~const Destruct>,
-        F: ~const FnMut(<Self as IntoIterator>::Item) + ~const Destruct + 'a
+        I: [const] Bulk<Item: [const] Destruct>,
+        F: [const] FnMut(<Self as IntoIterator>::Item) + [const] Destruct + 'a
     {
         struct Closure<'a, T, F, const N: usize, const REV: bool>
         where
@@ -49,8 +49,8 @@ where
 
         const impl<'a, T, F, const N: usize, const REV: bool> FnOnce<(T,)> for Closure<'a, T, F, N, REV>
         where
-            T: ~const Destruct,
-            F: ~const FnMut([T; N]) + ~const Destruct
+            T: [const] Destruct,
+            F: [const] FnMut([T; N]) + [const] Destruct
         {
             type Output = ();
 
@@ -61,8 +61,8 @@ where
         }
         const impl<'a, T, F, const N: usize, const REV: bool> FnMut<(T,)> for Closure<'a, T, F, N, REV>
         where
-            T: ~const Destruct,
-            F: ~const FnMut([T; N]) + ~const Destruct
+            T: [const] Destruct,
+            F: [const] FnMut([T; N]) + [const] Destruct
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
@@ -79,23 +79,16 @@ where
 
         let skip = self.skip_len();
         let Self { bulk, remainder } = self;
-        (
-            bulk.into_inner(),
-            Closure {
-                f,
-                buffer: remainder,
-                skip
-            }
-        )
+        (bulk.into_inner(), Closure { f, buffer: remainder, skip })
     }
-    
-    const fn try_for_each_closure<F, R>(self, f: F) -> (I, impl ~const FnMut(I::Item) -> R + ~const Destruct + 'a)
+
+    const fn try_for_each_closure<F, R>(self, f: F) -> (I, impl [const] FnMut(I::Item) -> R + [const] Destruct + 'a)
     where
         Self: Sized,
-        <Self as IntoIterator>::Item: ~const Destruct,
-        I: ~const Bulk<Item: ~const Destruct>,
-        F: ~const FnMut(<Self as IntoIterator>::Item) -> R + ~const Destruct + 'a,
-        R: ~const Try<Output = (), Residual: ~const Destruct> + 'a
+        <Self as IntoIterator>::Item: [const] Destruct,
+        I: [const] Bulk<Item: [const] Destruct>,
+        F: [const] FnMut(<Self as IntoIterator>::Item) -> R + [const] Destruct + 'a,
+        R: [const] Try<Output = ()> + 'a
     {
         struct Closure<'a, T, F, R, const N: usize, const REV: bool>
         where
@@ -109,9 +102,9 @@ where
 
         const impl<'a, T, F, R, const N: usize, const REV: bool> FnOnce<(T,)> for Closure<'a, T, F, R, N, REV>
         where
-            T: ~const Destruct,
-            F: ~const FnMut([T; N]) -> R + ~const Destruct,
-            R: ~const Try<Output = (), Residual: ~const Destruct>
+            T: [const] Destruct,
+            F: [const] FnMut([T; N]) -> R + [const] Destruct,
+            R: [const] Try<Output = ()>
         {
             type Output = R;
 
@@ -122,9 +115,9 @@ where
         }
         const impl<'a, T, F, R, const N: usize, const REV: bool> FnMut<(T,)> for Closure<'a, T, F, R, N, REV>
         where
-            T: ~const Destruct,
-            F: ~const FnMut([T; N]) -> R + ~const Destruct,
-            R: ~const Try<Output = (), Residual: ~const Destruct>
+            T: [const] Destruct,
+            F: [const] FnMut([T; N]) -> R + [const] Destruct,
+            R: [const] Try<Output = ()>
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
@@ -142,23 +135,16 @@ where
 
         let skip = self.skip_len();
         let Self { bulk, remainder } = self;
-        (
-            bulk.into_inner(),
-            Closure {
-                f,
-                buffer: remainder,
-                skip
-            }
-        )
+        (bulk.into_inner(), Closure { f, buffer: remainder, skip })
     }
 }
 
 const impl<'a, I, const N: usize, const REV: bool> IntoIterator for ArrayChunksWithRemainder<'a, I, N, REV>
 where
-    I: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>
+    I: Bulk + [const] IntoIterator<IntoIter: [const] Iterator>
 {
-    type Item = <ArrayChunks<I, N> as IntoIterator>::Item;
     type IntoIter = iter::ArrayChunksWithRemainder<'a, <I as IntoIterator>::IntoIter, N, REV>;
+    type Item = <ArrayChunks<I, N> as IntoIterator>::Item;
 
     fn into_iter(self) -> Self::IntoIter
     {
@@ -168,33 +154,33 @@ where
 }
 const impl<'a, I, const N: usize, const REV: bool> Bulk for ArrayChunksWithRemainder<'a, I, N, REV>
 where
-    I: ~const Bulk<Item: ~const Destruct>
+    I: [const] Bulk<Item: [const] Destruct>
 {
-    type MinLength = <ArrayChunks<I, N> as Bulk>::MinLength;
     type MaxLength = <ArrayChunks<I, N> as Bulk>::MaxLength;
-    
+    type MinLength = <ArrayChunks<I, N> as Bulk>::MinLength;
+
     #[inline]
     fn len(&self) -> usize
     {
         let Self { bulk, remainder: _ } = self;
         bulk.len()
     }
-    
+
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let (bulk, closure) = self.for_each_closure(f);
         bulk.for_each(closure)
     }
-    
+
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let (bulk, closure) = self.try_for_each_closure(f);
         bulk.try_for_each(closure)
@@ -213,24 +199,21 @@ mod iter
         iter: Option<core::iter::ArrayChunks<I, N>>,
         remainder: &'a mut ArrayBuffer<I::Item, N, REV>
     }
-    
+
     impl<'a, I, const N: usize, const REV: bool> ArrayChunksWithRemainder<'a, I, N, REV>
     where
         I: Iterator
     {
         pub(super) const fn new(iter: core::iter::ArrayChunks<I, N>, remainder: &'a mut ArrayBuffer<I::Item, N, REV>) -> Self
         {
-            Self {
-                iter: Some(iter),
-                remainder
-            }
+            Self { iter: Some(iter), remainder }
         }
     }
-    
+
     const impl<'a, I, const N: usize, const REV: bool> Iterator for ArrayChunksWithRemainder<'a, I, N, REV>
     where
         I: Iterator,
-        core::iter::ArrayChunks<I, N>: ~const Iterator<Item = [I::Item; N]>
+        core::iter::ArrayChunks<I, N>: [const] Iterator<Item = [I::Item; N]>
     {
         type Item = [I::Item; N];
 
@@ -248,6 +231,7 @@ mod iter
         {
             self.iter.as_ref().map(|iter| iter.len()).unwrap_or(0)
         }
+
         fn is_empty(&self) -> bool
         {
             self.iter.as_ref().is_none_or(|iter| iter.is_empty())
@@ -262,7 +246,8 @@ mod iter
         {
             if let Some(mut iter) = self.iter.take().map(|iter| iter.into_remainder())
             {
-                while !self.remainder.is_full() && let Some(value) = iter.next()
+                while !self.remainder.is_full()
+                    && let Some(value) = iter.next()
                 {
                     self.remainder.push(value);
                 }

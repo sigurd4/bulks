@@ -16,7 +16,7 @@ use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 ///
 /// ```rust
 /// use bulks::*;
-/// 
+///
 /// let v: [i32; 3] = [1, 2, 3].into_bulk().map(|x| x + 1).rev().collect();
 ///
 /// assert_eq!(v, [4, 3, 2]);
@@ -27,7 +27,7 @@ use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 ///
 /// ```rust
 /// use bulks::*;
-/// 
+///
 /// let mut c = 0;
 ///
 /// for pair in ['a', 'b', 'c'].into_bulk()
@@ -47,7 +47,7 @@ use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 ///
 /// ```rust
 /// use bulks::*;
-/// 
+///
 /// let mut c = 0;
 ///
 /// for pair in ['a', 'b', 'c'].into_bulk()
@@ -75,10 +75,7 @@ where
 {
     pub(crate) const fn new(bulk: I, f: F) -> Self
     {
-        Self {
-            bulk,
-            f
-        }
+        Self { bulk, f }
     }
 }
 
@@ -96,11 +93,11 @@ where
 
 const impl<I, F> IntoIterator for Map<I, F>
 where
-    I: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>,
+    I: Bulk + [const] IntoIterator<IntoIter: [const] Iterator>,
     F: FnMut<(I::Item,)>
 {
-    type Item = F::Output;
     type IntoIter = core::iter::Map<I::IntoIter, F>;
+    type Item = F::Output;
 
     fn into_iter(self) -> Self::IntoIter
     {
@@ -110,17 +107,18 @@ where
 }
 const impl<I, F> Bulk for Map<I, F>
 where
-    I: ~const Bulk<Item: ~const Destruct>,
-    F: ~const FnMut<(I::Item,)> + ~const Destruct
+    I: [const] Bulk<Item: [const] Destruct>,
+    F: [const] FnMut<(I::Item,)> + [const] Destruct
 {
-    type MinLength = I::MinLength;
     type MaxLength = I::MaxLength;
-    
+    type MinLength = I::MinLength;
+
     fn len(&self) -> usize
     {
         let Self { bulk, f: _ } = self;
         bulk.len()
     }
+
     fn is_empty(&self) -> bool
     {
         let Self { bulk, f: _ } = self;
@@ -129,7 +127,7 @@ where
 
     fn first(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         let Self { bulk, mut f } = self;
@@ -139,60 +137,50 @@ where
     fn for_each<FF>(self, f: FF)
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) + ~const Destruct
+        FF: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk, f: map } = self;
-        bulk.for_each(Closure {
-            map,
-            f
-        })
+        bulk.for_each(Closure { map, f })
     }
+
     fn try_for_each<FF, R>(self, f: FF) -> R
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        FF: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         let Self { bulk, f: map } = self;
-        bulk.try_for_each(Closure {
-            map,
-            f
-        })
+        bulk.try_for_each(Closure { map, f })
     }
 }
 const impl<I, F> DoubleEndedBulk for Map<I, F>
 where
-    I: ~const DoubleEndedBulk<Item: ~const Destruct>,
-    F: ~const FnMut<(I::Item,)> + ~const Destruct
+    I: [const] DoubleEndedBulk<Item: [const] Destruct>,
+    F: [const] FnMut<(I::Item,)> + [const] Destruct
 {
     fn rev_for_each<FF>(self, f: FF)
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) + ~const Destruct
+        FF: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk, f: map } = self;
-        bulk.rev_for_each(Closure {
-            map,
-            f
-        })
+        bulk.rev_for_each(Closure { map, f })
     }
+
     fn try_rev_for_each<FF, R>(self, f: FF) -> R
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        FF: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         let Self { bulk, f: map } = self;
-        bulk.try_rev_for_each(Closure {
-            map,
-            f
-        })
+        bulk.try_rev_for_each(Closure { map, f })
     }
 }
 const impl<I, F, L> SplitBulk<L> for Map<I, F>
 where
-    I: ~const SplitBulk<L, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
-    F: ~const FnMut<(I::Item,)> + ~const Clone + ~const Destruct,
+    I: [const] SplitBulk<L, Item: [const] Destruct, Left: [const] Bulk, Right: [const] Bulk>,
+    F: [const] FnMut<(I::Item,)> + [const] Clone + [const] Destruct,
     L: LengthValue
 {
     type Left = Map<I::Left, F>;
@@ -203,10 +191,7 @@ where
         Self: Sized
     {
         let (left, right) = bulk.split_at(n);
-        (
-            left.map(f.clone()),
-            right.map(f)
-        )
+        (left.map(f.clone()), right.map(f))
     }
 }
 
@@ -217,8 +202,8 @@ struct Closure<M, F>
 }
 const impl<M, F, T, U, R> FnOnce<(T,)> for Closure<M, F>
 where
-    M: ~const FnOnce(T) -> U,
-    F: ~const FnOnce(U) -> R
+    M: [const] FnOnce(T) -> U,
+    F: [const] FnOnce(U) -> R
 {
     type Output = R;
 
@@ -230,8 +215,8 @@ where
 }
 const impl<M, F, T, U, R> FnMut<(T,)> for Closure<M, F>
 where
-    M: ~const FnMut(T) -> U,
-    F: ~const FnMut(U) -> R
+    M: [const] FnMut(T) -> U,
+    F: [const] FnMut(U) -> R
 {
     extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
     {

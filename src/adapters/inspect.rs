@@ -27,10 +27,7 @@ where
 {
     pub(crate) const fn new(bulk: I, f: F) -> Self
     {
-        Self {
-            bulk,
-            f
-        }
+        Self { bulk, f }
     }
 }
 
@@ -48,11 +45,11 @@ where
 
 const impl<I, F> IntoIterator for Inspect<I, F>
 where
-    I: Bulk + ~const IntoIterator<IntoIter: ~const Iterator>,
+    I: Bulk + [const] IntoIterator<IntoIter: [const] Iterator>,
     F: FnMut(&I::Item)
 {
-    type Item = I::Item;
     type IntoIter = core::iter::Inspect<I::IntoIter, F>;
+    type Item = I::Item;
 
     fn into_iter(self) -> Self::IntoIter
     {
@@ -62,12 +59,12 @@ where
 }
 const impl<I, F> Bulk for Inspect<I, F>
 where
-    I: ~const Bulk,
-    F: ~const FnMut(&I::Item) + ~const Destruct
+    I: [const] Bulk,
+    F: [const] FnMut(&I::Item) + [const] Destruct
 {
-    type MinLength = I::MinLength;
     type MaxLength = I::MaxLength;
-    
+    type MinLength = I::MinLength;
+
     fn len(&self) -> usize
     {
         let Self { bulk, f: _ } = self;
@@ -82,7 +79,7 @@ where
 
     fn first(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         let Self { bulk, f: mut inspect } = self;
@@ -92,62 +89,52 @@ where
     fn for_each<FF>(self, f: FF)
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) + ~const Destruct
+        FF: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk, f: inspect } = self;
-        bulk.for_each(Closure {
-            inspect,
-            f
-        });
+        bulk.for_each(Closure { inspect, f });
     }
+
     fn try_for_each<FF, R>(self, f: FF) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        FF: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let Self { bulk, f: inspect } = self;
-        bulk.try_for_each(Closure {
-            inspect,
-            f
-        })
+        bulk.try_for_each(Closure { inspect, f })
     }
 }
 const impl<I, F> DoubleEndedBulk for Inspect<I, F>
 where
-    I: ~const DoubleEndedBulk,
-    F: ~const FnMut(&I::Item) + ~const Destruct
+    I: [const] DoubleEndedBulk,
+    F: [const] FnMut(&I::Item) + [const] Destruct
 {
     fn rev_for_each<FF>(self, f: FF)
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) + ~const Destruct
+        FF: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk, f: inspect } = self;
-        bulk.rev_for_each(Closure {
-            inspect,
-            f
-        });
+        bulk.rev_for_each(Closure { inspect, f });
     }
+
     fn try_rev_for_each<FF, R>(self, f: FF) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        FF: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let Self { bulk, f: inspect } = self;
-        bulk.try_rev_for_each(Closure {
-            inspect,
-            f
-        })
+        bulk.try_rev_for_each(Closure { inspect, f })
     }
 }
 const impl<I, F, L> SplitBulk<L> for Inspect<I, F>
 where
-    I: ~const SplitBulk<L, Left: ~const Bulk, Right: ~const Bulk>,
-    F: ~const FnMut(&I::Item) + ~const Clone + ~const Destruct,
+    I: [const] SplitBulk<L, Left: [const] Bulk, Right: [const] Bulk>,
+    F: [const] FnMut(&I::Item) + [const] Clone + [const] Destruct,
     L: LengthValue
 {
     type Left = Inspect<I::Left, F>;
@@ -158,10 +145,7 @@ where
         Self: Sized
     {
         let (left, right) = bulk.split_at(n);
-        (
-            left.inspect(f.clone()),
-            right.inspect(f)
-        )
+        (left.inspect(f.clone()), right.inspect(f))
     }
 }
 
@@ -172,8 +156,8 @@ struct Closure<F, FF>
 }
 const impl<F, FF, T, R> FnOnce<(T,)> for Closure<F, FF>
 where
-    F: ~const FnOnce(&T),
-    FF: ~const FnOnce(T) -> R
+    F: [const] FnOnce(&T),
+    FF: [const] FnOnce(T) -> R
 {
     type Output = R;
 
@@ -185,8 +169,8 @@ where
 }
 const impl<F, FF, T, R> FnMut<(T,)> for Closure<F, FF>
 where
-    F: ~const FnMut(&T),
-    FF: ~const FnMut(T) -> R
+    F: [const] FnMut(&T),
+    FF: [const] FnMut(T) -> R
 {
     extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
     {
@@ -205,14 +189,12 @@ mod test
     {
         let a = ['0', '1', '2', '3', '4', '5', '6', '7'];
 
-        let b = a.into_bulk()
-            .map(|a| a.to_string().parse::<usize>())
-            .try_collect_array()
-            .unwrap();
+        let b = a.into_bulk().map(|a| a.to_string().parse::<usize>()).try_collect_array().unwrap();
 
         println!("{b:?}");
-        
-        let c = b.into_bulk()
+
+        let c = b
+            .into_bulk()
             .enumerate()
             .inspect(|&(i, a)| assert_eq!(i, a))
             .map(|(_, a)| a.to_string().chars().next())

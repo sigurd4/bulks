@@ -50,12 +50,13 @@ where
     }
 }
 
-/*const*/ impl<F, A> IntoIterator for OnceWith<F>
+/* const */
+impl<F, A> IntoIterator for OnceWith<F>
 where
     F: FnOnce() -> A
 {
-    type Item = A;
     type IntoIter = core::iter::OnceWith<F>;
+    type Item = A;
 
     fn into_iter(self) -> Self::IntoIter
     {
@@ -64,15 +65,16 @@ where
 }
 const impl<F, A> Bulk for OnceWith<F>
 where
-    F: ~const FnOnce() -> A
+    F: [const] FnOnce() -> A
 {
-    type MinLength = [(); 1];
     type MaxLength = [(); 1];
+    type MinLength = [(); 1];
 
     fn len(&self) -> usize
     {
         1
     }
+
     fn is_empty(&self) -> bool
     {
         false
@@ -80,14 +82,15 @@ where
 
     fn first(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         Some(self.0())
     }
+
     fn last(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         Some(self.0())
@@ -96,45 +99,47 @@ where
     fn for_each<FF>(self, mut f: FF)
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) + ~const Destruct
+        FF: [const] FnMut(Self::Item) + [const] Destruct
     {
         f(self.0())
     }
+
     fn try_for_each<FF, R>(self, mut f: FF) -> R
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = ()>
+        FF: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         f(self.0())
     }
 }
 const impl<F, A> DoubleEndedBulk for OnceWith<F>
 where
-    F: ~const FnOnce() -> A
+    F: [const] FnOnce() -> A
 {
     fn rev_for_each<FF>(self, f: FF)
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) + ~const Destruct
+        FF: [const] FnMut(Self::Item) + [const] Destruct
     {
         self.for_each(f);
     }
+
     fn try_rev_for_each<FF, R>(self, f: FF) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        FF: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         self.try_for_each(f)
     }
 }
 const impl<F, A, L> SplitBulk<L> for OnceWith<F>
 where
-    F: ~const FnOnce() -> A,
+    F: [const] FnOnce() -> A,
     L: LengthValue,
-    RepeatNWith<TakeOne<F>, [(); 1]>: ~const SplitBulk<L, Item = A>
+    RepeatNWith<TakeOne<F>, [(); 1]>: [const] SplitBulk<L, Item = A>
 {
     type Left = <RepeatNWith<TakeOne<F>, [(); 1]> as SplitBulk<L>>::Left;
     type Right = <RepeatNWith<TakeOne<F>, [(); 1]> as SplitBulk<L>>::Right;
@@ -149,7 +154,7 @@ where
 
 const impl<F, A> From<OnceWith<F>> for Once<A>
 where
-    F: ~const FnOnce() -> A
+    F: [const] FnOnce() -> A
 {
     fn from(value: OnceWith<F>) -> Self
     {
@@ -158,7 +163,7 @@ where
 }
 const impl<F, A> From<OnceWith<F>> for RepeatN<A, [(); 1]>
 where
-    F: ~const FnOnce() -> A,
+    F: [const] FnOnce() -> A,
     A: Clone
 {
     fn from(value: OnceWith<F>) -> Self
@@ -198,9 +203,7 @@ mod test
             1
         }
 
-        let a = const {
-            crate::once_with(one).collect::<[_; _], _>()
-        };
+        let a = const { crate::once_with(one).collect::<[_; _], _>() };
         assert_eq!(a, [1])
     }
 }

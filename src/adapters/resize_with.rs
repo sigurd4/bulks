@@ -4,19 +4,13 @@ use array_trait::length::{self, Length, LengthValue};
 
 use crate::{Bulk, DoubleEndedBulk, IntoBulk, IntoContained, SplitBulk};
 
-pub const fn resize_with<I, F, L>(iterable: I, n: L, f: F) -> ResizeWith<
-    <<I as IntoContained>::IntoContained as IntoBulk>::IntoBulk,
-    F,
-    L::Length<()>
->
+pub const fn resize_with<I, F, L>(iterable: I, n: L, f: F) -> ResizeWith<<<I as IntoContained>::IntoContained as IntoBulk>::IntoBulk, F, L::Length<()>>
 where
-    I: ~const IntoContained,
+    I: [const] IntoContained,
     L: LengthValue,
     F: FnMut() -> I::Item
 {
-    unsafe {
-        ResizeWith::new(iterable.into_contained().into_bulk(), n, f)
-    }
+    unsafe { ResizeWith::new(iterable.into_contained().into_bulk(), n, f) }
 }
 
 /// A bulk that only delivers exactly `n` elements, taking the first at most `n` elements of `bulk`, then calls `f` to produce more.
@@ -44,17 +38,22 @@ where
 {
     pub(crate) const fn new(bulk: T, n: N::Value, padder: F) -> ResizeWith<T, F, N>
     {
-        Self { bulk, n: length::value::into_metadata(n), padder }
+        Self {
+            bulk,
+            n: length::value::into_metadata(n),
+            padder
+        }
     }
 }
-/*const*/ impl<T, F, N> IntoIterator for ResizeWith<T, F, N>
+/* const */
+impl<T, F, N> IntoIterator for ResizeWith<T, F, N>
 where
     T: Bulk,
     N: Length<Elem = ()> + ?Sized,
     F: FnMut() -> T::Item
 {
-    type Item = T::Item;
     type IntoIter = <<core::iter::Take<core::iter::Chain<T::IntoIter, core::iter::RepeatWith<F>>> as IntoContained>::IntoContained as IntoIterator>::IntoIter;
+    type Item = T::Item;
 
     fn into_iter(self) -> Self::IntoIter
     {
@@ -70,43 +69,43 @@ where
 }
 const impl<T, F, N> Bulk for ResizeWith<T, F, N>
 where
-    T: ~const Bulk<Item: ~const Destruct>,
+    T: [const] Bulk<Item: [const] Destruct>,
     N: Length<Elem = ()> + ?Sized,
-    F: ~const FnMut() -> T::Item + ~const Destruct
+    F: [const] FnMut() -> T::Item + [const] Destruct
 {
-    type MinLength = N;
     type MaxLength = N;
+    type MinLength = N;
 
     fn len(&self) -> usize
     {
         let Self { bulk: _, n, padder: _ } = self;
         length::len_metadata::<N>(*n)
     }
+
     fn for_each<FF>(self, mut f: FF)
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) + ~const Destruct
+        FF: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk, n, mut padder } = self;
         let mut m = length::value::len(bulk.length());
-        bulk.take(length::value::from_metadata::<N::Value>(n))
-            .for_each(&mut f);
+        bulk.take(length::value::from_metadata::<N::Value>(n)).for_each(&mut f);
         while m < length::len_metadata::<N>(n)
         {
             f(padder());
             m += 1
         }
     }
+
     fn try_for_each<FF, R>(self, mut f: FF) -> R
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        FF: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let Self { bulk, n, mut padder } = self;
         let mut m = length::value::len(bulk.length());
-        bulk.take(length::value::from_metadata::<N::Value>(n))
-            .try_for_each(&mut f)?;
+        bulk.take(length::value::from_metadata::<N::Value>(n)).try_for_each(&mut f)?;
         while m < length::len_metadata::<N>(n)
         {
             f(padder())?;
@@ -117,15 +116,15 @@ where
 }
 const impl<T, F, N> DoubleEndedBulk for ResizeWith<T, F, N>
 where
-    T: ~const DoubleEndedBulk<Item: ~const Destruct> + ~const Bulk + ~const Destruct,
+    T: [const] DoubleEndedBulk<Item: [const] Destruct> + [const] Bulk + [const] Destruct,
     N: Length<Elem = ()> + ?Sized,
-    F: ~const Fn() -> T::Item + ~const Destruct,
+    F: [const] Fn() -> T::Item + [const] Destruct,
     Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<FF>(self, mut f: FF)
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) + ~const Destruct
+        FF: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk, n, padder } = self;
         let mut m = length::value::len(bulk.length());
@@ -140,11 +139,12 @@ where
             .take(length::value::from_metadata::<N::Value>(n))
             .for_each(f);
     }
+
     fn try_rev_for_each<FF, R>(self, mut f: FF) -> R
     where
         Self: Sized,
-        FF: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        FF: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let Self { bulk, n, padder } = self;
         let mut m = length::value::len(bulk.length());
@@ -162,9 +162,9 @@ where
 }
 const impl<T, F, N, NN, M, R> SplitBulk<M> for ResizeWith<T, F, N>
 where
-    T: ~const SplitBulk<M, Item: ~const Destruct, Left: ~const Bulk, Right: ~const Bulk>,
+    T: [const] SplitBulk<M, Item: [const] Destruct, Left: [const] Bulk, Right: [const] Bulk>,
     N: Length<Elem = (), Value = NN> + ?Sized,
-    F: ~const Fn() -> T::Item + ~const Destruct + Copy,
+    F: [const] Fn() -> T::Item + [const] Destruct + Copy,
     NN: LengthValue<Metadata = N::Metadata, Length<()> = N, SaturatingSub<M> = R>,
     M: LengthValue,
     R: LengthValue
@@ -178,10 +178,7 @@ where
     {
         let n = NN::from_metadata(n);
         let (left, right) = bulk.split_at(m);
-        (
-            left.resize_with(n, padder),
-            right.resize_with(length::value::saturating_sub(n, m), padder)
-        )
+        (left.resize_with(n, padder), right.resize_with(length::value::saturating_sub(n, m), padder))
     }
 }
 
@@ -193,25 +190,16 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = crate::range([(); 0], [(); 7])
-            .rev()
-            .resize_with([(); 10], &|| 7)
-            .collect::<Vec<_>, _>();
+        let a = crate::range([(); 0], [(); 7]).rev().resize_with([(); 10], &|| 7).collect::<Vec<_>, _>();
 
         println!("{a:?}")
     }
-    
+
     #[test]
     fn edge_case()
     {
         let mut a = [1, 2, 3, 4, 5, 6, 7];
-        let b = a.bulk_mut()
-            .skip(0)
-            .step_by(3)
-            .map(Some)
-            .resize_with([(); 3], || None)
-            .try_collect_array()
-            .unwrap();
+        let b = a.bulk_mut().skip(0).step_by(3).map(Some).resize_with([(); 3], || None).try_collect_array().unwrap();
 
         println!("{b:?}")
     }

@@ -24,9 +24,7 @@ where
 {
     pub(crate) const fn new(bulk: I) -> Self
     {
-        Self {
-            bulk
-        }
+        Self { bulk }
     }
 
     const fn chunk() -> usize
@@ -37,35 +35,31 @@ where
 
 const impl<I> IntoIterator for Flatten<I>
 where
-    I: Bulk<Item: IntoBulk<IntoBulk: StaticBulk>> + ~const IntoIterator<IntoIter: ~const Iterator>,
-    core::iter::Flatten<I::IntoIter>: ~const IntoContained<IntoContained: ~const IntoIterator>
+    I: Bulk<Item: IntoBulk<IntoBulk: StaticBulk>> + [const] IntoIterator<IntoIter: [const] Iterator>,
+    core::iter::Flatten<I::IntoIter>: [const] IntoContained<IntoContained: [const] IntoIterator>
 {
-    type Item = <<core::iter::Flatten<I::IntoIter> as IntoContained>::IntoContained as IntoIterator>::Item;
     type IntoIter = <<core::iter::Flatten<I::IntoIter> as IntoContained>::IntoContained as IntoIterator>::IntoIter;
+    type Item = <<core::iter::Flatten<I::IntoIter> as IntoContained>::IntoContained as IntoIterator>::Item;
 
     fn into_iter(self) -> Self::IntoIter
     {
         let Self { bulk } = self;
-        unsafe {
-            bulk.into_iter()
-                .flatten()
-                .into_contained()
-                .into_iter()
-        }
+        unsafe { bulk.into_iter().flatten().into_contained().into_iter() }
     }
 }
 const impl<I> Bulk for Flatten<I>
 where
-    I: ~const Bulk<Item: ~const IntoBulk<IntoBulk: ~const Bulk + StaticBulk> + ~const Destruct>
+    I: [const] Bulk<Item: [const] IntoBulk<IntoBulk: [const] Bulk + StaticBulk> + [const] Destruct>
 {
-    type MinLength = length::Mul<I::MinLength, <<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<()>>;
     type MaxLength = length::Mul<I::MaxLength, <<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<()>>;
+    type MinLength = length::Mul<I::MinLength, <<I::Item as IntoBulk>::IntoBulk as StaticBulk>::Array<()>>;
 
     fn len(&self) -> usize
     {
         let Self { bulk } = self;
-        bulk.len()*Self::chunk()
+        bulk.len() * Self::chunk()
     }
+
     fn is_empty(&self) -> bool
     {
         let Self { bulk } = self;
@@ -74,12 +68,12 @@ where
 
     fn first(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         const fn into_first<T>(x: T) -> Option<T::Item>
         where
-            T: ~const IntoBulk<Item: ~const Destruct>
+            T: [const] IntoBulk<Item: [const] Destruct>
         {
             x.into_bulk().first()
         }
@@ -91,7 +85,7 @@ where
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         struct Closure<F>
         {
@@ -99,8 +93,8 @@ where
         }
         const impl<F, T> FnOnce<(T,)> for Closure<F>
         where
-            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk>,
-            F: ~const FnMut(T::Item) + ~const Destruct
+            T: [const] IntoBulk<IntoBulk: StaticBulk + [const] Bulk>,
+            F: [const] FnMut(T::Item) + [const] Destruct
         {
             type Output = ();
 
@@ -111,8 +105,8 @@ where
         }
         const impl<F, T> FnMut<(T,)> for Closure<F>
         where
-            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk>,
-            F: ~const FnMut(T::Item) + ~const Destruct
+            T: [const] IntoBulk<IntoBulk: StaticBulk + [const] Bulk>,
+            F: [const] FnMut(T::Item) + [const] Destruct
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
@@ -121,16 +115,15 @@ where
         }
 
         let Self { bulk } = self;
-        bulk.for_each(Closure {
-            f
-        })
+        bulk.for_each(Closure { f })
     }
+
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         struct Closure<F>
         {
@@ -138,9 +131,9 @@ where
         }
         const impl<F, T, R> FnOnce<(T,)> for Closure<F>
         where
-            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk, Item: ~const Destruct>,
-            F: ~const FnMut(T::Item) -> R + ~const Destruct,
-            R: ~const Try<Output = (), Residual: ~const Destruct>
+            T: [const] IntoBulk<IntoBulk: StaticBulk + [const] Bulk, Item: [const] Destruct>,
+            F: [const] FnMut(T::Item) -> R + [const] Destruct,
+            R: [const] Try<Output = ()>
         {
             type Output = R;
 
@@ -151,9 +144,9 @@ where
         }
         const impl<F, T, R> FnMut<(T,)> for Closure<F>
         where
-            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const Bulk, Item: ~const Destruct>,
-            F: ~const FnMut(T::Item) -> R + ~const Destruct,
-            R: ~const Try<Output = (), Residual: ~const Destruct>
+            T: [const] IntoBulk<IntoBulk: StaticBulk + [const] Bulk, Item: [const] Destruct>,
+            F: [const] FnMut(T::Item) -> R + [const] Destruct,
+            R: [const] Try<Output = ()>
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
@@ -162,20 +155,18 @@ where
         }
 
         let Self { bulk } = self;
-        bulk.try_for_each(Closure {
-            f
-        })
+        bulk.try_for_each(Closure { f })
     }
 }
 const impl<I> DoubleEndedBulk for Flatten<I>
 where
-    I: ~const DoubleEndedBulk<Item: ~const IntoBulk<IntoBulk: ~const DoubleEndedBulk + StaticBulk> + ~const Destruct>,
+    I: [const] DoubleEndedBulk<Item: [const] IntoBulk<IntoBulk: [const] DoubleEndedBulk + StaticBulk> + [const] Destruct>,
     Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         struct Closure<F>
         {
@@ -183,8 +174,8 @@ where
         }
         const impl<F, T> FnOnce<(T,)> for Closure<F>
         where
-            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk>,
-            F: ~const FnMut(T::Item) + ~const Destruct
+            T: [const] IntoBulk<IntoBulk: StaticBulk + [const] DoubleEndedBulk>,
+            F: [const] FnMut(T::Item) + [const] Destruct
         {
             type Output = ();
 
@@ -195,8 +186,8 @@ where
         }
         const impl<F, T> FnMut<(T,)> for Closure<F>
         where
-            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk>,
-            F: ~const FnMut(T::Item) + ~const Destruct
+            T: [const] IntoBulk<IntoBulk: StaticBulk + [const] DoubleEndedBulk>,
+            F: [const] FnMut(T::Item) + [const] Destruct
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
@@ -205,16 +196,15 @@ where
         }
 
         let Self { bulk } = self;
-        bulk.rev_for_each(Closure {
-            f
-        })
+        bulk.rev_for_each(Closure { f })
     }
+
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         struct Closure<F>
         {
@@ -222,9 +212,9 @@ where
         }
         const impl<F, T, R> FnOnce<(T,)> for Closure<F>
         where
-            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk, Item: ~const Destruct>,
-            F: ~const FnMut(T::Item) -> R + ~const Destruct,
-            R: ~const Try<Output = (), Residual: ~const Destruct>
+            T: [const] IntoBulk<IntoBulk: StaticBulk + [const] DoubleEndedBulk, Item: [const] Destruct>,
+            F: [const] FnMut(T::Item) -> R + [const] Destruct,
+            R: [const] Try<Output = ()>
         {
             type Output = R;
 
@@ -235,9 +225,9 @@ where
         }
         const impl<F, T, R> FnMut<(T,)> for Closure<F>
         where
-            T: ~const IntoBulk<IntoBulk: StaticBulk + ~const DoubleEndedBulk, Item: ~const Destruct>,
-            F: ~const FnMut(T::Item) -> R + ~const Destruct,
-            R: ~const Try<Output = (), Residual: ~const Destruct>
+            T: [const] IntoBulk<IntoBulk: StaticBulk + [const] DoubleEndedBulk, Item: [const] Destruct>,
+            F: [const] FnMut(T::Item) -> R + [const] Destruct,
+            R: [const] Try<Output = ()>
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
@@ -246,9 +236,7 @@ where
         }
 
         let Self { bulk } = self;
-        bulk.try_rev_for_each(Closure {
-            f
-        })
+        bulk.try_rev_for_each(Closure { f })
     }
 }
 
@@ -261,9 +249,7 @@ mod test
     fn it_works()
     {
         let a = [[1, -1], [2, -2], [3, -3]];
-        let b = a.into_bulk()
-            .flatten()
-            .collect_array();
+        let b = a.into_bulk().flatten().collect_array();
 
         println!("{b:?}")
     }

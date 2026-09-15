@@ -82,13 +82,14 @@ where
     }
 }
 
-/*const*/ impl<A, G, N> IntoIterator for RepeatNWith<G, N>
+/* const */
+impl<A, G, N> IntoIterator for RepeatNWith<G, N>
 where
     G: FnMut() -> A,
     N: Length<Elem = ()> + ?Sized
 {
-    type Item = A;
     type IntoIter = core::iter::Take<core::iter::RepeatWith<G>>;
+    type Item = A;
 
     fn into_iter(self) -> Self::IntoIter
     {
@@ -98,11 +99,11 @@ where
 }
 const impl<A, G, N> Bulk for RepeatNWith<G, N>
 where
-    G: ~const FnMut() -> A + ~const Destruct,
+    G: [const] FnMut() -> A + [const] Destruct,
     N: Length<Elem = ()> + ?Sized
 {
-    type MinLength = N;
     type MaxLength = N;
+    type MinLength = N;
 
     fn len(&self) -> usize
     {
@@ -113,7 +114,7 @@ where
     fn for_each<F>(self, mut f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { mut repeater, n } = self;
         let n = length::value::len_metadata::<N::Value>(n);
@@ -124,11 +125,12 @@ where
             i += 1
         }
     }
+
     fn try_for_each<F, R>(self, mut f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         let Self { mut repeater, n } = self;
         let n = length::value::len_metadata::<N::Value>(n);
@@ -143,23 +145,24 @@ where
 }
 const impl<A, G, N> DoubleEndedBulk for RepeatNWith<G, N>
 where
-    G: ~const FnMut() -> A + ~const Destruct,
+    G: [const] FnMut() -> A + [const] Destruct,
     N: Length<Elem = ()> + ?Sized,
     Self::IntoIter: DoubleEndedIterator
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         self.for_each(f)
     }
+
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        A: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        A: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         self.try_for_each(f)
     }
@@ -168,7 +171,7 @@ const impl<A, G, N, M, L, R, NN> SplitBulk<M> for RepeatNWith<G, N>
 where
     N: Length<Elem = (), Value = NN>,
     NN: LengthValue<Min<M> = L, SaturatingSub<M> = R, Metadata = N::Metadata>,
-    G: ~const FnMut() -> A + ~const Clone + ~const Destruct,
+    G: [const] FnMut() -> A + [const] Clone + [const] Destruct,
     M: LengthValue,
     L: LengthValue,
     R: LengthValue
@@ -197,8 +200,14 @@ mod test
     fn it_works()
     {
         let mut i = 0;
-        let a = crate::repeat_n_with(|| {i += 1; i}, [(); 4])
-            .collect_array();
+        let a = crate::repeat_n_with(
+            || {
+                i += 1;
+                i
+            },
+            [(); 4]
+        )
+        .collect_array();
         assert_eq!(a, [1, 2, 3, 4])
     }
 }

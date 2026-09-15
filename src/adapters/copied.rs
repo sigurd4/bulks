@@ -15,7 +15,7 @@ where
     I: Bulk,
     core::iter::Copied<I::IntoIter>: Iterator<Item: Copy>
 {
-    bulk: I,
+    bulk: I
 }
 
 impl<'a, I, T> Copied<I>
@@ -25,15 +25,13 @@ where
 {
     pub(crate) const fn new(bulk: I) -> Self
     {
-        Self {
-            bulk
-        }
+        Self { bulk }
     }
 }
 
 const impl<'a, I, T> Default for Copied<I>
 where
-    I: ~const Bulk<Item = &'a T> + ~const Default,
+    I: [const] Bulk<Item = &'a T> + [const] Default,
     T: Copy + 'a
 {
     fn default() -> Self
@@ -44,7 +42,7 @@ where
 
 const impl<'a, I, T> IntoIterator for Copied<I>
 where
-    I: Bulk<Item = &'a T> + ~const IntoIterator<IntoIter: ~const Iterator>,
+    I: Bulk<Item = &'a T> + [const] IntoIterator<IntoIter: [const] Iterator>,
     T: Copy + 'a
 {
     type IntoIter = core::iter::Copied<I::IntoIter>;
@@ -58,11 +56,11 @@ where
 }
 const impl<'a, I, T> Bulk for Copied<I>
 where
-    I: ~const Bulk<Item = &'a T>,
+    I: [const] Bulk<Item = &'a T>,
     T: Copy + 'a
 {
-    type MinLength = I::MinLength;
     type MaxLength = I::MaxLength;
+    type MinLength = I::MinLength;
 
     fn len(&self) -> usize
     {
@@ -78,84 +76,78 @@ where
 
     fn first(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         let Self { bulk } = self;
         bulk.first().map(core::mem::copy)
     }
+
     fn last(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         let Self { bulk } = self;
         bulk.last().map(core::mem::copy)
     }
+
     fn nth<L>(self, n: L) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         L: LengthValue
     {
         let Self { bulk } = self;
         bulk.nth(n).map(core::mem::copy)
     }
-    
+
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk } = self;
-        bulk.for_each(Closure {
-            f
-        })
+        bulk.for_each(Closure { f })
     }
-    
+
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         let Self { bulk } = self;
-        bulk.try_for_each(Closure {
-            f
-        })
+        bulk.try_for_each(Closure { f })
     }
 }
 const impl<'a, I, T> DoubleEndedBulk for Copied<I>
 where
-    I: ~const DoubleEndedBulk<Item = &'a T>,
+    I: [const] DoubleEndedBulk<Item = &'a T>,
     T: Copy + 'a
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk } = self;
-        bulk.rev_for_each(Closure {
-            f
-        })
+        bulk.rev_for_each(Closure { f })
     }
-    
+
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         let Self { bulk } = self;
-        bulk.try_rev_for_each(Closure {
-            f
-        })
+        bulk.try_rev_for_each(Closure { f })
     }
 }
 const impl<'a, I, T, L> SplitBulk<L> for Copied<I>
 where
-    I: ~const SplitBulk<L, Item = &'a T, Left: ~const Bulk, Right: ~const Bulk>,
+    I: [const] SplitBulk<L, Item = &'a T, Left: [const] Bulk, Right: [const] Bulk>,
     T: Copy + 'a,
     L: LengthValue
 {
@@ -167,10 +159,7 @@ where
         Self: Sized
     {
         let (left, right) = bulk.split_at(n);
-        (
-            left.copied(),
-            right.copied()
-        )
+        (left.copied(), right.copied())
     }
 }
 
@@ -180,7 +169,7 @@ struct Closure<F>
 }
 const impl<F, T, R> FnOnce<(&T,)> for Closure<F>
 where
-    F: ~const FnOnce(T) -> R,
+    F: [const] FnOnce(T) -> R,
     T: Copy
 {
     type Output = R;
@@ -192,7 +181,7 @@ where
 }
 const impl<F, T, R> FnMut<(&T,)> for Closure<F>
 where
-    F: ~const FnMut(T) -> R,
+    F: [const] FnMut(T) -> R,
     T: Copy
 {
     extern "rust-call" fn call_mut(&mut self, (x,): (&T,)) -> Self::Output

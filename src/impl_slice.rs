@@ -2,7 +2,7 @@ use core::{marker::Destruct, ops::Try};
 
 use array_trait::length::{self, LengthValue};
 
-use crate::{Bulk, IntoBulk, DoubleEndedBulk, SplitBulk};
+use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk};
 
 pub mod slice
 {
@@ -62,7 +62,7 @@ macro_rules! impl_bulk {
             $t: $a
         {
             type IntoBulk = slice::$bulk<$a, $t>;
-            
+
             fn into_bulk(self) -> Self::IntoBulk
             {
                 slice::$bulk {
@@ -108,7 +108,7 @@ macro_rules! impl_bulk {
             where
                 $item: ~const Destruct,
                 F: ~const FnMut($item) -> R + ~const Destruct,
-                R: ~const Try<Output = (), Residual: ~const Destruct>
+                R: ~const Try<Output = ()>
             $try_for_each
         }
         const impl<$a, $t> DoubleEndedBulk for slice::$bulk<$a, $t>
@@ -124,7 +124,7 @@ macro_rules! impl_bulk {
             where
                 $item: ~const Destruct,
                 F: ~const FnMut($item) -> R + ~const Destruct,
-                R: ~const Try<Output = (), Residual: ~const Destruct>
+                R: ~const Try<Output = ()>
             $try_rev_for_each
         }
         impl<$a, T, L> SplitBulk<L> for slice::$bulk<$a, T>
@@ -206,7 +206,7 @@ impl_bulk!(
             let Self { slice } = self;
             slice.get(length::value::len(n))
         }
-    } 
+    }
 );
 impl_bulk!(
     impl BulkMut<'a, T>; for &'a mut T; in &'a mut [T]; mut
@@ -272,5 +272,5 @@ impl_bulk!(
             let Self { slice } = self;
             slice.get_mut(length::value::len(n))
         }
-    } 
+    }
 );

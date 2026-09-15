@@ -86,7 +86,7 @@ macro_rules! impl_option {
                 Self: Sized,
                 Self::Item: ~const Destruct,
                 F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-                R: ~const Try<Output = (), Residual: ~const Destruct>
+                R: ~const Try<Output = ()>
             {
                 if let Some(x) = self.option
                 {
@@ -94,7 +94,7 @@ macro_rules! impl_option {
                 }
                 R::from_output(())
             }
-                    
+
             fn first($self_first) -> Option<Self::Item>
             where
                 Self::Item: ~const Destruct,
@@ -122,9 +122,9 @@ macro_rules! impl_option {
                     None
                 }
             }
-            
+
             fn reduce<F>(self, _f: F) -> Option<Self::Item>
-            where 
+            where
                 Self: Sized,
                 Self::Item: ~const Destruct,
                 F: ~const FnMut(Self::Item, Self::Item) -> Self::Item + ~const Destruct
@@ -145,18 +145,9 @@ where
     where
         Self: Sized
     {
-        let empty = Self {
-            option: None
-        };
+        let empty = Self { option: None };
 
-        if length::value::eq(n, [(); 0])
-        {
-            (empty, bulk)
-        }
-        else
-        {
-            (bulk, empty)
-        }
+        if length::value::eq(n, [(); 0]) { (empty, bulk) } else { (bulk, empty) }
     }
 }
 impl_option!(

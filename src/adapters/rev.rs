@@ -4,7 +4,6 @@ use array_trait::length::{self, Length, LengthValue};
 
 use crate::{Bulk, BulkLength, DoubleEndedBulk, SplitBulk};
 
-
 /// A double-ended bulk with the direction inverted.
 ///
 /// This `struct` is created by the [`rev`](Bulk::rev) method on [`Bulk`]. See its
@@ -15,7 +14,7 @@ pub struct Rev<I>
 where
     I: DoubleEndedBulk
 {
-    bulk: I,
+    bulk: I
 }
 
 impl<I> Rev<I>
@@ -24,9 +23,7 @@ where
 {
     pub(crate) const fn new(bulk: I) -> Self
     {
-        Self {
-            bulk
-        }
+        Self { bulk }
     }
 
     /// Consumes the `Rev`, returning the inner bulk.
@@ -53,7 +50,7 @@ where
 
 const impl<I> Default for Rev<I>
 where
-    I: ~const Bulk + DoubleEndedBulk + ~const Default
+    I: [const] Bulk + DoubleEndedBulk + [const] Default
 {
     fn default() -> Self
     {
@@ -63,7 +60,7 @@ where
 
 const impl<I> IntoIterator for Rev<I>
 where
-    I: DoubleEndedBulk + ~const IntoIterator<IntoIter: ~const Iterator>
+    I: DoubleEndedBulk + [const] IntoIterator<IntoIter: [const] Iterator>
 {
     type IntoIter = core::iter::Rev<I::IntoIter>;
     type Item = I::Item;
@@ -75,35 +72,38 @@ where
 }
 const impl<I> Bulk for Rev<I>
 where
-    I: ~const Bulk + ~const DoubleEndedBulk
+    I: [const] Bulk + [const] DoubleEndedBulk
 {
-    type MinLength = I::MinLength;
     type MaxLength = I::MaxLength;
-    
+    type MinLength = I::MinLength;
+
     fn len(&self) -> usize
     {
         let Self { bulk } = self;
         bulk.len()
     }
+
     fn is_empty(&self) -> bool
     {
         let Self { bulk } = self;
         bulk.is_empty()
     }
+
     fn for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk } = self;
         bulk.rev_for_each(f);
     }
+
     fn try_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         let Self { bulk } = self;
         bulk.try_rev_for_each(f)
@@ -111,22 +111,23 @@ where
 }
 const impl<I> DoubleEndedBulk for Rev<I>
 where
-    I: ~const Bulk + ~const DoubleEndedBulk
+    I: [const] Bulk + [const] DoubleEndedBulk
 {
     fn rev_for_each<F>(self, f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { bulk } = self;
         bulk.for_each(f);
     }
+
     fn try_rev_for_each<F, R>(self, f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         let Self { bulk } = self;
         bulk.try_for_each(f)
@@ -134,7 +135,7 @@ where
 }
 const impl<I, N, L, R> SplitBulk<L> for Rev<I>
 where
-    I: ~const SplitBulk<R, Left: ~const Bulk + DoubleEndedBulk, Right: ~const Bulk + DoubleEndedBulk> + ~const Bulk + ~const DoubleEndedBulk,
+    I: [const] SplitBulk<R, Left: [const] Bulk + DoubleEndedBulk, Right: [const] Bulk + DoubleEndedBulk> + [const] Bulk + [const] DoubleEndedBulk,
     BulkLength<I>: Length<Value = N, Metadata = N::Metadata>,
     N: LengthValue<SaturatingSub<L> = R>,
     L: LengthValue,
@@ -149,10 +150,7 @@ where
     {
         let n = bulk.length();
         let (left, right) = bulk.split_at(length::value::saturating_sub(n, m));
-        (
-            right.rev(),
-            left.rev()
-        )
+        (right.rev(), left.rev())
     }
 }
 
@@ -165,10 +163,7 @@ mod test
     fn it_works()
     {
         let a = [1, 2, 3, 4, 5, 6];
-        let b = a.into_bulk()
-            .rev()
-            .map(|x| 7 - x)
-            .collect_array();
+        let b = a.into_bulk().rev().map(|x| 7 - x).collect_array();
 
         assert_eq!(a, b)
     }

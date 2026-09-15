@@ -159,6 +159,39 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.reduce(store)
     }
 
+    /// Returns the `n`-th value from the back, and discards the rest of the bulk.
+    ///
+    /// Returns [`None`] if index `n` is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// let bulk = a.bulk();
+    ///
+    /// // The bulk is consumed, so it must be cloned each time. Don't actually do this.
+    /// let a1 = bulk.clone().last();
+    /// let a2 = bulk.clone().nth_back(1);
+    /// let a3 = bulk.clone().nth_back(2);
+    /// let a4 = bulk.clone().nth_back(3);
+    ///
+    /// assert_eq!(a1, Some(&3));
+    /// assert_eq!(a2, Some(&2));
+    /// assert_eq!(a3, Some(&1));
+    /// assert_eq!(a4, None);
+    /// ```
+    fn nth_back<L>(self, n: L) -> Option<Self::Item>
+    where
+        Self: Sized + [const] DoubleEndedBulk,
+        Self::Item: [const] Destruct,
+        L: LengthValue
+    {
+        self.rev().skip(n).first()
+    }
+
     /// Returns the `n`-th value, and discards the rest of the bulk.
     ///
     /// Returns [`None`] if index `n` is out of bounds.
@@ -198,8 +231,6 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Self::Item: [const] Destruct,
         NN: [const] IntoBulk<Item = usize, IntoBulk: [const] Bulk + StaticBulk<Array<()> = [(); N]>>
     {
-        // TODO: can be optimized by sorting first and storing permutations, then unsorting after.
-
         struct Functor<'a, T, const N: usize>
         {
             done: usize,
@@ -367,7 +398,7 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Self: Sized,
         Self::Item: [const] Destruct,
         F: [const] FnMut(Self::Item) -> R + [const] Destruct,
-        R: [const] Try<Output = (), Residual: [const] Destruct>;
+        R: [const] Try<Output = ()>;
 
     /// Folds every element into an accumulator by applying an operation,
     /// returning the final result.
@@ -447,30 +478,6 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
     ///
     /// assert_eq!(result, "(((((0 + 1) + 2) + 3) + 4) + 5)");
     /// ```
-    /// It's common for people who haven't used iterators a lot to
-    /// use a `for` loop with a list of things to build up a result. Those
-    /// can be turned into `fold()`s:
-    ///
-    /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
-    ///
-    /// ```
-    /// use bulks::*;
-    ///
-    /// let numbers = [1, 2, 3, 4, 5];
-    ///
-    /// let mut result = 0;
-    ///
-    /// // for loop:
-    /// for i in &numbers {
-    ///     result = result + i;
-    /// }
-    ///
-    /// // fold:
-    /// let result2 = numbers.bulk().fold(0, |acc, &x| acc + x);
-    ///
-    /// // they're the same
-    /// assert_eq!(result, result2);
-    /// ```
     #[doc(alias = "inject", alias = "foldl")]
     #[inline]
     fn fold<B, F>(self, init: B, f: F) -> B
@@ -517,13 +524,117 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         unsafe { z.unwrap_unchecked() }
     }
 
+    /// Reduces the bulks's elements to a single, final value, starting from the back.
+    ///
+    /// This is the reverse version of [`Bulk::fold()`]: it takes elements
+    /// starting from the back of the bulk.
+    ///
+    /// `rfold()` takes two arguments: an initial value, and a closure with two
+    /// arguments: an 'accumulator', and an element. The closure returns the value that
+    /// the accumulator should have for the next iteration.
+    ///
+    /// The initial value is the value the accumulator will have on the first
+    /// call.
+    ///
+    /// After applying this closure to every element of the iterator, `rfold()`
+    /// returns the accumulator.
+    ///
+    /// This operation is sometimes called 'reduce' or 'inject'.
+    ///
+    /// Folding is useful whenever you have a collection of something, and want
+    /// to produce a single value from it.
+    ///
+    /// Note: `rfold()` combines elements in a *right-associative* fashion. For associative
+    /// operators like `+`, the order the elements are combined in is not important, but for non-associative
+    /// operators like `-` the order will affect the final result.
+    /// For a *left-associative* version of `rfold()`, see [`Bulk::fold()`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// // the sum of all of the elements of a
+    /// let sum = a.bulk()
+    ///            .rfold(0, |acc, &x| acc + x);
+    ///
+    /// assert_eq!(sum, 6);
+    /// ```
+    ///
+    /// This example demonstrates the right-associative nature of `rfold()`:
+    /// it builds a string, starting with an initial value
+    /// and continuing with each element from the back until the front:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let numbers = [1, 2, 3, 4, 5];
+    ///
+    /// let zero = "0".to_string();
+    ///
+    /// let result = numbers.bulk().rfold(zero, |acc, &x| {
+    ///     format!("({x} + {acc})")
+    /// });
+    ///
+    /// assert_eq!(result, "(1 + (2 + (3 + (4 + (5 + 0)))))");
+    /// ```
+    #[doc(alias = "foldr")]
+    #[inline]
+    fn rfold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized + [const] DoubleEndedBulk,
+        B: [const] Destruct,
+        F: [const] FnMut(B, Self::Item) -> B + [const] Destruct
+    {
+        struct Closure<'a, B, F>
+        {
+            z: &'a mut Option<B>,
+            f: F
+        }
+        const impl<'a, B, F, T> FnOnce<(T,)> for Closure<'a, B, F>
+        where
+            B: [const] Destruct,
+            F: [const] FnOnce(B, T) -> B
+        {
+            type Output = ();
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                let Self { z, f } = self;
+                let zz = unsafe { z.take().unwrap_unchecked() };
+                let _ = z.insert((f)(zz, x));
+            }
+        }
+        const impl<'a, B, F, T> FnMut<(T,)> for Closure<'a, B, F>
+        where
+            B: [const] Destruct,
+            F: [const] FnMut(B, T) -> B
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                let Self { z, f } = self;
+                let zz = unsafe { z.take().unwrap_unchecked() };
+                let _ = z.insert((f)(zz, x));
+            }
+        }
+
+        let mut z = Some(init);
+        self.rev_for_each(Closure { z: &mut z, f });
+
+        unsafe { z.unwrap_unchecked() }
+    }
+
     fn try_fold<B, F, R>(self, init: B, f: F) -> R
     where
         B: [const] Destruct,
         Self: Sized,
         Self::Item: [const] Destruct,
         F: [const] FnMut(B, Self::Item) -> R + [const] Destruct,
-        R: [const] Try<Output = B, Residual: [const] Destruct>
+        R: [const] Try<Output = B>
     {
         struct Closure<'a, B, F>
         {
@@ -534,7 +645,7 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         where
             B: [const] Destruct,
             F: [const] FnOnce(B, T) -> R,
-            R: [const] Try<Output = B, Residual: [const] Destruct>
+            R: [const] Try<Output = B>
         {
             type Output = ControlFlow<R::Residual, ()>;
 
@@ -550,7 +661,7 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         where
             B: [const] Destruct,
             F: [const] FnMut(B, T) -> R,
-            R: [const] Try<Output = B, Residual: [const] Destruct>
+            R: [const] Try<Output = B>
         {
             extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
@@ -563,6 +674,58 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
 
         let mut z = Some(init);
         match self.try_for_each(Closure { z: &mut z, f })
+        {
+            ControlFlow::Break(residual) => R::from_residual(residual),
+            ControlFlow::Continue(()) => R::from_output(unsafe { z.unwrap_unchecked() })
+        }
+    }
+
+    fn try_rfold<B, F, R>(self, init: B, f: F) -> R
+    where
+        B: [const] Destruct,
+        Self: Sized + [const] DoubleEndedBulk,
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(B, Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = B>
+    {
+        struct Closure<'a, B, F>
+        {
+            z: &'a mut Option<B>,
+            f: F
+        }
+        const impl<'a, B, F, T, R> FnOnce<(T,)> for Closure<'a, B, F>
+        where
+            B: [const] Destruct,
+            F: [const] FnOnce(B, T) -> R,
+            R: [const] Try<Output = B>
+        {
+            type Output = ControlFlow<R::Residual, ()>;
+
+            extern "rust-call" fn call_once(self, (x,): (T,)) -> Self::Output
+            {
+                let Self { z, f } = self;
+                let zz = unsafe { z.take().unwrap_unchecked() };
+                let _ = z.insert(f(zz, x).branch()?);
+                ControlFlow::Continue(())
+            }
+        }
+        const impl<'a, B, F, T, R> FnMut<(T,)> for Closure<'a, B, F>
+        where
+            B: [const] Destruct,
+            F: [const] FnMut(B, T) -> R,
+            R: [const] Try<Output = B>
+        {
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
+            {
+                let Self { z, f } = self;
+                let zz = unsafe { z.take().unwrap_unchecked() };
+                let _ = z.insert(f(zz, x).branch()?);
+                ControlFlow::Continue(())
+            }
+        }
+
+        let mut z = Some(init);
+        match self.try_rev_for_each(Closure { z: &mut z, f })
         {
             ControlFlow::Break(residual) => R::from_residual(residual),
             ControlFlow::Continue(()) => R::from_output(unsafe { z.unwrap_unchecked() })
@@ -780,6 +943,458 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         }
 
         self.try_fold((), Functor(f)) == ControlFlow::Break(())
+    }
+
+    /// Searches for an element of a bulk that satisfies a predicate.
+    ///
+    /// `find()` takes a closure that returns `true` or `false`. It applies
+    /// this closure to each element of the bulk, and if any of them return
+    /// `true`, then `find()` returns [`Some(element)`]. If they all return
+    /// `false`, it returns [`None`].
+    ///
+    /// `find()` is short-circuiting; in other words, it will stop processing
+    /// as soon as the closure returns `true`.
+    ///
+    /// Because `find()` takes a reference, and many iterators iterate over
+    /// references, this leads to a possibly confusing situation where the
+    /// argument is a double reference. You can see this effect in the
+    /// examples below, with `&&x`.
+    ///
+    /// If you need the index of the element, see [`position()`].
+    ///
+    /// [`Some(element)`]: Some
+    /// [`position()`]: Bulk::position
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// assert_eq!(a.into_bulk().find(|&x| x == 2), Some(2));
+    /// assert_eq!(a.into_bulk().find(|&x| x == 5), None);
+    /// ```
+    ///
+    /// Iterating over references:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// // `bulk()` yields references i.e. `&i32` and `find()` takes a
+    /// // reference to each element.
+    /// assert_eq!(a.bulk().find(|&&x| x == 2), Some(&2));
+    /// assert_eq!(a.bulk().find(|&&x| x == 5), None);
+    /// ```
+    #[inline]
+    fn find<P>(self, predicate: P) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: [const] Destruct,
+        P: [const] FnMut(&Self::Item) -> bool + [const] Destruct
+    {
+        struct Functor<P>
+        {
+            predicate: P
+        }
+        const impl<T, P> FnOnce<((), T)> for Functor<P>
+        where
+            P: [const] FnMut(&T) -> bool + [const] Destruct,
+            T: [const] Destruct
+        {
+            type Output = ControlFlow<T>;
+
+            extern "rust-call" fn call_once(mut self, args: ((), T)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        const impl<T, P> FnMut<((), T)> for Functor<P>
+        where
+            P: [const] FnMut(&T) -> bool,
+            T: [const] Destruct
+        {
+            extern "rust-call" fn call_mut(&mut self, ((), x): ((), T)) -> Self::Output
+            {
+                if (self.predicate)(&x) { ControlFlow::Break(x) } else { ControlFlow::Continue(()) }
+            }
+        }
+
+        self.try_fold((), Functor { predicate }).break_value()
+    }
+
+    /// Searches for an element of a bulk from the back that satisfies a predicate.
+    ///
+    /// `rfind()` takes a closure that returns `true` or `false`. It applies
+    /// this closure to each element of the bulk, starting at the end, and if any
+    /// of them return `true`, then `rfind()` returns [`Some(element)`]. If they all return
+    /// `false`, it returns [`None`].
+    ///
+    /// `rfind()` is short-circuiting; in other words, it will stop processing
+    /// as soon as the closure returns `true`.
+    ///
+    /// Because `rfind()` takes a reference, and many iterators iterate over
+    /// references, this leads to a possibly confusing situation where the
+    /// argument is a double reference. You can see this effect in the
+    /// examples below, with `&&x`.
+    ///
+    /// [`Some(element)`]: Some
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// assert_eq!(a.into_bulk().rfind(|&x| x == 2), Some(2));
+    /// assert_eq!(a.into_bulk().rfind(|&x| x == 5), None);
+    /// ```
+    ///
+    /// Iterating over references:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// // `bulk()` yields references i.e. `&i32` and `rfind()` takes a
+    /// // reference to each element.
+    /// assert_eq!(a.bulk().rfind(|&&x| x == 2), Some(&2));
+    /// assert_eq!(a.bulk().rfind(|&&x| x == 5), None);
+    /// ```
+    #[inline]
+    fn rfind<P>(self, predicate: P) -> Option<Self::Item>
+    where
+        Self: Sized + [const] DoubleEndedBulk,
+        P: [const] FnMut(&Self::Item) -> bool + [const] Destruct,
+        Self::Item: [const] Destruct
+    {
+        struct Functor<P>
+        {
+            predicate: P
+        }
+        const impl<T, P> FnOnce<((), T)> for Functor<P>
+        where
+            P: [const] FnMut(&T) -> bool + [const] Destruct,
+            T: [const] Destruct
+        {
+            type Output = ControlFlow<T>;
+
+            extern "rust-call" fn call_once(mut self, args: ((), T)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        const impl<T, P> FnMut<((), T)> for Functor<P>
+        where
+            P: [const] FnMut(&T) -> bool,
+            T: [const] Destruct
+        {
+            extern "rust-call" fn call_mut(&mut self, ((), x): ((), T)) -> Self::Output
+            {
+                if (self.predicate)(&x) { ControlFlow::Break(x) } else { ControlFlow::Continue(()) }
+            }
+        }
+
+        self.try_rfold((), Functor { predicate }).break_value()
+    }
+
+    /// Applies function to the elements of the bulk and returns
+    /// the first non-none result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = ["lol", "NaN", "2", "5"];
+    ///
+    /// let first_number = a.bulk().find_map(|s| s.parse().ok());
+    ///
+    /// assert_eq!(first_number, Some(2));
+    /// ```
+    #[inline]
+    fn find_map<B, F>(self, mapper: F) -> Option<B>
+    where
+        Self: Sized,
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> Option<B> + [const] Destruct,
+        B: [const] Destruct
+    {
+        struct Functor<P>
+        {
+            mapper: P
+        }
+        const impl<T, P, B> FnOnce<((), T)> for Functor<P>
+        where
+            P: [const] FnMut(T) -> Option<B> + [const] Destruct,
+            T: [const] Destruct
+        {
+            type Output = ControlFlow<B>;
+
+            extern "rust-call" fn call_once(mut self, args: ((), T)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        const impl<T, P, B> FnMut<((), T)> for Functor<P>
+        where
+            P: [const] FnMut(T) -> Option<B>,
+            T: [const] Destruct
+        {
+            extern "rust-call" fn call_mut(&mut self, ((), x): ((), T)) -> Self::Output
+            {
+                if let Some(y) = (self.mapper)(x)
+                {
+                    ControlFlow::Break(y)
+                }
+                else
+                {
+                    ControlFlow::Continue(())
+                }
+            }
+        }
+
+        self.try_fold((), Functor { mapper }).break_value()
+    }
+
+    /// Applies function to the elements of the bulk and returns
+    /// the first true result or the first error.
+    ///
+    /// The return type of this method depends on the return type of the closure.
+    /// If you return `Result<bool, E>` from the closure, you'll get a `Result<Option<Self::Item>, E>`.
+    /// If you return `Option<bool>` from the closure, you'll get an `Option<Option<Self::Item>>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = ["1", "2", "lol", "NaN", "5"];
+    ///
+    /// let is_my_num = |s: &str, search: i32| -> Result<bool, std::num::ParseIntError> {
+    ///     Ok(s.parse::<i32>()? == search)
+    /// };
+    ///
+    /// let result = a.into_bulk().try_find(|&s| is_my_num(s, 2));
+    /// assert_eq!(result, Ok(Some("2")));
+    ///
+    /// let result = a.into_bulk().try_find(|&s| is_my_num(s, 5));
+    /// assert!(result.is_err());
+    /// ```
+    ///
+    /// This also supports other types which implement [`Try`], not just [`Result`].
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// use std::num::NonZero;
+    ///
+    /// let a = [3, 5, 7, 4, 9, 0, 11u32];
+    /// let result = a.into_bulk().try_find(|&x| NonZero::new(x).map(|y| y.is_power_of_two()));
+    /// assert_eq!(result, Some(Some(4)));
+    /// let result = a.into_bulk().take(3).try_find(|&x| NonZero::new(x).map(|y| y.is_power_of_two()));
+    /// assert_eq!(result, Some(None));
+    /// let result = a.into_bulk().rev().try_find(|&x| NonZero::new(x).map(|y| y.is_power_of_two()));
+    /// assert_eq!(result, None);
+    /// ```
+    #[inline]
+    fn try_find<R>(self, predicate: impl [const] FnMut(&Self::Item) -> R + [const] Destruct) -> <<R as Try>::Residual as Residual<Option<Self::Item>>>::TryType
+    where
+        Self: Sized,
+        Self::Item: [const] Destruct,
+        R: [const] Try<Output = bool, Residual: [const] Residual<Option<Self::Item>>>
+    {
+        struct Functor<P>
+        {
+            predicate: P
+        }
+        const impl<T, R, P> FnOnce<((), T)> for Functor<P>
+        where
+            P: [const] FnMut(&T) -> R + [const] Destruct,
+            R: [const] Try<Output = bool, Residual: [const] Residual<Option<T>>>,
+            T: [const] Destruct
+        {
+            type Output = ControlFlow<<R::Residual as Residual<Option<T>>>::TryType>;
+
+            extern "rust-call" fn call_once(mut self, args: ((), T)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        const impl<T, R, P> FnMut<((), T)> for Functor<P>
+        where
+            P: [const] FnMut(&T) -> R,
+            R: [const] Try<Output = bool, Residual: [const] Residual<Option<T>>>,
+            T: [const] Destruct
+        {
+            extern "rust-call" fn call_mut(&mut self, ((), x): ((), T)) -> Self::Output
+            {
+                match (self.predicate)(&x).branch()
+                {
+                    ControlFlow::Continue(false) => ControlFlow::Continue(()),
+                    ControlFlow::Continue(true) => ControlFlow::Break(Try::from_output(Some(x))),
+                    ControlFlow::Break(r) => ControlFlow::Break(FromResidual::from_residual(r))
+                }
+            }
+        }
+
+        match self.try_fold((), Functor { predicate })
+        {
+            ControlFlow::Break(x) => x,
+            ControlFlow::Continue(()) => Try::from_output(None)
+        }
+    }
+
+    /// Searches for an element in a bulk, returning its index.
+    ///
+    /// `position()` takes a closure that returns `true` or `false`. It applies
+    /// this closure to each element of the bulk, and if one of them
+    /// returns `true`, then `position()` returns [`Some(index)`]. If all of
+    /// them return `false`, it returns [`None`].
+    ///
+    /// `position()` is short-circuiting; in other words, it will stop
+    /// processing as soon as it finds a `true`.
+    ///
+    /// # Overflow Behavior
+    ///
+    /// The method does no guarding against overflows, so if there are more
+    /// than [`usize::MAX`] non-matching elements, it either produces the wrong
+    /// result or panics. If overflow checks are enabled, a panic is
+    /// guaranteed.
+    ///
+    /// # Panics
+    ///
+    /// This function might panic if the iterator has more than `usize::MAX`
+    /// non-matching elements.
+    ///
+    /// [`Some(index)`]: Some
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// assert_eq!(a.into_bulk().position(|x| x == 2), Some(1));
+    ///
+    /// assert_eq!(a.into_bulk().position(|x| x == 5), None);
+    /// ```
+    #[inline]
+    fn position<P>(self, predicate: P) -> Option<usize>
+    where
+        Self: Sized,
+        Self::Item: [const] Destruct,
+        P: [const] FnMut(Self::Item) -> bool + [const] Destruct
+    {
+        struct Functor<P>
+        {
+            predicate: P
+        }
+        const impl<T, P> FnOnce<(usize, T)> for Functor<P>
+        where
+            P: [const] FnMut(T) -> bool + [const] Destruct
+        {
+            type Output = ControlFlow<usize, usize>;
+
+            #[rustc_inherit_overflow_checks]
+            extern "rust-call" fn call_once(mut self, args: (usize, T)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        const impl<T, P> FnMut<(usize, T)> for Functor<P>
+        where
+            P: [const] FnMut(T) -> bool
+        {
+            #[rustc_inherit_overflow_checks]
+            extern "rust-call" fn call_mut(&mut self, (i, x): (usize, T)) -> Self::Output
+            {
+                if (self.predicate)(x)
+                {
+                    ControlFlow::Break(i)
+                }
+                else
+                {
+                    ControlFlow::Continue(i + 1)
+                }
+            }
+        }
+
+        self.try_fold(0, Functor { predicate }).break_value()
+    }
+
+    /// Searches for an element in a bulk from the right, returning its
+    /// index.
+    ///
+    /// `rposition()` takes a closure that returns `true` or `false`. It applies
+    /// this closure to each element of the bulk, starting from the end,
+    /// and if one of them returns `true`, then `rposition()` returns
+    /// [`Some(index)`]. If all of them return `false`, it returns [`None`].
+    ///
+    /// `rposition()` is short-circuiting; in other words, it will stop
+    /// processing as soon as it finds a `true`.
+    ///
+    /// [`Some(index)`]: Some
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// assert_eq!(a.into_bulk().rposition(|x| x == 3), Some(2));
+    ///
+    /// assert_eq!(a.into_bulk().rposition(|x| x == 5), None);
+    /// ```
+    #[inline]
+    fn rposition<P>(self, predicate: P) -> Option<usize>
+    where
+        P: [const] FnMut(Self::Item) -> bool + [const] Destruct,
+        Self::Item: [const] Destruct,
+        Self: Sized + [const] DoubleEndedBulk
+    {
+        struct Functor<P>
+        {
+            predicate: P
+        }
+        const impl<T, P> FnOnce<(usize, T)> for Functor<P>
+        where
+            P: [const] FnMut(T) -> bool + [const] Destruct
+        {
+            type Output = ControlFlow<usize, usize>;
+
+            extern "rust-call" fn call_once(mut self, args: (usize, T)) -> Self::Output
+            {
+                self.call_mut(args)
+            }
+        }
+        const impl<T, P> FnMut<(usize, T)> for Functor<P>
+        where
+            P: [const] FnMut(T) -> bool
+        {
+            extern "rust-call" fn call_mut(&mut self, (mut i, x): (usize, T)) -> Self::Output
+            {
+                i -= 1;
+                if (self.predicate)(x) { ControlFlow::Break(i) } else { ControlFlow::Continue(i) }
+            }
+        }
+
+        let len = self.len();
+        self.try_rfold(len, Functor { predicate }).break_value()
     }
 
     /// Returns the maximum element of a bulk.

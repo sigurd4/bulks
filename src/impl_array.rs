@@ -1,8 +1,14 @@
 use core::{marker::Destruct, mem::MaybeUninit, ops::Try};
 
-use array_trait::{length::{self, LengthValue}, same::Same};
+use array_trait::{
+    length::{self, LengthValue},
+    same::Same
+};
 
-use crate::{Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk, slice, util::{self, Guard}};
+use crate::{
+    Bulk, DoubleEndedBulk, IntoBulk, SplitBulk, StaticBulk, slice,
+    util::{self, Guard}
+};
 
 pub mod array
 {
@@ -81,7 +87,7 @@ macro_rules! impl_bulk {
         const impl<$($a,)? $t, const $n: usize> IntoBulk for $array
         {
             type IntoBulk = array::$bulk<$($a,)? $t, $n>;
-            
+
             #[inline]
             fn into_bulk(self) -> Self::IntoBulk
             {
@@ -108,7 +114,7 @@ macro_rules! impl_bulk {
             {
                 self.nth([(); 0])
             }
-            
+
             $(fn nth<L>($self_nth, $n_nth: L) -> Option<Self::Item>
             where
                 Self::Item: ~const Destruct,
@@ -131,7 +137,7 @@ macro_rules! impl_bulk {
             where
                 $item: ~const Destruct,
                 F: ~const FnMut($item) -> R + ~const Destruct,
-                R: ~const Try<Output = (), Residual: ~const Destruct>
+                R: ~const Try<Output = ()>
             $try_for_each
         }
         const impl<$($a,)? $t, const $n: usize> DoubleEndedBulk for array::$bulk<$($a,)? $t, $n>
@@ -147,7 +153,7 @@ macro_rules! impl_bulk {
             where
                 $item: ~const Destruct,
                 F: ~const FnMut($item) -> R + ~const Destruct,
-                R: ~const Try<Output = (), Residual: ~const Destruct>
+                R: ~const Try<Output = ()>
             $try_rev_for_each
         }
         impl<$($a,)? T, const N: usize, L> SplitBulk<L> for array::$bulk<$($a,)? T, N>
@@ -500,7 +506,7 @@ mod test
     fn it_works()
     {
         let a = [1, 2, 3];
-        
+
         let b: [u32; 3] = a.bulk().copied().rev().map(|x| 4 - x).collect();
 
         println!("{:?}", b)

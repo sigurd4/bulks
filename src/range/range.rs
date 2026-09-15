@@ -23,10 +23,7 @@ where
     fn clone(&self) -> Self
     {
         let Self { start, end } = self;
-        Self {
-            start: *start,
-            end: *end
-        }
+        Self { start: *start, end: *end }
     }
 }
 
@@ -47,6 +44,7 @@ where
     {
         length::value::from_metadata::<S::Value>(self.start)
     }
+
     pub const fn end(&self) -> E::Value
     {
         length::value::from_metadata::<E::Value>(self.end)
@@ -56,10 +54,9 @@ where
     where
         N: LengthValue
     {
-        if length::value::ge(n, self.start())
-            && length::value::lt(n, self.end())
+        if length::value::ge(n, self.start()) && length::value::lt(n, self.end())
         {
-            return Some(length::value::len(n))
+            return Some(length::value::len(n));
         }
         None
     }
@@ -96,9 +93,9 @@ where
     S: Length<Elem = ()> + ?Sized,
     E: Length<Elem = ()> + ?Sized
 {
-    type MinLength = length::SaturatingSub<E, S>;
     type MaxLength = length::SaturatingSub<E, S>;
-    
+    type MinLength = length::SaturatingSub<E, S>;
+
     fn len(&self) -> usize
     {
         let Self { start, end } = self;
@@ -107,22 +104,24 @@ where
 
     fn first(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         self.in_range(self.start())
     }
+
     fn last(self) -> Option<Self::Item>
     where
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         Self: Sized
     {
         self.in_range(length::value::saturating_sub(self.end(), [(); 1]))
     }
+
     fn nth<L>(self, n: L) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
+        Self::Item: [const] Destruct,
         L: LengthValue
     {
         self.in_range(length::value::add(self.start(), n))
@@ -131,7 +130,7 @@ where
     fn for_each<F>(self, mut f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { start, end } = self;
         let mut range = length::len_metadata::<S>(start)..length::len_metadata::<E>(end);
@@ -141,12 +140,13 @@ where
             range.start += 1
         }
     }
+
     fn try_for_each<F, R>(self, mut f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const core::ops::Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = ()>
     {
         let Self { start, end } = self;
         let mut range = length::len_metadata::<S>(start)..length::len_metadata::<E>(end);
@@ -166,7 +166,7 @@ where
     fn rev_for_each<F>(self, mut f: F)
     where
         Self: Sized,
-        F: ~const FnMut(Self::Item) + ~const Destruct
+        F: [const] FnMut(Self::Item) + [const] Destruct
     {
         let Self { start, end } = self;
         let mut range = length::len_metadata::<S>(start)..length::len_metadata::<E>(end);
@@ -180,9 +180,9 @@ where
     fn try_rev_for_each<F, R>(self, mut f: F) -> R
     where
         Self: Sized,
-        Self::Item: ~const Destruct,
-        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>
+        Self::Item: [const] Destruct,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = ()>
     {
         let Self { start, end } = self;
         let mut range = length::len_metadata::<S>(start)..length::len_metadata::<E>(end);
@@ -207,13 +207,11 @@ where
     where
         Self: Sized
     {
-        let mid = length::value::into_metadata(
-            length::value::min(length::value::from_metadata::<E::Value>(end), length::value::add(length::value::from_metadata::<S::Value>(start), n))
-        );
-        (
-            Range { start, end: mid },
-            Range { start: mid, end }
-        )
+        let mid = length::value::into_metadata(length::value::min(
+            length::value::from_metadata::<E::Value>(end),
+            length::value::add(length::value::from_metadata::<S::Value>(start), n)
+        ));
+        (Range { start, end: mid }, Range { start: mid, end })
     }
 }
 
@@ -225,9 +223,7 @@ mod test
     #[test]
     fn it_works()
     {
-        for (i, a) in crate::range([(); 1], [(); 8])
-            .enumerate()
-            .rev()
+        for (i, a) in crate::range([(); 1], [(); 8]).enumerate().rev()
         {
             assert!(a < 8);
             assert_eq!(i + 1, a)

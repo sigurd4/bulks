@@ -17,5 +17,5 @@ pub const trait DoubleEndedBulk: ~const Bulk<IntoIter: DoubleEndedIterator>
         Self: Sized,
         Self::Item: ~const Destruct,
         F: ~const FnMut(Self::Item) -> R + ~const Destruct,
-        R: ~const Try<Output = (), Residual: ~const Destruct>;
+        R: ~const Try<Output = ()>;
 }
