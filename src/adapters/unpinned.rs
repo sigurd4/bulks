@@ -1,6 +1,8 @@
 use core::{iter, marker::Destruct, ops::Deref, pin::Pin};
 
-use crate::Bulk;
+use array_trait::length::LengthValue;
+
+use crate::{Bulk, DoubleEndedBulk, SplitBulk};
 
 pub struct Unpinned<B, T>
 where
@@ -21,7 +23,7 @@ where
     {
         let _ = |x: Pin<T>| Pin::into_inner(x);
 
-        unsafe {Self::new_unchecked(bulk)}
+        unsafe { Self::new_unchecked(bulk) }
     }
 
     pub(crate) const unsafe fn new_unchecked(bulk: B) -> Self
@@ -76,6 +78,46 @@ where
         R: [const] core::ops::Try<Output = (), Residual: [const] core::marker::Destruct>
     {
         self.bulk.map(Functor).try_for_each(f)
+    }
+}
+const impl<B, T> DoubleEndedBulk for Unpinned<B, T>
+where
+    B: [const] DoubleEndedBulk<Item = Pin<T>>,
+    T: Deref + [const] Destruct
+{
+    fn rev_for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: [const] FnMut(Self::Item) + [const] Destruct
+    {
+        self.bulk.map(Functor).rev_for_each(f);
+    }
+
+    fn try_rev_for_each<F, R>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: [const] FnMut(Self::Item) -> R + [const] Destruct,
+        R: [const] core::ops::Try<Output = (), Residual: [const] Destruct>
+    {
+        self.bulk.map(Functor).try_rev_for_each(f)
+    }
+}
+const impl<B, T, L> SplitBulk<L> for Unpinned<B, T>
+where
+    B: [const] SplitBulk<L, Item = Pin<T>>,
+    T: Deref + [const] Destruct,
+    L: LengthValue
+{
+    type Left = Unpinned<B::Left, T>;
+    type Right = Unpinned<B::Right, T>;
+
+    fn split_at(bulk: Self, n: L) -> (Self::Left, Self::Right)
+    where
+        Self: Sized
+    {
+        let (left, right) = bulk.bulk.split_at(n);
+
+        unsafe { (Unpinned::new_unchecked(left), Unpinned::new_unchecked(right)) }
     }
 }
 

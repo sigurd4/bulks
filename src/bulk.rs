@@ -1,11 +1,20 @@
 use core::{
-    borrow::BorrowMut, cmp::Ordering, error::Error, fmt::Display, iter::Step, marker::Destruct, ops::{Add, ControlFlow, Deref, FromResidual, Mul, Residual, Try}, pin::Pin
+    borrow::BorrowMut,
+    cmp::Ordering,
+    error::Error,
+    fmt::Display,
+    iter::Step,
+    marker::Destruct,
+    ops::{Add, ControlFlow, Deref, FromResidual, Mul, Residual, Try},
+    pin::Pin
 };
 
 use array_trait::length::{self, Length, LengthValue, Value};
 
 use crate::{
-    ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect, Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, Nearest, Pinned, Resize, ResizeWith, Rev, Skip, SplitBulk, StaticBulk, StepBy, Take, TryCollectionStrategy, Unpinned, Zip, util
+    ArrayChunks, Chain, Cloned, CollectionAdapter, CollectionStrategy, Copied, DoubleEndedBulk, Enumerate, EnumerateFrom, FlatMap, Flatten, FromBulk, Inspect,
+    Intersperse, IntersperseWith, IntoBulk, IntoContained, IntoContainedBy, Map, MapWindows, Merge, Mutate, Nearest, Pinned, Resize, ResizeWith, Rev, Skip, SplitBulk,
+    StaticBulk, StepBy, Take, TryCollectionStrategy, Unpinned, Zip, util
 };
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
@@ -2437,6 +2446,15 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
 
     #[inline]
     #[track_caller]
+    unsafe fn pinned_unchecked(self) -> Pinned<Self>
+    where
+        Self: Sized,
+        Self::Item: Deref
+    {
+        unsafe { Pinned::new_unchecked(self) }
+    }
+    #[inline]
+    #[track_caller]
     fn pinned(self) -> Pinned<Self>
     where
         Self: Sized,
@@ -2445,6 +2463,15 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Pinned::new(self)
     }
 
+    #[inline]
+    #[track_caller]
+    unsafe fn unpinned_unchecked<T>(self) -> Unpinned<Self, T>
+    where
+        Self: Sized + [const] Bulk<Item = Pin<T>>,
+        T: Deref
+    {
+        unsafe { Unpinned::new_unchecked(self) }
+    }
     #[inline]
     #[track_caller]
     fn unpinned<T>(self) -> Unpinned<Self, T>
