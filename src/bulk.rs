@@ -17,6 +17,9 @@ use crate::{
     StaticBulk, StepBy, Take, TryCollectionStrategy, Unpinned, Zip, util
 };
 
+#[cfg(feature = "async")]
+use crate::{ForEachAsync, util::BufferableBulk};
+
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
 
 //fn _assert_is_dyn_compatible(_: &dyn Bulk<Item = ()>) {}
@@ -370,6 +373,37 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
     where
         Self: Sized,
         F: [const] FnMut(Self::Item) + [const] Destruct;
+
+    /// Calls an asynchronous closure once on each element of a bulk in an arbitrary order.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1024, 512, 256];
+    ///
+    /// # tokio_test::block_on(async {
+    /// a.into_bulk()
+    ///     .for_each_async(async |n| {
+    ///         let m = bulks::repeat_n(1, n)
+    ///             .sum_from(0);
+    ///         assert_eq!(n, m);
+    ///     })
+    ///     .await
+    /// # })
+    /// ```
+    #[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn for_each_async<F>(self, f: F) -> ForEachAsync<Self, F>
+    where
+        Self: BufferableBulk + Sized,
+        F: FnMut<(Self::Item,), Output: Future<Output = ()>>
+    {
+        ForEachAsync::new(self, f)
+    }
 
     /// A bulk method that applies a fallible function to each item in the
     /// bulk, stopping at the first error and returning that error.
@@ -3054,6 +3088,9 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Cloned::new(self)
     }
 
+    /// # Safety
+    ///
+    /// Same safety conditions as [Pin::new_unchecked].
     #[inline]
     #[track_caller]
     unsafe fn pinned_unchecked(self) -> Pinned<Self>
@@ -3073,6 +3110,9 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Pinned::new(self)
     }
 
+    /// # Safety
+    ///
+    /// Same safety conditions as [Pin::into_inner_unchecked].
     #[inline]
     #[track_caller]
     unsafe fn unpinned_unchecked<T>(self) -> Unpinned<Self, T>

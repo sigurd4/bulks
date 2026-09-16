@@ -48,6 +48,7 @@
 #![feature(generic_const_exprs)]
 #![allow(clippy::map_clone)] // Temporary, because Option::cloned is not const and clippy doesn't get that
 #![feature(const_control_flow)]
+#![feature(const_slice_make_iter)]
 
 //! Composable bulk-iteration.
 //!
@@ -348,6 +349,7 @@ extern crate alloc;
 moddef::moddef!(
     flat(pub) mod {
         adapters,
+        future for cfg(feature = "async"),
         impl_array,
         impl_iter,
         impl_ndarray for cfg(feature = "ndarray"),
@@ -494,13 +496,15 @@ mod tests
             E = 1
         }
 
-        const GRADES_UNI_MASTER: [(f32, Grade); 4] = [
+        const GRADES_UNI_MASTER: [(f32, Grade); 6] = [
             (7.5, Grade::A), // Innovation with Sensor Technology
             (7.5, Grade::A), // Electronic Measurement Systems
             (7.5, Grade::A), // Applied Mathematics
-            (7.5, Grade::D)  // Reliability and Robustness in Sensor Systems
+            (7.5, Grade::D), // Reliability and Robustness in Sensor Systems
+            (2.5, Grade::B), // Sensor Innovation Project
+            (7.5, Grade::A), // Signal Processing for Sensor Systems
         ];
-        const GRADES_UNI_BACHELOR: [(u8, Grade); 21] = [
+        const GRADES_UNI_BACHELOR: [(u8, Grade); 23] = [
             (5, Grade::C),  // Ingeniørrollen
             (5, Grade::A),  // Programmering for beregning
             (5, Grade::B),  // Elektrisitetslære
@@ -515,13 +519,15 @@ mod tests
             (10, Grade::B), // Analog elektronikk
             (10, Grade::B), // Systems design and engineering
             (5, Grade::C),  // Statistikk
-            (10, Grade::E), // Signalbehandling
+            (10, Grade::B), // Signalbehandling
             (10, Grade::C), // Reguleringsteknikk 1
             (5, Grade::B),  // Fysikk 2 - Elektromagnetisme
             (10, Grade::C), // Reguleringsteknikk 2
             (10, Grade::C), // Matematikk 3
             (10, Grade::C), // Instrumentering og styring
-            (20, Grade::B)  // Bacheloroppgave - Automatisk gir-system for Lone Wolf ATV
+            (20, Grade::B), // Bacheloroppgave - Automatisk gir-system for Lone Wolf ATV
+            (10, Grade::C), // Elektronikkonstruksjon
+            (10, Grade::A), // Programmering 2 - objektorientering
         ];
         const GRADES_VGS: [u8; 23] = [
             5, // Engelsk

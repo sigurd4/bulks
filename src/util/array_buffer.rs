@@ -1,5 +1,7 @@
 use core::mem::MaybeUninit;
 
+use array_trait::AsSlice;
+
 pub struct ArrayBuffer<T, const N: usize, const REV: bool>
 {
     data: [MaybeUninit<T>; N],
@@ -11,12 +13,16 @@ impl<T, const N: usize, const REV: bool> ArrayBuffer<T, N, REV>
     pub const fn new() -> Self
     {
         Self {
-            data: [const {MaybeUninit::uninit()}; N],
+            data: [const { MaybeUninit::uninit() }; N],
             len: 0
         }
     }
 
     pub const fn push(&mut self, value: T)
+    {
+        let _ = self.push_mut(value);
+    }
+    pub const fn push_mut(&mut self, value: T) -> &mut T
     {
         let i = if !REV
         {
@@ -29,9 +35,11 @@ impl<T, const N: usize, const REV: bool> ArrayBuffer<T, N, REV>
             self.len += 1;
             N.checked_sub(self.len).expect("Exceeded array buffer capacity")
         };
-        let dst = self.data.get_mut(i)
-            .expect("Exceeded array buffer capacity");
+        let dst = self.data.get_mut(i).expect("Exceeded array buffer capacity");
         dst.write(value);
+        unsafe {
+            dst.assume_init_mut()
+        }
     }
 
     pub const fn push_out_whole(&mut self, value: T) -> Option<[T; N]>
@@ -54,13 +62,12 @@ impl<T, const N: usize, const REV: bool> ArrayBuffer<T, N, REV>
     {
         match self.as_array()
         {
-            Some(array) => {
-                let array = unsafe {
-                    core::ptr::read(array)
-                };
+            Some(array) =>
+            {
+                let array = unsafe { core::ptr::read(array) };
                 self.len = 0;
                 Some(array)
-            },
+            }
             None => None
         }
     }
@@ -69,20 +76,16 @@ impl<T, const N: usize, const REV: bool> ArrayBuffer<T, N, REV>
     {
         if N == 0
         {
-            return Some(value)
+            return Some(value);
         }
         if let Some(array) = self.as_mut_array()
         {
             let ptr = array.as_mut_ptr();
             if N == 1
             {
-                return unsafe {
-                    Some(core::ptr::replace(ptr, value))
-                }
+                return unsafe { Some(core::ptr::replace(ptr, value)) };
             }
-            let out = unsafe {
-                ptr.read()
-            };
+            let out = unsafe { ptr.read() };
             if !REV
             {
                 unsafe {
@@ -110,7 +113,7 @@ impl<T, const N: usize, const REV: bool> ArrayBuffer<T, N, REV>
     {
         if self.is_full()
         {
-            return Some(unsafe {self.data.assume_init_mut().as_mut_array().unwrap_unchecked()})
+            return Some(unsafe { self.data.assume_init_mut().as_mut_array().unwrap_unchecked() });
         }
         None
     }
@@ -119,7 +122,7 @@ impl<T, const N: usize, const REV: bool> ArrayBuffer<T, N, REV>
     {
         if self.is_full()
         {
-            return Some(unsafe {self.data.assume_init_ref().as_array().unwrap_unchecked()})
+            return Some(unsafe { self.data.assume_init_ref().as_array().unwrap_unchecked() });
         }
         None
     }
@@ -129,9 +132,29 @@ impl<T, const N: usize, const REV: bool> ArrayBuffer<T, N, REV>
         assert!(self.len <= N);
         self.len
     }
+
     pub const fn is_full(&self) -> bool
     {
         self.len() == N
+    }
+}
+
+const impl<T, const N: usize, const REV: bool> AsSlice for ArrayBuffer<T, N, REV>
+{
+    type Elem = T;
+
+    fn as_slice(&self) -> &[Self::Elem]
+    {
+        let len = self.len();
+        let initialized = if REV { &self.data[N - len..] } else { &self.data[..len] };
+        unsafe { initialized.assume_init_ref() }
+    }
+
+    fn as_mut_slice(&mut self) -> &mut [Self::Elem]
+    {
+        let len = self.len();
+        let initialized = if REV { &mut self.data[N - len..] } else { &mut self.data[..len] };
+        unsafe { initialized.assume_init_mut() }
     }
 }
 
@@ -153,22 +176,33 @@ impl<T, const N: usize, const REV: bool> Extend<T> for ArrayBuffer<T, N, REV>
 
 const impl<T, const N: usize, const REV: bool> IntoIterator for ArrayBuffer<T, N, REV>
 {
-    type Item = T;
     type IntoIter = core::array::IntoIter<T, N>;
+    type Item = T;
 
     fn into_iter(self) -> Self::IntoIter
     {
         let Self { data, len } = self;
-        let initialized = if !REV
-        {
-            0..len
-        }
-        else
-        {
-            (N - len)..N
-        };
-        unsafe {
-            core::array::IntoIter::new_unchecked(data, initialized)
-        }
+        let initialized = if !REV { 0..len } else { (N - len)..N };
+        unsafe { core::array::IntoIter::new_unchecked(data, initialized) }
+    }
+}
+const impl<'a, T, const N: usize, const REV: bool> IntoIterator for &'a ArrayBuffer<T, N, REV>
+{
+    type IntoIter = core::slice::Iter<'a, T>;
+    type Item = &'a T;
+
+    fn into_iter(self) -> Self::IntoIter
+    {
+        self.as_slice().iter()
+    }
+}
+const impl<'a, T, const N: usize, const REV: bool> IntoIterator for &'a mut ArrayBuffer<T, N, REV>
+{
+    type IntoIter = core::slice::IterMut<'a, T>;
+    type Item = &'a mut T;
+
+    fn into_iter(self) -> Self::IntoIter
+    {
+        self.as_mut_slice().iter_mut()
     }
 }

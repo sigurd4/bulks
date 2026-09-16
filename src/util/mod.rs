@@ -6,8 +6,10 @@ use core::{
 moddef::moddef!(
     flat(pub) mod {
         array_buffer,
+        buffer,
         guard,
         infinite_iterator,
+        maybe_done,
         mutator,
         stepper,
         take_one,
