@@ -461,7 +461,7 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
     /// ```
     #[cfg(feature = "async")]
     #[rustc_non_const_trait_method]
-    fn try_for_each_concurrent<F>(self, f: F) -> TryForEachAsync<Self, F>
+    fn try_for_each_async<F>(self, f: F) -> TryForEachAsync<Self, F>
     where
         Self: BufferableBulk + Sized,
         F: FnMut<(Self::Item,), Output: Future<Output: Try<Output = ()>>>
