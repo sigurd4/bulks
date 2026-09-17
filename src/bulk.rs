@@ -383,15 +383,14 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
+    /// use core::time::Duration;
     ///
     /// let a = [1024, 512, 256];
     ///
-    /// # tokio_test::block_on(async {
+    /// # tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
     /// a.into_bulk()
     ///     .for_each_async(async |n| {
-    ///         let m = bulks::repeat_n(1, n)
-    ///             .sum_from(0);
-    ///         assert_eq!(n, m);
+    ///         tokio::time::sleep(Duration::from_millis(n)).await;
     ///     })
     ///     .await
     /// # })
@@ -442,16 +441,17 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
     ///
     /// ```
     /// use bulks::*;
+    /// use core::time::Duration;
     ///
     /// let a = ["1024", "512", "256", "lol"];
     ///
-    /// # tokio_test::block_on(async {
+    /// # tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
     /// let res = a.into_bulk()
     ///     .try_for_each_async(async |n| {
-    ///         let n = n.parse::<usize>().map_err(|_| n)?;
-    ///         let m = bulks::repeat_n(1, n).sum_from(0);
-    ///         assert_eq!(n, m);
-    ///         println!("{m}");
+    ///         let n = n.parse::<u64>().map_err(|_| n)?;
+    ///         tokio::time::sleep(Duration::from_millis(n)).await;
+    ///
+    ///         panic!("Tasks will be cancelled before this point.");
     ///
     ///         Ok(())
     ///     })

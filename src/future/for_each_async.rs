@@ -6,7 +6,8 @@ use core::{
 use array_trait::AsSlice;
 
 use crate::{
-    AsBulkMut, Bulk, BulkLength, util::{Buffer, BufferableBulk, MaybeDone}
+    AsBulkMut, Bulk, BulkLength,
+    util::{Buffer, BufferableBulk, MaybeDone}
 };
 
 pub struct ForEachAsync<B, F>
@@ -75,6 +76,8 @@ where
 #[cfg(test)]
 mod test
 {
+    use core::time::Duration;
+
     use crate::{Bulk, IntoBulk};
 
     #[test]
@@ -82,12 +85,11 @@ mod test
     {
         let a = [1024, 512, 256];
 
-        tokio_test::block_on(async {
+        tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
             a.into_bulk()
                 .for_each_async(async |n| {
-                    let m = crate::repeat_n(1, n).sum_from(0);
-                    assert_eq!(n, m);
-                    println!("{m}");
+                    tokio::time::sleep(Duration::from_millis(n)).await;
+                    println!("{n}");
                 })
                 .await
         })

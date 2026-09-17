@@ -1,11 +1,14 @@
 use core::{
-    ops::{FromResidual, Residual, Try}, pin::Pin, task::{Context, Poll}
+    ops::{FromResidual, Residual, Try},
+    pin::Pin,
+    task::{Context, Poll}
 };
 
 use array_trait::AsSlice;
 
 use crate::{
-    AsBulkMut, Bulk, BulkLength, util::{Buffer, BufferableBulk, MaybeDone}
+    AsBulkMut, Bulk, BulkLength,
+    util::{Buffer, BufferableBulk, MaybeDone}
 };
 
 pub struct TryForEachAsync<B, F>
@@ -61,7 +64,7 @@ where
 impl<B, F> Future for TryForEachAsync<B, F>
 where
     B: BufferableBulk,
-    F: FnMut<(B::Item,), Output: Future<Output: Try<Output = ()>>>,
+    F: FnMut<(B::Item,), Output: Future<Output: Try<Output = ()>>>
 {
     type Output = <<<<F as FnOnce<(B::Item,)>>::Output as Future>::Output as Try>::Residual as Residual<()>>::TryType;
 
@@ -72,22 +75,23 @@ where
             {
                 if !task.as_mut().poll(cx).is_ready()
                 {
-                    return Ok(false)
+                    return Ok(false);
                 }
 
                 if let Some(residual) = unsafe { task.get_unchecked_mut() }.take_residual()
                 {
-                    return Err(residual)
+                    return Err(residual);
                 }
             }
 
             Ok(ready)
         })
         {
-            Err(residual) => {
+            Err(residual) =>
+            {
                 self.cancel();
-                return Poll::Ready(FromResidual::from_residual(residual))
-            },
+                return Poll::Ready(FromResidual::from_residual(residual));
+            }
             Ok(ready) => ready
         };
 
@@ -101,7 +105,7 @@ where
             else if let Some(residual) = unsafe { task.get_unchecked_mut() }.take_residual()
             {
                 self.cancel();
-                return Poll::Ready(FromResidual::from_residual(residual))
+                return Poll::Ready(FromResidual::from_residual(residual));
             }
         }
 
@@ -112,6 +116,8 @@ where
 #[cfg(test)]
 mod test
 {
+    use core::time::Duration;
+
     use crate::{Bulk, IntoBulk};
 
     #[test]
@@ -119,13 +125,17 @@ mod test
     {
         let a = ["1024", "512", "256", "lol"];
 
-        tokio_test::block_on(async {
-            let res = a.into_bulk()
+        let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap();
+
+        rt.block_on(async {
+            let res = a
+                .into_bulk()
                 .try_for_each_async(async |n| {
-                    let n = n.parse::<usize>().map_err(|_| n)?;
-                    let m = crate::repeat_n(1, n).sum_from(0);
-                    assert_eq!(n, m);
-                    println!("{m}");
+                    let n = n.parse::<u64>().map_err(|_| n)?;
+                    tokio::time::sleep(Duration::from_millis(n)).await;
+
+                    println!("{n}");
+                    panic!("Tasks will be cancelled before this point.");
 
                     Ok(())
                 })
