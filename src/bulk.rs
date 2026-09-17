@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[cfg(feature = "async")]
-use crate::{ForEachAsync, TryForEachAsync, util::BufferableBulk};
+use crate::{ForEachAsync, ReduceAsync, TryForEachAsync, util::BufferableBulk};
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
 
@@ -801,6 +801,31 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         }
     }
 
+    /// Reduces the elements to a single one, by repeatedly applying a reducing
+    /// operation.
+    ///
+    /// If the bulk is empty, returns [`None`]; otherwise, returns the
+    /// result of the reduction.
+    ///
+    /// The reducing function is a closure with two arguments: an 'accumulator', and an element.
+    /// For bulks with at least one element, this is the same as [`fold()`]
+    /// with the first element of the bulk as the initial accumulator value, folding
+    /// every subsequent element into it.
+    ///
+    /// [`fold()`]: Bulk::fold
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let reduced: i32 = (1..10).into_bulk().reduce(|acc, e| acc + e).unwrap_or(0);
+    /// assert_eq!(reduced, 45);
+    ///
+    /// // Which is equivalent to doing it with `fold`:
+    /// let folded: i32 = (1..10).into_bulk().fold(0, |acc, e| acc + e);
+    /// assert_eq!(reduced, folded);
+    /// ```
     fn reduce<F>(self, f: F) -> Option<Self::Item>
     where
         Self: Sized,
@@ -845,6 +870,35 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         }
 
         self.fold(None, Closure { f })
+    }
+
+    /// Reduces the elements to a single one, by concurrently applying a reducing
+    /// operation, by way of divide and conquer.
+    ///
+    /// If the bulk is empty, returns [`None`]; otherwise, returns the
+    /// result of the reduction.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// # tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
+    /// let n = a.into_bulk().reduce_async(async |a, b| a + b).await;
+    ///
+    /// assert_eq!(n, Some(1 + 2 + 3))
+    /// # })
+    /// ```
+    #[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn reduce_async<F>(self, f: F) -> ReduceAsync<Self, F>
+    where
+        Self: BufferableBulk + Sized,
+        F: FnMut<(Self::Item, Self::Item), Output: Future<Output = Self::Item>>
+    {
+        ReduceAsync::new(self, f)
     }
 
     fn try_reduce<F, R>(self, f: F) -> <R::Residual as Residual<Option<R::Output>>>::TryType

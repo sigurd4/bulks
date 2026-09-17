@@ -14,22 +14,27 @@ pub(crate) enum MaybeDone<F: Future>
 
 impl<F: Future> MaybeDone<F>
 {
-    pub fn take_residual(&mut self) -> Option<<F::Output as Try>::Residual>
+    pub fn take_residual(mut self: Pin<&mut Self>) -> Option<<F::Output as Try>::Residual>
     where
         F::Output: Try
     {
-        self.take_output().and_then(|output| match output.branch()
+        self.as_mut().take_output().and_then(|output| match output.branch()
         {
             ControlFlow::Break(residual) => Some(residual),
             ControlFlow::Continue(output) =>
             {
-                core::mem::replace(self, Self::Done(Try::from_output(output)));
+                core::mem::replace(unsafe { self.get_unchecked_mut() }, Self::Done(Try::from_output(output)));
                 None
             }
         })
     }
 
-    pub fn take_output(&mut self) -> Option<F::Output>
+    pub fn take_output(self: Pin<&mut Self>) -> Option<F::Output>
+    {
+        unsafe { self.get_unchecked_mut() }._take_output()
+    }
+
+    fn _take_output(&mut self) -> Option<F::Output>
     {
         match self
         {
@@ -44,12 +49,17 @@ impl<F: Future> MaybeDone<F>
 
     pub fn into_output(mut self) -> Option<F::Output>
     {
-        self.take_output()
+        self._take_output()
     }
 
-    pub fn cancel(&mut self)
+    pub fn restart(self: Pin<&mut Self>, future: F)
     {
-        *self = Self::Taken
+        *unsafe { self.get_unchecked_mut() } = Self::Future(future)
+    }
+
+    pub fn cancel(self: Pin<&mut Self>)
+    {
+        *unsafe { self.get_unchecked_mut() } = Self::Taken
     }
 
     pub fn is_taken(&self) -> bool

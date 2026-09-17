@@ -54,7 +54,7 @@ where
 
     fn cancel(self: Pin<&mut Self>)
     {
-        for task in unsafe { self.get_unchecked_mut() }.tasks.bulk_mut()
+        for task in self.tasks().bulk_pin_mut()
         {
             task.cancel()
         }
@@ -78,7 +78,7 @@ where
                     return Ok(false);
                 }
 
-                if let Some(residual) = unsafe { task.get_unchecked_mut() }.take_residual()
+                if let Some(residual) = task.take_residual()
                 {
                     return Err(residual);
                 }
@@ -102,7 +102,7 @@ where
             {
                 ready = false
             }
-            else if let Some(residual) = unsafe { task.get_unchecked_mut() }.take_residual()
+            else if let Some(residual) = task.take_residual()
             {
                 self.cancel();
                 return Poll::Ready(FromResidual::from_residual(residual));
