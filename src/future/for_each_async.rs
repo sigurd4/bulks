@@ -12,7 +12,7 @@ use crate::{
 pub struct ForEachAsync<B, F>
 where
     B: BufferableBulk,
-    F: FnMut<(B::Item,), Output: Future>
+    F: FnMut<(B::Item,), Output: Future<Output = ()>>
 {
     queue: B::IntoIter,
     tasks: Buffer<MaybeDone<F::Output>, BulkLength<B>>,
@@ -21,7 +21,7 @@ where
 impl<B, F> ForEachAsync<B, F>
 where
     B: BufferableBulk,
-    F: FnMut<(B::Item,), Output: Future>
+    F: FnMut<(B::Item,), Output: Future<Output = ()>>
 {
     pub(crate) fn new(bulk: B, action: F) -> Self
     where
@@ -54,7 +54,7 @@ where
 impl<B, F> Future for ForEachAsync<B, F>
 where
     B: BufferableBulk,
-    F: FnMut<(B::Item,), Output: Future>
+    F: FnMut<(B::Item,), Output: Future<Output = ()>>
 {
     type Output = ();
 
@@ -80,7 +80,7 @@ mod test
     #[test]
     fn it_works()
     {
-        let a = [256, 512, 1024];
+        let a = [1024, 512, 256];
 
         tokio_test::block_on(async {
             a.into_bulk()

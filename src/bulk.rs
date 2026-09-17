@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[cfg(feature = "async")]
-use crate::{ForEachAsync, util::BufferableBulk};
+use crate::{ForEachAsync, TryForEachAsync, util::BufferableBulk};
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
 
@@ -374,7 +374,8 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Self: Sized,
         F: [const] FnMut(Self::Item) + [const] Destruct;
 
-    /// Calls an asynchronous closure once on each element of a bulk in an arbitrary order.
+    /// Calls an asynchronous closure once on each element of a bulk
+    /// in an arbitrary execution order.
     ///
     /// # Examples
     ///
@@ -433,6 +434,40 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Self::Item: [const] Destruct,
         F: [const] FnMut(Self::Item) -> R + [const] Destruct,
         R: [const] Try<Output = ()>;
+
+    /// Applies a fallible asynchronous function once to each item
+    /// in an arbitrary execution order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = ["1024", "512", "256", "lol"];
+    ///
+    /// # tokio_test::block_on(async {
+    /// let res = a.into_bulk()
+    ///     .try_for_each_async(async |n| {
+    ///         let n = n.parse::<usize>().map_err(|_| n)?;
+    ///         let m = bulks::repeat_n(1, n).sum_from(0);
+    ///         assert_eq!(n, m);
+    ///         println!("{m}");
+    ///
+    ///         Ok(())
+    ///     })
+    ///     .await;
+    /// assert_eq!(res, Err("lol"))
+    /// # })
+    /// ```
+    #[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn try_for_each_concurrent<F>(self, f: F) -> TryForEachAsync<Self, F>
+    where
+        Self: BufferableBulk + Sized,
+        F: FnMut<(Self::Item,), Output: Future<Output: Try<Output = ()>>>
+    {
+        TryForEachAsync::new(self, f)
+    }
 
     /// Folds every element into an accumulator by applying an operation,
     /// returning the final result.
