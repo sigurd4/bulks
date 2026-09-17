@@ -1058,29 +1058,43 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Self::Item: [const] Destruct
     {
         struct Functor<F>(F);
-        const impl<F, T> FnOnce<((), T)> for Functor<F>
+        const impl<F, T> FnOnce<(T,)> for Functor<F>
         where
             F: [const] FnMut(T) -> bool + [const] Destruct
         {
             type Output = ControlFlow<()>;
 
-            extern "rust-call" fn call_once(mut self, args: ((), T)) -> Self::Output
+            extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
             {
                 self.call_mut(args)
             }
         }
-        const impl<F, T> FnMut<((), T)> for Functor<F>
+        const impl<F, T> FnMut<(T,)> for Functor<F>
         where
             F: [const] FnMut(T) -> bool
         {
-            extern "rust-call" fn call_mut(&mut self, ((), x): ((), T)) -> Self::Output
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
                 if self.0(x) { ControlFlow::Continue(()) } else { ControlFlow::Break(()) }
             }
         }
 
-        self.try_fold((), Functor(f)) == ControlFlow::Continue(())
+        self.try_for_each(Functor(f)) == ControlFlow::Continue(())
     }
+
+    /*#[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn all_async<F>(self, f: F) -> impl Future<Output = bool>
+    where
+        Self: BufferableBulk + Sized,
+        F: FnMut<(Self::Item,), Output: Future<Output = bool>>
+    {
+        async {
+            self.try_for_each_async(async |x| if f(x).await { ControlFlow::Continue(()) } else { ControlFlow::Break(()) })
+                .await
+                == ControlFlow::Continue(())
+        }
+    }*/
 
     /// Tests if any element of the bulk matches a predicate.
     ///
@@ -1115,29 +1129,43 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Self::Item: [const] Destruct
     {
         struct Functor<F>(F);
-        const impl<F, T> FnOnce<((), T)> for Functor<F>
+        const impl<F, T> FnOnce<(T,)> for Functor<F>
         where
             F: [const] FnMut(T) -> bool + [const] Destruct
         {
             type Output = ControlFlow<()>;
 
-            extern "rust-call" fn call_once(mut self, args: ((), T)) -> Self::Output
+            extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
             {
                 self.call_mut(args)
             }
         }
-        const impl<F, T> FnMut<((), T)> for Functor<F>
+        const impl<F, T> FnMut<(T,)> for Functor<F>
         where
             F: [const] FnMut(T) -> bool
         {
-            extern "rust-call" fn call_mut(&mut self, ((), x): ((), T)) -> Self::Output
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
                 if self.0(x) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
             }
         }
 
-        self.try_fold((), Functor(f)) == ControlFlow::Break(())
+        self.try_for_each(Functor(f)) == ControlFlow::Break(())
     }
+
+    /*#[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn any_async<F>(self, f: F) -> impl Future<Output = bool>
+    where
+        Self: BufferableBulk + Sized,
+        F: FnMut<(Self::Item,), Output: Future<Output = bool>>
+    {
+        async {
+            self.try_for_each_async(async |x| if f(x).await { ControlFlow::Break(()) } else { ControlFlow::Continue(()) })
+                .await
+                == ControlFlow::Break(())
+        }
+    }*/
 
     /// Searches for an element of a bulk that satisfies a predicate.
     ///
@@ -1195,30 +1223,30 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         {
             predicate: P
         }
-        const impl<T, P> FnOnce<((), T)> for Functor<P>
+        const impl<T, P> FnOnce<(T,)> for Functor<P>
         where
             P: [const] FnMut(&T) -> bool + [const] Destruct,
             T: [const] Destruct
         {
             type Output = ControlFlow<T>;
 
-            extern "rust-call" fn call_once(mut self, args: ((), T)) -> Self::Output
+            extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
             {
                 self.call_mut(args)
             }
         }
-        const impl<T, P> FnMut<((), T)> for Functor<P>
+        const impl<T, P> FnMut<(T,)> for Functor<P>
         where
             P: [const] FnMut(&T) -> bool,
             T: [const] Destruct
         {
-            extern "rust-call" fn call_mut(&mut self, ((), x): ((), T)) -> Self::Output
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
                 if (self.predicate)(&x) { ControlFlow::Break(x) } else { ControlFlow::Continue(()) }
             }
         }
 
-        self.try_fold((), Functor { predicate }).break_value()
+        self.try_for_each(Functor { predicate }).break_value()
     }
 
     /// Searches for an element of a bulk from the back that satisfies a predicate.
