@@ -1,4 +1,5 @@
 use core::{
+    ops::{ControlFlow, FromResidual, Residual, Try},
     pin::Pin,
     task::{Context, Poll}
 };
@@ -6,23 +7,25 @@ use core::{
 use array_trait::AsSlice;
 
 use crate::{
-    AsBulkMut, Bulk, BulkLength,
+    AsBulkMut, BulkLength,
     util::{Buffer, BufferableBulk, MaybeDone}
 };
 
-pub struct ReduceAsync<B, F>
+pub struct TryReduceAsync<B, F, R>
 where
     B: BufferableBulk,
-    F: FnMut<(B::Item, B::Item), Output: Future<Output = B::Item>>
+    F: FnMut<(B::Item, B::Item), Output: Future<Output = R>>,
+    R: Try<Output = B::Item, Residual: Residual<Option<B::Item>>>
 {
     queue: B::IntoIter,
     tasks: Buffer<MaybeDone<F::Output>, BulkLength<B>>,
     action: F
 }
-impl<B, F> ReduceAsync<B, F>
+impl<B, F, R> TryReduceAsync<B, F, R>
 where
     B: BufferableBulk,
-    F: FnMut<(B::Item, B::Item), Output: Future<Output = B::Item>>
+    F: FnMut<(B::Item, B::Item), Output: Future<Output = R>>,
+    R: Try<Output = B::Item, Residual: Residual<Option<B::Item>>>
 {
     pub(crate) fn new(bulk: B, action: F) -> Self
     where
@@ -63,17 +66,26 @@ where
             Some(rhs) =>
             unsafe { self.map_unchecked_mut(|this| this.tasks.push_mut(MaybeDone::Future((this.action)(lhs, rhs)))) },
             None =>
-            unsafe { self.map_unchecked_mut(|this| this.tasks.push_mut(MaybeDone::Done(lhs))) }
+            unsafe { self.map_unchecked_mut(|this| this.tasks.push_mut(MaybeDone::Done(R::from_output(lhs)))) }
+        }
+    }
+
+    fn cancel(self: Pin<&mut Self>)
+    {
+        for task in self.tasks().bulk_pin_mut()
+        {
+            task.cancel()
         }
     }
 }
 
-impl<B, F> Future for ReduceAsync<B, F>
+impl<B, F, R> Future for TryReduceAsync<B, F, R>
 where
     B: BufferableBulk,
-    F: FnMut<(B::Item, B::Item), Output: Future<Output = B::Item>>
+    F: FnMut<(B::Item, B::Item), Output: Future<Output = R>>,
+    R: Try<Output = B::Item, Residual: Residual<Option<B::Item>>>
 {
-    type Output = Option<B::Item>;
+    type Output = <R::Residual as Residual<Option<B::Item>>>::TryType;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>
     {
@@ -100,8 +112,24 @@ where
                         None => j = Some(i),
                         Some(j) =>
                         {
-                            let lhs = self.as_mut().task(j).take_output().unwrap();
-                            let rhs = self.as_mut().task(i).take_output().unwrap();
+                            let lhs = match self.as_mut().task(j).take_output().unwrap().branch()
+                            {
+                                ControlFlow::Continue(lhs) => lhs,
+                                ControlFlow::Break(residual) =>
+                                {
+                                    self.cancel();
+                                    return Poll::Ready(FromResidual::from_residual(residual));
+                                }
+                            };
+                            let rhs = match self.as_mut().task(i).take_output().unwrap().branch()
+                            {
+                                ControlFlow::Continue(lhs) => lhs,
+                                ControlFlow::Break(residual) =>
+                                {
+                                    self.cancel();
+                                    return Poll::Ready(FromResidual::from_residual(residual));
+                                }
+                            };
                             let future = self.as_mut().action()(lhs, rhs);
                             self.as_mut().task(i).restart(future);
                             continue;
@@ -120,8 +148,17 @@ where
         {
             match j
             {
-                Some(j) => Poll::Ready(self.task(j).take_output()),
-                None => Poll::Ready(None)
+                Some(j) => match self.as_mut().task(j).take_output().map(Try::branch)
+                {
+                    Some(ControlFlow::Continue(output)) => Poll::Ready(Try::from_output(Some(output))),
+                    Some(ControlFlow::Break(residual)) =>
+                    {
+                        self.cancel();
+                        Poll::Ready(FromResidual::from_residual(residual))
+                    }
+                    None => Poll::Ready(Try::from_output(None))
+                },
+                None => Poll::Ready(Try::from_output(None))
             }
         }
         else
@@ -134,8 +171,6 @@ where
 #[cfg(test)]
 mod test
 {
-    use core::time::Duration;
-
     use crate::{Bulk, IntoBulk};
 
     #[test]
@@ -144,9 +179,9 @@ mod test
         let a = [1, 2, 3];
 
         tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
-            let n = a.into_bulk().reduce_async(async |a, b| a + b).await;
+            let n = a.into_bulk().try_reduce_async(async |a, b| u32::checked_add(a, b)).await;
 
-            assert_eq!(n, Some(1 + 2 + 3))
+            assert_eq!(n, Some(Some(1 + 2 + 3)))
         })
     }
 }

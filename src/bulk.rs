@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[cfg(feature = "async")]
-use crate::{ForEachAsync, ReduceAsync, TryForEachAsync, util::BufferableBulk};
+use crate::{ForEachAsync, ReduceAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk};
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
 
@@ -901,6 +901,66 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         ReduceAsync::new(self, f)
     }
 
+    /// Reduces the elements to a single one by repeatedly applying a reducing operation. If the
+    /// closure returns a failure, the failure is propagated back to the caller immediately.
+    ///
+    /// The return type of this method depends on the return type of the closure. If the closure
+    /// returns `Result<Self::Item, E>`, then this function will return `Result<Option<Self::Item>,
+    /// E>`. If the closure returns `Option<Self::Item>`, then this function will return
+    /// `Option<Option<Self::Item>>`.
+    ///
+    /// When called on an empty bulk, this function will return either `Some(None)` or
+    /// `Ok(None)` depending on the type of the provided closure.
+    ///
+    /// For bulks with at least one element, this is essentially the same as calling
+    /// [`try_fold()`] with the first element of the bulk as the initial accumulator value.
+    ///
+    /// [`try_fold()`]: Bulk::try_fold
+    ///
+    /// # Examples
+    ///
+    /// Safely calculate the sum of a series of numbers:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let numbers: Vec<usize> = vec![10, 20, 5, 23, 0];
+    /// let sum = numbers.into_bulk().try_reduce(|x, y| x.checked_add(y));
+    /// assert_eq!(sum, Some(Some(58)));
+    /// ```
+    ///
+    /// Determine when a reduction short circuited:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let numbers = vec![1, 2, 3, usize::MAX, 4, 5];
+    /// let sum = numbers.into_bulk().try_reduce(|x, y| x.checked_add(y));
+    /// assert_eq!(sum, None);
+    /// ```
+    ///
+    /// Determine when a reduction was not performed because there are no elements:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let numbers: Vec<usize> = Vec::new();
+    /// let sum = numbers.into_bulk().try_reduce(|x, y| x.checked_add(y));
+    /// assert_eq!(sum, Some(None));
+    /// ```
+    ///
+    /// Use a [`Result`] instead of an [`Option`]:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let numbers = vec!["1", "2", "3", "4", "5"];
+    /// let max: Result<Option<_>, <usize as std::str::FromStr>::Err> =
+    ///     numbers.into_bulk().try_reduce(|x, y| {
+    ///         if x.parse::<usize>()? > y.parse::<usize>()? { Ok(x) } else { Ok(y) }
+    ///     });
+    /// assert_eq!(max, Ok(Some("5")));
+    /// ```
     fn try_reduce<F, R>(self, f: F) -> <R::Residual as Residual<Option<R::Output>>>::TryType
     where
         Self: Sized,
@@ -952,6 +1012,17 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
             ControlFlow::Break(residual) => FromResidual::from_residual(residual),
             ControlFlow::Continue(output) => Try::from_output(output)
         }
+    }
+
+    #[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn try_reduce_async<F, R>(self, f: F) -> TryReduceAsync<Self, F, R>
+    where
+        Self: BufferableBulk + Sized,
+        F: FnMut<(Self::Item, Self::Item), Output: Future<Output = R>>,
+        R: Try<Output = Self::Item, Residual: Residual<Option<Self::Item>>>
+    {
+        TryReduceAsync::new(self, f)
     }
 
     /// Tests if every element of the bulk matches a predicate.
