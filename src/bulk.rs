@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[cfg(feature = "async")]
-use crate::{AllAsync, AnyAsync, ForEachAsync, ReduceAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk};
+use crate::{AllAsync, AnyAsync, FindMapAsync, ForEachAsync, ReduceAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk};
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
 
@@ -1299,16 +1299,13 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
 
     /*#[cfg(feature = "async")]
     #[rustc_non_const_trait_method]
-    fn find_async<F>(self, f: F) -> impl Future<Output = Option<Self::Item>>
+    fn find_async<F, Y>(self, f: F) -> FindAsync<Self, F, Y>
     where
         Self: BufferableBulk + Sized,
-        F: for<'a> FnMut<(&'a Self::Item,), Output: Future<Output = bool>>
+        F: FnMut(&Self::Item) -> Y,
+        Y: Future<Output = bool>
     {
-        async {
-            self.try_for_each_async(async |x| if f(&x).await { ControlFlow::Break(x) } else { ControlFlow::Continue(()) })
-                .await
-                .break_value()
-        }
+        FindAsync::new(self, f)
     }*/
 
     /// Searches for an element of a bulk from the back that satisfies a predicate.
@@ -1447,6 +1444,16 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         }
 
         self.try_fold((), Functor { mapper }).break_value()
+    }
+
+    #[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn find_map_async<B, F>(self, f: F) -> FindMapAsync<Self, B, F>
+    where
+        Self: BufferableBulk + Sized,
+        F: FnMut<(Self::Item,), Output: Future<Output = Option<B>>>
+    {
+        FindMapAsync::new(self, f)
     }
 
     /*#[cfg(feature = "async")]
