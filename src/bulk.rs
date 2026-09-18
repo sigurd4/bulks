@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[cfg(feature = "async")]
-use crate::{ForEachAsync, ReduceAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk};
+use crate::{AllAsync, AnyAsync, ForEachAsync, ReduceAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk};
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
 
@@ -1082,19 +1082,43 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.try_for_each(Functor(f)) == ControlFlow::Continue(())
     }
 
-    /*#[cfg(feature = "async")]
+    /// Tests if every element of the bulk matches an asynchronous predicate.
+    ///
+    /// `all()` takes a closure that returns `true` or `false`. It applies
+    /// this closure to each element of the bulk in an unscpecified order,
+    /// and if they all return `true`, then so does `all()`.
+    /// If any of them return `false`, it returns `false`.
+    ///
+    /// `all()` is short-circuiting; in other words, it will stop processing
+    /// as soon as it finds a `false`, given that no matter what else happens,
+    /// the result will also be `false`.
+    ///
+    /// An empty bulk returns `true`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// # tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
+    /// assert!(a.into_bulk().all_async(async |x| x > 0).await);
+    ///
+    /// assert!(!a.into_bulk().all_async(async |x| x > 2).await);
+    /// # })
+    /// ```
+    #[cfg(feature = "async")]
     #[rustc_non_const_trait_method]
-    fn all_async<F>(self, f: F) -> impl Future<Output = bool>
+    fn all_async<F>(self, condition: F) -> AllAsync<Self, F>
     where
         Self: BufferableBulk + Sized,
         F: FnMut<(Self::Item,), Output: Future<Output = bool>>
     {
-        async {
-            self.try_for_each_async(async |x| if f(x).await { ControlFlow::Continue(()) } else { ControlFlow::Break(()) })
-                .await
-                == ControlFlow::Continue(())
-        }
-    }*/
+        AllAsync::new(self, condition)
+    }
 
     /// Tests if any element of the bulk matches a predicate.
     ///
@@ -1153,19 +1177,43 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.try_for_each(Functor(f)) == ControlFlow::Break(())
     }
 
-    /*#[cfg(feature = "async")]
+    /// Tests if any element of the bulk matches an asynchronous predicate.
+    ///
+    /// `any()` takes a closure that returns `true` or `false`. It applies
+    /// this closure to each element of the bulk in an unspecified order,
+    /// and if any of them return `true`, then so does `any()`.
+    /// If they all return `false`, it returns `false`.
+    ///
+    /// `any()` is short-circuiting; in other words, it will stop processing
+    /// as soon as it finds a `true`, given that no matter what else happens,
+    /// the result will also be `true`.
+    ///
+    /// An empty bulk returns `false`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use bulks::*;
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// # tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
+    /// assert!(a.into_bulk().any_async(async |x| x > 0).await);
+    ///
+    /// assert!(!a.into_bulk().any_async(async |x| x > 5).await);
+    /// # })
+    /// ```
+    #[cfg(feature = "async")]
     #[rustc_non_const_trait_method]
-    fn any_async<F>(self, f: F) -> impl Future<Output = bool>
+    fn any_async<F>(self, condition: F) -> AnyAsync<Self, F>
     where
         Self: BufferableBulk + Sized,
         F: FnMut<(Self::Item,), Output: Future<Output = bool>>
     {
-        async {
-            self.try_for_each_async(async |x| if f(x).await { ControlFlow::Break(()) } else { ControlFlow::Continue(()) })
-                .await
-                == ControlFlow::Break(())
-        }
-    }*/
+        AnyAsync::new(self, condition)
+    }
 
     /// Searches for an element of a bulk that satisfies a predicate.
     ///
@@ -1248,6 +1296,20 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
 
         self.try_for_each(Functor { predicate }).break_value()
     }
+
+    /*#[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn find_async<F>(self, f: F) -> impl Future<Output = Option<Self::Item>>
+    where
+        Self: BufferableBulk + Sized,
+        F: for<'a> FnMut<(&'a Self::Item,), Output: Future<Output = bool>>
+    {
+        async {
+            self.try_for_each_async(async |x| if f(&x).await { ControlFlow::Break(x) } else { ControlFlow::Continue(()) })
+                .await
+                .break_value()
+        }
+    }*/
 
     /// Searches for an element of a bulk from the back that satisfies a predicate.
     ///
@@ -1387,6 +1449,29 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.try_fold((), Functor { mapper }).break_value()
     }
 
+    /*#[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn find_map_async<F, B>(self, f: F) -> impl Future<Output = Option<B>>
+    where
+        Self: BufferableBulk + Sized,
+        F: for<'a> FnMut<(&'a Self::Item,), Output: Future<Output = Option<B>>>
+    {
+        async {
+            self.try_for_each_async(async |x| {
+                if let Some(y) = f(x).await
+                {
+                    ControlFlow::Break(y)
+                }
+                else
+                {
+                    ControlFlow::Continue(())
+                }
+            })
+            .await
+            .break_value()
+        }
+    }*/
+
     /// Applies function to the elements of the bulk and returns
     /// the first true result or the first error.
     ///
@@ -1428,17 +1513,18 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
     /// assert_eq!(result, None);
     /// ```
     #[inline]
-    fn try_find<R>(self, predicate: impl [const] FnMut(&Self::Item) -> R + [const] Destruct) -> <<R as Try>::Residual as Residual<Option<Self::Item>>>::TryType
+    fn try_find<F, R>(self, predicate: F) -> <<R as Try>::Residual as Residual<Option<Self::Item>>>::TryType
     where
         Self: Sized,
         Self::Item: [const] Destruct,
+        F: [const] FnMut(&Self::Item) -> R + [const] Destruct,
         R: [const] Try<Output = bool, Residual: [const] Residual<Option<Self::Item>>>
     {
         struct Functor<P>
         {
             predicate: P
         }
-        const impl<T, R, P> FnOnce<((), T)> for Functor<P>
+        const impl<T, R, P> FnOnce<(T,)> for Functor<P>
         where
             P: [const] FnMut(&T) -> R + [const] Destruct,
             R: [const] Try<Output = bool, Residual: [const] Residual<Option<T>>>,
@@ -1446,18 +1532,18 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         {
             type Output = ControlFlow<<R::Residual as Residual<Option<T>>>::TryType>;
 
-            extern "rust-call" fn call_once(mut self, args: ((), T)) -> Self::Output
+            extern "rust-call" fn call_once(mut self, args: (T,)) -> Self::Output
             {
                 self.call_mut(args)
             }
         }
-        const impl<T, R, P> FnMut<((), T)> for Functor<P>
+        const impl<T, R, P> FnMut<(T,)> for Functor<P>
         where
             P: [const] FnMut(&T) -> R,
             R: [const] Try<Output = bool, Residual: [const] Residual<Option<T>>>,
             T: [const] Destruct
         {
-            extern "rust-call" fn call_mut(&mut self, ((), x): ((), T)) -> Self::Output
+            extern "rust-call" fn call_mut(&mut self, (x,): (T,)) -> Self::Output
             {
                 match (self.predicate)(&x).branch()
                 {
@@ -1468,12 +1554,36 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
             }
         }
 
-        match self.try_fold((), Functor { predicate })
+        match self.try_for_each(Functor { predicate })
         {
             ControlFlow::Break(x) => x,
             ControlFlow::Continue(()) => Try::from_output(None)
         }
     }
+
+    /*#[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn try_find_async<F, R>(self, f: F) -> impl Future<Output = <<R as Try>::Residual as Residual<Option<Self::Item>>>::TryType>
+    where
+        Self: BufferableBulk + Sized,
+        F: for<'a> FnMut<(&'a Self::Item,), Output: Future<Output = R>>,
+        R: Try<Output = bool, Residual: Residual<Option<Self::Item>>>
+    {
+        async {
+            match self
+                .try_for_each_async(async |x| match f(&x).branch()
+                {
+                    ControlFlow::Continue(false) => ControlFlow::Continue(()),
+                    ControlFlow::Continue(true) => ControlFlow::Break(Try::from_output(Some(x))),
+                    ControlFlow::Break(r) => ControlFlow::Break(FromResidual::from_residual(r))
+                })
+                .await
+            {
+                ControlFlow::Break(x) => x,
+                ControlFlow::Continue(()) => Try::from_output(None)
+            }
+        }
+    }*/
 
     /// Searches for an element in a bulk, returning its index.
     ///
@@ -1555,6 +1665,22 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
 
         self.try_fold(0, Functor { predicate }).break_value()
     }
+
+    /*#[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn position_async<P>(self, predicate: P) -> impl Future<Output = Option<usize>>
+    where
+        Self: Sized,
+        Self::Item: [const] Destruct,
+        P: [const] FnMut<(Self::Item,), Output: Future<Output = bool>> + [const] Destruct
+    {
+        async {
+            self.enumerate()
+                .try_for_each_async(async |(i, x)| if predicate(x).await { ControlFlow::Break(i) } else { ControlFlow::Continue(()) })
+                .await
+                .break_value()
+        }
+    }*/
 
     /// Searches for an element in a bulk from the right, returning its
     /// index.
@@ -1644,6 +1770,14 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.max_by(Ord::cmp)
     }
 
+    /*fn max_async(self) -> impl Future<Output = Option<Self::Item>>
+    where
+        Self: Sized,
+        Self::Item: Ord
+    {
+        self.max_async_by(async |a, b| a.cmp(b))
+    }*/
+
     /// Returns the minimum element of a bulk.
     ///
     /// If several elements are equally minimum, the first element is returned.
@@ -1668,6 +1802,14 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
     {
         self.min_by(Ord::cmp)
     }
+
+    /*fn min_async(self) -> impl Future<Output = Option<Self::Item>>
+    where
+        Self: Sized,
+        Self::Item: Ord
+    {
+        self.min_async_by(async |a, b| a.cmp(b))
+    }*/
 
     /// Returns the element that gives the maximum value from the
     /// specified function.
@@ -1727,6 +1869,16 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Some(x)
     }
 
+    /*fn max_async_by_key<B, F>(self, keygen: F) -> impl Future<Output = Option<Self::Item>>
+    where
+        Self: Sized,
+        F: for<'a> FnMut<(&'a Self::Item,), Output: Future<Output = B>>,
+        B: Ord
+    {
+        let (_, x) = self.map_async(async |x| (keygen(&x), x)).max_async_by(async |(a, _), (b, _)| a.cmp(b))?;
+        Some(x)
+    }*/
+
     /// Returns the element that gives the maximum value with respect to the
     /// specified comparison function.
     ///
@@ -1776,6 +1928,19 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
 
         self.reduce(Functor { compare })
     }
+
+    /*fn max_async_by<F>(self, mut compare: F) -> impl Future<Output = Option<Self::Item>>
+    where
+        Self: Sized,
+        F: for<'a> FnMut<(&'a Self::Item, &'a Self::Item), Output: Future<Output = Ordering>>
+    {
+        async fn max_async_by<T, Y: Future<Output = Ordering>, F: FnOnce(&T, &T) -> Y>(v1: T, v2: T, compare: F) -> T
+        {
+            if compare(&v1, &v2).await.is_gt() { v1 } else { v2 }
+        }
+
+        self.reduce_async(async |a, b| max_async_by(a, b, &mut compare).await)
+    }*/
 
     /// Returns the element that gives the minimum value from the
     /// specified function.
@@ -1835,6 +2000,16 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Some(x)
     }
 
+    /*fn min_async_by_key<B, F>(self, keygen: F) -> impl Future<Output = Option<Self::Item>>
+    where
+        Self: Sized,
+        F: for<'a> FnMut<(&'a Self::Item,), Output: Future<Output = B>>,
+        B: Ord
+    {
+        let (_, x) = self.map(async |x| (keygen(&x), x)).min_async_by(async |(a, _), (b, _)| a.cmp(b))?;
+        Some(x)
+    }*/
+
     /// Returns the element that gives the minimum value with respect to the
     /// specified comparison function.
     ///
@@ -1884,6 +2059,19 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
 
         self.reduce(Functor { compare })
     }
+
+    /*fn min_async_by<F>(self, mut compare: F) -> impl Future<Output = Option<Self::Item>>
+    where
+        Self: Sized,
+        F: for<'a> FnMut<(&'a Self::Item, &'a Self::Item), Output: Future<Output = Ordering>>
+    {
+        async fn min_async_by<T, Y: Future<Output = Ordering>, F: FnOnce(&T, &T) -> Y>(v1: T, v2: T, compare: F) -> T
+        {
+            if compare(&v1, &v2).await.is_le() { v1 } else { v2 }
+        }
+
+        self.reduce_async(async |a, b| min_async_by(a, b, &mut compare).await)
+    }*/
 
     /// Creates a bulk starting at the same point, but stepping by
     /// the given amount at each iteration.
