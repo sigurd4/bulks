@@ -25,11 +25,10 @@ where
         }
     }
 }
-impl<B, F, Y> Future for AllAsync<B, F>
+impl<B, F> Future for AllAsync<B, F>
 where
     B: BufferableBulk,
-    F: FnMut(B::Item) -> Y,
-    Y: Future<Output = bool>
+    F: FnMut<(B::Item,), Output: Future<Output = bool>>
 {
     type Output = bool;
 
