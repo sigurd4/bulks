@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[cfg(feature = "async")]
-use crate::{AllAsync, AnyAsync, FindMapAsync, ForEachAsync, ReduceAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk};
+use crate::{AllAsync, AnyAsync, FindMapAsync, ForEachAsync, PositionAsync, ReduceAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk};
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
 
@@ -1546,6 +1546,7 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         }
     }
 
+    // TODO
     /*#[cfg(feature = "async")]
     #[rustc_non_const_trait_method]
     fn try_find_async<F, R>(self, f: F) -> impl Future<Output = <<R as Try>::Residual as Residual<Option<Self::Item>>>::TryType>
@@ -1651,21 +1652,15 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.try_fold(0, Functor { predicate }).break_value()
     }
 
-    /*#[cfg(feature = "async")]
+    #[cfg(feature = "async")]
     #[rustc_non_const_trait_method]
-    fn position_async<P>(self, predicate: P) -> impl Future<Output = Option<usize>>
+    fn position_async<F>(self, f: F) -> PositionAsync<Self, F>
     where
-        Self: Sized,
-        Self::Item: [const] Destruct,
-        P: [const] FnMut<(Self::Item,), Output: Future<Output = bool>> + [const] Destruct
+        Self: BufferableBulk + Sized,
+        F: FnMut<(Self::Item,), Output: Future<Output = bool>>
     {
-        async {
-            self.enumerate()
-                .try_for_each_async(async |(i, x)| if predicate(x).await { ControlFlow::Break(i) } else { ControlFlow::Continue(()) })
-                .await
-                .break_value()
-        }
-    }*/
+        PositionAsync::new(self, f)
+    }
 
     /// Searches for an element in a bulk from the right, returning its
     /// index.
