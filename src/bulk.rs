@@ -1297,6 +1297,7 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.try_for_each(Functor { predicate }).break_value()
     }
 
+    // TODO
     /*#[cfg(feature = "async")]
     #[rustc_non_const_trait_method]
     fn find_async<F, Y>(self, f: F) -> FindAsync<Self, F, Y>
@@ -1455,29 +1456,6 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
     {
         FindMapAsync::new(self, f)
     }
-
-    /*#[cfg(feature = "async")]
-    #[rustc_non_const_trait_method]
-    fn find_map_async<F, B>(self, f: F) -> impl Future<Output = Option<B>>
-    where
-        Self: BufferableBulk + Sized,
-        F: for<'a> FnMut<(&'a Self::Item,), Output: Future<Output = Option<B>>>
-    {
-        async {
-            self.try_for_each_async(async |x| {
-                if let Some(y) = f(x).await
-                {
-                    ControlFlow::Break(y)
-                }
-                else
-                {
-                    ControlFlow::Continue(())
-                }
-            })
-            .await
-            .break_value()
-        }
-    }*/
 
     /// Applies function to the elements of the bulk and returns
     /// the first true result or the first error.
