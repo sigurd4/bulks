@@ -6,7 +6,7 @@ use core::{
 use array_trait::AsSlice;
 
 use crate::{
-    AsBulkMut, Bulk, BulkLength,
+    BulkLength,
     util::{Buffer, BufferableBulk, MaybeDone}
 };
 
@@ -134,8 +134,6 @@ where
 #[cfg(test)]
 mod test
 {
-    use core::time::Duration;
-
     use crate::{Bulk, IntoBulk};
 
     #[test]

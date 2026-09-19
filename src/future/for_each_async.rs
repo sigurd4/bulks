@@ -25,8 +25,6 @@ where
     F: FnMut<(B::Item,), Output: Future<Output = ()>>
 {
     pub(crate) fn new(bulk: B, action: F) -> Self
-    where
-        B: IntoIterator
     {
         let len = bulk.length();
         Self {

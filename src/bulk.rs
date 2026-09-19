@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[cfg(feature = "async")]
-use crate::{AllAsync, AnyAsync, FindMapAsync, ForEachAsync, PositionAsync, ReduceAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk};
+use crate::{AllAsync, AnyAsync, CollectAsync, FindMapAsync, ForEachAsync, PositionAsync, ReduceAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk};
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
 
@@ -1750,12 +1750,15 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.max_by(Ord::cmp)
     }
 
-    /*fn max_async(self) -> impl Future<Output = Option<Self::Item>>
+    // TODO
+    /*#[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn max_async(self) -> MaxByAsync<Self, fn(&Self::Item, &Self::Item) -> Ordering>
     where
-        Self: Sized,
+        Self: BufferableBulk + Sized,
         Self::Item: Ord
     {
-        self.max_async_by(async |a, b| a.cmp(b))
+        self.max_by_async(Ord::cmp as fn(_, _) -> _)
     }*/
 
     /// Returns the minimum element of a bulk.
@@ -1783,12 +1786,15 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.min_by(Ord::cmp)
     }
 
-    /*fn min_async(self) -> impl Future<Output = Option<Self::Item>>
+    // TODO
+    /*#[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn min_async(self) -> MinByAsync<Self, fn(&Self::Item, &Self::Item) -> Ordering>
     where
-        Self: Sized,
+        Self: BufferableBulk + Sized,
         Self::Item: Ord
     {
-        self.min_async_by(async |a, b| a.cmp(b))
+        self.min_by_async(Ord::cmp as fn(_, _) -> _)
     }*/
 
     /// Returns the element that gives the maximum value from the
@@ -1849,6 +1855,7 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Some(x)
     }
 
+    // TODO
     /*fn max_async_by_key<B, F>(self, keygen: F) -> impl Future<Output = Option<Self::Item>>
     where
         Self: Sized,
@@ -1909,7 +1916,10 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.reduce(Functor { compare })
     }
 
-    /*fn max_async_by<F>(self, mut compare: F) -> impl Future<Output = Option<Self::Item>>
+    // TODO
+    /*#[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn max_async_by<F>(self, mut compare: F) -> MaxAsyncBy<Self, F>
     where
         Self: Sized,
         F: for<'a> FnMut<(&'a Self::Item, &'a Self::Item), Output: Future<Output = Ordering>>
@@ -1980,6 +1990,7 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Some(x)
     }
 
+    // TODO
     /*fn min_async_by_key<B, F>(self, keygen: F) -> impl Future<Output = Option<Self::Item>>
     where
         Self: Sized,
@@ -2040,6 +2051,7 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.reduce(Functor { compare })
     }
 
+    // TODO
     /*fn min_async_by<F>(self, mut compare: F) -> impl Future<Output = Option<Self::Item>>
     where
         Self: Sized,
@@ -3050,6 +3062,18 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         A: CollectionAdapter<Elem = Self::Item> + [const] CollectionStrategy<Self::MinLength, Self::MaxLength, C> + ?Sized
     {
         FromBulk::from_bulk(self)
+    }
+
+    #[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn collect_async<C, A>(self) -> CollectAsync<Self, C, A>
+    where
+        Self: BufferableBulk + Sized,
+        Self::Item: Future,
+        C: FromBulk<A>,
+        A: CollectionAdapter<Elem = <Self::Item as Future>::Output> + CollectionStrategy<Self::MinLength, Self::MaxLength, C> + ?Sized
+    {
+        CollectAsync::new(self)
     }
 
     /// Fallibly transforms a bulk into a collection, short circuiting if

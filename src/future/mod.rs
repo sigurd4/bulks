@@ -2,6 +2,7 @@ moddef::moddef!(
     flat(pub) mod {
         all_async,
         any_async,
+        collect_async,
         //find_async,
         find_map_async,
         position_async,
