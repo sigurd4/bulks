@@ -18,7 +18,9 @@ use crate::{
 };
 
 #[cfg(feature = "async")]
-use crate::{AllAsync, AnyAsync, CollectAsync, FindMapAsync, ForEachAsync, PositionAsync, ReduceAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk};
+use crate::{
+    AllAsync, AnyAsync, CollectAsync, FindMapAsync, ForEachAsync, PositionAsync, ReduceAsync, TryCollectAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk
+};
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
 
@@ -3164,6 +3166,18 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         Self::Item: [const] Try<Residual: [const] Residual<C, TryType: [const] Try> + [const] Destruct> + [const] Destruct
     {
         FromBulk::<A>::try_from_bulk(self)
+    }
+
+    #[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn try_collect_async<C, A>(self) -> TryCollectAsync<Self, C, A>
+    where
+        Self: BufferableBulk + Sized,
+        C: FromBulk<A>,
+        A: CollectionAdapter<Elem = <<Self::Item as Future>::Output as Try>::Output> + TryCollectionStrategy<Self::MinLength, Self::MaxLength, C> + ?Sized,
+        Self::Item: Future<Output: Try<Residual: Residual<C>>>
+    {
+        TryCollectAsync::new(self)
     }
 
     fn collect_nearest(self) -> <BulkLength<Self> as Nearest>::NearestFrom<Self>
