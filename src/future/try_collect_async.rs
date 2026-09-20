@@ -8,7 +8,7 @@ use core::{
 use array_trait::AsSlice;
 
 use crate::{
-    AsBulkMut, Bulk, BulkLength, CollectionAdapter, CollectionStrategy, FromBulk, TryCollectionStrategy,
+    AsBulkMut, Bulk, BulkLength, CollectionAdapter, FromBulk, TryCollectionStrategy,
     util::{Buffer, BufferableBulk, MaybeDone}
 };
 

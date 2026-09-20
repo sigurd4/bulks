@@ -1,5 +1,4 @@
 use core::{
-    marker::PhantomData,
     ops::{FromResidual, Residual, Try},
     pin::Pin,
     task::{Context, Poll}
@@ -8,7 +7,7 @@ use core::{
 use array_trait::AsSlice;
 
 use crate::{
-    AsBulkMut, Bulk, BulkLength, CollectionAdapter, CollectionStrategy, FromBulk, StaticBulk, TryCollectionStrategy, util::{Buffer, BufferableBulk, MaybeDone}
+    AsBulkMut, Bulk, BulkLength, StaticBulk, util::{Buffer, MaybeDone}
 };
 
 pub struct TryCollectArrayAsync<B>

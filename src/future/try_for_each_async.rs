@@ -1,5 +1,5 @@
 use core::{
-    ops::{FromResidual, Residual, Try},
+    ops::{FromResidual, Try},
     pin::Pin,
     task::{Context, Poll}
 };

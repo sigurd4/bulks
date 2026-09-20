@@ -43,7 +43,7 @@ where
 
     fn task(self: Pin<&mut Self>, i: usize) -> Pin<&mut MaybeDone<F::Output>>
     {
-        unsafe { self.map_unchecked_mut(|this| &mut this.tasks.as_mut_slice()[i]) }
+        unsafe { self.tasks().map_unchecked_mut(|tasks| &mut tasks[i]) }
     }
 
     fn action(self: Pin<&mut Self>) -> &mut F

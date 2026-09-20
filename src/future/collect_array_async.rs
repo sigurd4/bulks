@@ -3,7 +3,7 @@ use core::{
     task::{Context, Poll}
 };
 
-use array_trait::{AsSlice, same::Same};
+use array_trait::AsSlice;
 
 use crate::{
     AsBulkMut, Bulk, BulkLength, StaticBulk, util::{Buffer, MaybeDone}

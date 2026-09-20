@@ -47,11 +47,6 @@ impl<F: Future> MaybeDone<F>
         }
     }
 
-    pub fn into_output(mut self) -> Option<F::Output>
-    {
-        self._take_output()
-    }
-
     pub fn restart(self: Pin<&mut Self>, future: F)
     {
         *unsafe { self.get_unchecked_mut() } = Self::Future(future)
