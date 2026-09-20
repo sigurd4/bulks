@@ -23,7 +23,7 @@ impl<F: Future> MaybeDone<F>
             ControlFlow::Break(residual) => Some(residual),
             ControlFlow::Continue(output) =>
             {
-                core::mem::replace(unsafe { self.get_unchecked_mut() }, Self::Done(Try::from_output(output)));
+                *unsafe { self.get_unchecked_mut() } = Self::Done(Try::from_output(output));
                 None
             }
         })
