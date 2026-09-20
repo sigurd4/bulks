@@ -3189,6 +3189,20 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.collect::<<BulkLength<Self> as Nearest>::NearestFrom<Self>, <BulkLength<Self> as Nearest>::NearestStrategyFrom<Self>>()
     }
 
+    #[allow(clippy::type_complexity)]
+    #[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn collect_nearest_async(
+        self
+    ) -> CollectAsync<Self, <BulkLength<Self> as Nearest>::NearestAsyncFrom<Self>, <BulkLength<Self> as Nearest>::NearestAsyncStrategyFrom<Self>>
+    where
+        Self: BufferableBulk + Sized,
+        BulkLength<Self>: Nearest,
+        Self::Item: Future
+    {
+        self.collect_async()
+    }
+
     fn try_collect_nearest(self) -> <<Self::Item as Try>::Residual as Residual<<BulkLength<Self> as Nearest>::TryNearestFrom<Self>>>::TryType
     where
         Self: Sized,
@@ -3197,6 +3211,18 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
             [const] Try<Output: [const] Destruct, Residual: [const] Residual<<BulkLength<Self> as Nearest>::TryNearestFrom<Self>> + [const] Destruct> + [const] Destruct
     {
         self.try_collect::<<BulkLength<Self> as Nearest>::TryNearestFrom<Self>, <BulkLength<Self> as Nearest>::TryNearestStrategyFrom<Self>>()
+    }
+
+    #[allow(clippy::type_complexity)]
+    #[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn try_collect_nearest_async(self) -> TryCollectAsync<Self, <BulkLength<Self> as Nearest>::TryNearestAsyncFrom<Self>, <BulkLength<Self> as Nearest>::TryNearestAsyncStrategyFrom<Self>>
+    where
+        Self: BufferableBulk + Sized,
+        BulkLength<Self>: Nearest,
+        Self::Item: Future<Output: Try<Residual: Residual<<BulkLength<Self> as Nearest>::TryNearestAsyncFrom<Self>>>>
+    {
+        self.try_collect_async()
     }
 
     /// Transforms a statically sized bulk into an array.
@@ -3241,6 +3267,8 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
     {
         util::collect_array_with!(|f| self.for_each(f); for Self)
     }
+
+    // TODO: collect_array_async
 
     /// Fallibly transforms a statically sized bulk into an array, short circuiting if
     /// a failure is encountered.
