@@ -66,7 +66,7 @@ where
     B: BufferableBulk,
     F: FnMut<(B::Item,), Output: Future<Output: Try<Output = ()>>>
 {
-    type Output = <<<<F as FnOnce<(B::Item,)>>::Output as Future>::Output as Try>::Residual as Residual<()>>::TryType;
+    type Output = <<F as FnOnce<(B::Item,)>>::Output as Future>::Output;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>
     {
