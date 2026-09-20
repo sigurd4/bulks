@@ -19,7 +19,7 @@ use crate::{
 
 #[cfg(feature = "async")]
 use crate::{
-    AllAsync, AnyAsync, CollectAsync, FindMapAsync, ForEachAsync, PositionAsync, ReduceAsync, TryCollectAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk
+    AllAsync, AnyAsync, CollectArrayAsync, CollectAsync, FindMapAsync, ForEachAsync, PositionAsync, ReduceAsync, TryCollectArrayAsync, TryCollectAsync, TryForEachAsync, TryReduceAsync, util::BufferableBulk
 };
 
 pub type BulkLength<B> = <<B as Bulk>::MinLength as Length>::Intersect<<B as Bulk>::MaxLength>;
@@ -3268,7 +3268,15 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         util::collect_array_with!(|f| self.for_each(f); for Self)
     }
 
-    // TODO: collect_array_async
+    #[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn collect_array_async(self) -> CollectArrayAsync<Self>
+    where
+        Self: StaticBulk,
+        Self::Item: Future
+    {
+        CollectArrayAsync::new(self)
+    }
 
     /// Fallibly transforms a statically sized bulk into an array, short circuiting if
     /// a failure is encountered.
@@ -3361,6 +3369,16 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
             > + [const] Bulk
     {
         Try::from_output(util::try_collect_array_with!(|pusher| self.try_for_each(pusher); for Self))
+    }
+
+    #[cfg(feature = "async")]
+    #[rustc_non_const_trait_method]
+    fn try_collect_array_async(self) -> TryCollectArrayAsync<Self>
+    where
+        Self: StaticBulk,
+        Self::Item: Future<Output: Try<Residual: Residual<Self::Array<<<Self::Item as Future>::Output as Try>::Output>>>>
+    {
+        TryCollectArrayAsync::new(self)
     }
 
     /// Resizes a bulk, padding it with copies of a given value of `element` if too short, or truncating it if too long.

@@ -4,6 +4,8 @@ moddef::moddef!(
         any_async,
         collect_async,
         try_collect_async,
+        collect_array_async,
+        try_collect_array_async,
         //find_async,
         find_map_async,
         position_async,

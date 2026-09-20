@@ -1,6 +1,6 @@
 use array_trait::{Array, length::Length};
 
-use crate::{Bulk, IntoBulk};
+use crate::{Bulk, CollectionAdapter, CollectionStrategy, FromBulk, IntoBulk, TryCollectionStrategy};
 
 /// A trait for bulks whose length can be determined at compile-time.
 /// 
@@ -16,7 +16,7 @@ pub unsafe trait StaticBulk: Bulk<
     MinLength: Length<Intersect<<Self as Bulk>::MaxLength> = Self::Array<()>>
 > + Sized
 {
-    type Array<U>: const Array<Elem = U> + Length<Elem = U> + const IntoBulk<Item = U>;
+    type Array<U>: const Array<Elem = U> + Length<Elem = U> + const IntoBulk<Item = U> + CollectionAdapter<Elem = U> + FromBulk<Self::Array<U>> + CollectionStrategy<Self::MinLength, Self::MaxLength, Self::Array<U>> + TryCollectionStrategy<Self::MinLength, Self::MaxLength, Self::Array<U>>;
 }
 unsafe impl<T, const N: usize> StaticBulk for T
 where
