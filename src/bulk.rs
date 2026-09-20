@@ -1,12 +1,5 @@
 use core::{
-    borrow::BorrowMut,
-    cmp::Ordering,
-    error::Error,
-    fmt::Display,
-    iter::Step,
-    marker::Destruct,
-    ops::{Add, ControlFlow, Deref, FromResidual, Mul, Residual, Try},
-    pin::Pin
+    borrow::BorrowMut, cmp::Ordering, error::Error, fmt::Display, future::Ready, iter::Step, marker::Destruct, ops::{Add, ControlFlow, Deref, FromResidual, Mul, Residual, Try}, pin::Pin
 };
 
 use array_trait::length::{self, Length, LengthValue, Value};
@@ -343,6 +336,14 @@ pub const trait Bulk: [const] IntoBulk<IntoBulk = Self>
         self.enumerate().for_each(Functor { done: 0, refs: &mut refs });
 
         refs.map(Result::ok)
+    }
+
+    #[cfg(feature = "async")]
+    fn par(self) -> Map<Self, impl Fn(Self::Item) -> Ready<Self::Item>>
+    where
+        Self: Sized
+    {
+        self.map(core::future::ready)
     }
 
     /// Calls a closure on each element of a bulk.
